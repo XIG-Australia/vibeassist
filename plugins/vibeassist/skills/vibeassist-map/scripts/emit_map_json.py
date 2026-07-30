@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Emit map.json from a user-lens-map working directory.
+"""Emit map.json from a vibeassist-map working directory.
 
 Reference implementation for the importer's input. Reads the same files
 assemble.py reads and produces structured data instead of prose.
@@ -221,6 +221,9 @@ def main():
 
     user = [r for r in out_routes if r["audience"] == "user"]
     doc = {
+        # NOT renamed with the skill. This is a FORMAT identifier: anything
+        # holding a map.json already written matches on it, and the importer
+        # checks it. Branding churn must not invalidate existing files.
         "schema": "user-lens-map/1",
         "generator": "emit_map_json.py (reference implementation)",
         "stack": stack,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evidence harvester for user-lens-map (run once before Phase 3).
+"""Evidence harvester for vibeassist-map (run once before Phase 3).
 
 For each route in map/_routes.json, resolves the route file plus its imports
 two levels deep - relative imports AND path aliases (read from tsconfig.json /

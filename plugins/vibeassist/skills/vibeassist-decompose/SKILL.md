@@ -131,7 +131,7 @@ its owner thinks in? You are free to propose structure — but every fork you
 are unsure about is a walk-question, not a guess.
 
 **BREAKDOWN — from an existing codebase (ingestion).** There is code, and the
-code is the truth. **Survey with the mapper first:** if the `user-lens-map`
+code is the truth. **Survey with the mapper first:** if the `vibeassist-map`
 skill is available (it ships in this same plugin), run it — or consume an
 existing `map/map.json` / `MAP.md` if a survey was already done — and decompose
 from its verified output: its pages ARE your top-level surfaces (rule 8), its

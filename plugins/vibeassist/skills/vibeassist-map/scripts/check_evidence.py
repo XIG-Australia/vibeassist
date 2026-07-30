@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evidence gate for user-lens-map (Phase 4).
+"""Evidence gate for vibeassist-map (Phase 4).
 
 Checks every Evidence line in map/pages/*.md:
   1. each cited file exists (relative to the repo root)
