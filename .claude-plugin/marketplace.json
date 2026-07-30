@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "vibeassist",
+  "description": "VibeAssist — keep control of what you're building.",
+  "owner": {
+    "name": "VibeAssist",
+    "url": "https://vibeassist.app"
+  },
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "vibeassist",
+      "source": "vibeassist",
+      "description": "Four skills: work your queued sprints, decompose an idea or an existing codebase into asks, map a repository the way its users meet it, and review what got built against what you asked for.",
+      "category": "workflow",
+      "tags": ["planning", "project-management", "codebase-mapping", "code-review"],
+      "author": { "name": "VibeAssist", "url": "https://vibeassist.app" }
+    }
+  ]
+}

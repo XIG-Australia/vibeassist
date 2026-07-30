@@ -1,0 +1,180 @@
+---
+name: user-lens-map
+description: Map a codebase from the user's perspective - a sitemap of pages and how they link, what each page lets a person do (in plain language), the actions available on each page, and which database tables each action reads or writes. Use this whenever the user asks to "understand this app", "map this codebase", "document what this app does", "import this codebase", "create a sitemap from code", or wants a functional spec of an existing application - even if they don't say "map" explicitly. Do NOT produce developer-architecture docs (modules, dependencies, layers) when this skill triggers; the output must be readable by a non-technical person.
+---
+
+<!-- vibeassist-skill-version: 0.6.0 (single-sourced from plugin.json by scripts/build-plugin-zip.cjs — do not hand-edit; bump plugin.json and rebuild) -->
+
+# User-Lens Codebase Map
+
+Produce a functional map of an application as its *users* experience it. The reader is a product owner, not a developer. Code identifiers are evidence, never explanation.
+
+## The core rule (read this twice)
+
+Every page and action gets described at THREE levels, in this order:
+
+1. **User language** — what a person can do here ("Manage your account", "Reset password"). No function names, no component names, no variable names. Write it like a help-center article. If a sentence contains camelCase or snake_case, it is wrong.
+2. **Trigger** — the visible UI element ("'Save changes' button", "email field + submit").
+3. **Evidence** — the technical trace: handler → server function/endpoint → database tables, each with `file:line` citations.
+
+Levels 1 and 2 are the deliverable. Level 3 exists so claims can be verified. Never let level-3 vocabulary leak upward into levels 1-2.
+
+## Workflow (phases must run in this order)
+
+### Phase 0 — Detect the stack
+
+Identify: router type (file-based? config-based? none?), data layer, and where server-side logic lives. The harvester DETECTS the data layer from evidence (package.json deps and schema files — Supabase/Knex, Prisma, Drizzle, Firestore, Mongoose, raw SQL) and reads the real table list from the schema where one exists (`schema.prisma`, Drizzle `pgTable` modules, `supabase/migrations/*.sql`) into `_harvest.json`'s `_meta`. Record the detected layer in `_stack.md` and sanity-check it against what you see in the code. Answer one question explicitly, in writing, before anything else: **how does a page reach the database — directly, or through a server layer?** (e.g. "a page rarely touches a table itself — it calls a server function in `src/lib/*.functions.ts` that does"). That one sentence shapes every trace in Phase 3. Write findings to `map/_stack.md` — this file is REQUIRED: the Phase 5 assembler reads it for the MAP.md header and refuses to run without it.
+
+### Phase 1 — Enumerate pages DETERMINISTICALLY, then triage
+
+Do not decide from memory what pages exist. Extract the route list mechanically:
+
+- File-based routing (TanStack Start; Next-style trees for simple cases): run the bundled enumerator — `python scripts/routes_file_based.py --repo-root . -o map/_routes.json`. It flattens dot-nesting, honors trailing-underscore un-nesting and `[.]` literal dots, drops pure layouts, keeps redirect stubs as `audience: "redirect"` (reading the destination from the code), and applies the structural machine-only test. For SvelteKit/Remix conventions it does not know, enumerate by hand on the same rules.
+- Config-based routing: for react-router (Lovable's default), run the bundled parser — `python scripts/routes_react_router.py --repo-root . -o map/_routes.json`. It composes nested relative paths, treats `<Route index>` as the parent's path, applies the layout guard to element-less container routes, maps `<Navigate to>` to `audience: "redirect"`, flags `path="*"` as the not-found page, and resolves components (including `lazy()` imports) to source files through path aliases. For other config routers (Vue Router, Express views), parse the registration file(s) by hand on the same rules.
+
+**Guard: a file whose segments are ALL layout segments is not a route — it is the layout itself. Drop it.** Otherwise it reduces to the empty path, collides with the home page, and every table the layout's own imports touch gets falsely attributed to the front door.
+
+Then **triage every route into one of three lists**:
+
+- **user-facing** — a person opens it in a browser and stays.
+- **redirect** — a person hits it, but is immediately sent elsewhere. Detected by `throw redirect(`, `Response.redirect`, or a 3xx return in the route file. These are usually old addresses kept alive so bookmarks and old links don't 404 — real user-facing behavior a product owner wants to know about. Record `redirect_to` when it's readable.
+- **machine-only** — only another computer ever requests it.
+
+The reliable first test is structural: **does the route declare a rendered component at all?** But "no component" has TWO causes, and only one is machine-only: a handler returning JSON/XML to a program is machine-only; a route that throws a redirect is a person arriving via an old link. Check for the redirect before concluding machine. Fall back to naming conventions (`.well-known/*`, `sitemap*`, `robots*`, `*webhook*`, `*callback*`, feeds, health checks) only when the structure is ambiguous.
+
+Coverage requirement: **100% of user-facing routes get full page files.** Machine-only and redirect routes are NEVER given full page files — each gets one line in its own appendix section: machine-only as "`/webhooks/stripe` — receives payment events from Stripe", redirects as "`/old/path` — an old address, kept working — sends you to `/new/path`". Do not drop either silently; hiding real surface area is how maps lie.
+
+Output `map/_routes.json`: one entry per route with `path`, `source_file`, `layout_chain`, `auth_required` (from middleware/guards if detectable), `audience` (`user` | `machine` | `redirect`), `redirect_to` (for redirects, when readable).
+
+### Phase 2 — Map page linkage (navigation lives in THREE places)
+
+Only the first is in the route file:
+
+1. **Links inside the page itself** — grep the route file for `<Link>`, `navigate(`, `router.push`, `redirect(`, `href=`.
+2. **Shared chrome** — sidebar, header, footer, tab rails. These components are usually NOT the route file and NOT a layout in the router's sense. Find them (they render on many pages) and scan them. Attribute their edges to `«global navigation»` rather than to any single page, because they reach most of the app from anywhere.
+3. **Config arrays** — rails and tab strips are usually built by mapping over a list like `const NAV = [{ to: "/settings/ai", label: … }]`, so there is no literal `<Link to="…">` to find. Grep for route-path string literals across the whole `src/` tree, not just for Link components.
+4. **Computed paths** — a rail may build its target from a list: ``to: `/products/${p.slug}` ``. The finished address never appears as a literal anywhere in the source, so no string search can find it. Take the **fixed prefix before the first `${`**, normalize its parameters, and treat every known route beneath that prefix as reached from this rail. Record the trigger as "rail built from a list" so the reader knows the edge was inferred from structure rather than read from a literal. (Watch the character class when writing the prefix pattern: the prefix itself often contains a `$` — `/projects/$projectId/…` — so a pattern that excludes `$` matches nothing.)
+
+**Normalize route-parameter syntax before matching links to routes.** Frameworks write the same placeholder four ways: `$projectId` (TanStack), `[projectId]` (Next), `:projectId` (React Router/Rails-ish), `${…}` (template literals). Convert both sides to one canonical form (e.g. `:param`) before comparing, or every dynamic route will falsely appear unreachable.
+
+Also record programmatic redirects (post-login, post-submit).
+
+**A route with no inbound edge is a CLAIM, not an observation.** Before reporting one, confirm you checked all three places above. Routes genuinely without internal links usually have an external entry instead — see **Reached from outside** in the template.
+
+Run the bundled edge builder — `python scripts/gen_edges.py map/_routes.json --repo-root . -o map/_edges.json`. It scans ALL of `src/` for literal links (normalizing parameter syntax on both sides), attributes edges to the page when the file is a route's own file and to `«global navigation»` otherwise, records automatic redirects, and infers computed rails from template literals (the fixed prefix before the first `${`). Its "NO INBOUND" list at the end is the claim to check, not the conclusion to publish.
+
+### Phase 3 — Per-page deep pass (ONE page per pass, in reach order)
+
+**First, run the bundled harvester once for the whole app:**
+
+```bash
+python scripts/harvest.py map/_routes.json --repo-root . -o map/_harvest.json
+```
+
+For each route it resolves the route file plus imports two levels deep — relative imports AND path aliases (read from `tsconfig.json`/`jsconfig.json` `compilerOptions.paths`, falling back to `@/` → `src/`), including `export … from` re-exports and dynamic `import(…)` — then extracts with line numbers: interactive elements, server function declarations, and every database call tagged READ / INSERT / UPDATE / DELETE. Phase 3 then writes user language *from* `_harvest.json` instead of grepping ad hoc per page — you have the line number in front of you before you write the sentence, which is what makes honest citation cheap. (The harvester is regex-based and will miss unusual patterns; anything you find by reading that it missed, cite normally.)
+
+**`_harvest.json` is a list of CANDIDATES, not a list of claims.** Two levels of imports through shared chrome will offer a page far more tables than it touches — a dashboard resolving 45 files may be offered 23 tables while truly touching 8. Use the harvest to find the line, then confirm the call is on a path the page's own controls actually trigger before writing the claim. A citation can be real and the claim still false — the checker verifies the line, not the reachability, so this class of error is yours to catch in prose. Rough smell test: a page offered more than about ten tables is almost certainly inheriting them from shared components; narrow it by hand.
+
+**Sanity-check the harvest before writing anything.** The harvester enforces the dangerous half itself: if controls were found but the data layer is unrecognised, it REFUSES (exit 3) rather than blessing a map that would falsely claim no page touches data — tell it the layer or add an adapter, never work around the refusal. If it instead warns that everything is empty (no controls either), imports aren't resolving — almost always a path alias it does not know about. Fix that first. Writing pages from an empty harvest produces pages that claim nothing touches any data, which is worse than no map: it is a confident wrong answer.
+
+**Page-file naming (the assembler depends on it):** slug = route path with the leading slash stripped, `/` replaced by `-`, and parameter markers (`:`, `$`, `[`, `]`) dropped; the root `/` is `index`. The harvester emits this slug per route in `_harvest.json` — use it, so both ends agree.
+
+Process each user-facing route in its own focused pass — do not batch pages, or depth becomes inconsistent.
+
+**Order matters because runs get cut short.** Map in this sequence, so a partial run is still a useful map (what's missing is the least-visited part, not a random half):
+
+1. Entry pages: `/`, auth, pricing, anything public.
+2. The pages `«global navigation»` links to (the everyday surface).
+3. Interior pages, by distance from the entries.
+
+If you cannot finish, stop at a page boundary and state coverage in the MAP.md header. **Never reduce depth to increase count** — a shallow page is worse than a missing one, because a missing page is honest.
+
+For each page:
+
+1. Read the route file and every component it renders (follow imports as deep as needed to reach the handler — depth is set by where the logic lives, which you learned in Phase 0).
+2. Inventory every interactive element: buttons, forms, toggles, links that mutate state, drag targets, keyboard shortcuts.
+3. For each element, trace: handler → client mutation/query → server function or API endpoint → database statements → tables and columns touched, and whether it's a READ, INSERT, UPDATE, or DELETE.
+4. Group actions into capabilities (noun-phrases a user would recognize: "Manage your account"). Typical pages have 1-7. **Zero is a valid answer** — a policy page you only read has no capabilities, and saying so is correct. Never invent a capability to fill the section; that is how a map starts lying.
+5. Note what the page displays on load (which tables are READ to render it).
+
+Save as `map/pages/<route-slug>.md`.
+
+### Phase 4 — Verify (evidence gate; run the checker, don't intend it)
+
+Run the bundled checker:
+
+```bash
+python scripts/check_evidence.py map/pages/
+```
+
+It extracts every `file:line` citation, asserts the file exists, the line range is in bounds, AND that the cited range actually contains the symbols/tables named in the Evidence line. Existence alone is not enough — a citation can point at a real file and the wrong line.
+
+**A failed check means RE-TRACE, not soften.** Do not reword a failing claim until it is vague enough to be safe — that produces exactly the useless output this skill exists to prevent. Re-read the code and fix the citation, or delete the claim. Anything you cannot re-verify gets an explicit `⚠ UNVERIFIED` marker.
+
+Practical tip: grep for the line number BEFORE writing each Evidence line, not after. Cite what you found, don't find what you cited.
+
+Process rule: if the checker fails in a way you believe is the checker's fault, you may fix the script to unblock the run — but **report the fix and the failing case in your feedback**, and never edit a script to make a claim of yours pass. A gate you widened is not a gate. State which version of the scripts the run used.
+
+Authoring gotcha: **never backtick a file name on an Evidence line.** Backticks mark symbols the checker must find inside the cited range, and a file does not contain its own name. Cite paths bare — the citation pattern picks them up anyway.
+
+### Phase 5 — Assemble
+
+Run the bundled assembler — never write MAP.md freehand, or the map changes shape depending on which session assembled it:
+
+```bash
+python scripts/assemble.py map/ -o MAP.md --harvest map/_harvest.json [--machine-notes map/_machine_notes.json]
+```
+
+It produces: a coverage table with counts read from the JSON (never typed); the stack summary from `_stack.md`; the `«global navigation»` set listed once instead of repeated on every page; the sitemap split public / signed-in with link edges; page files concatenated in Phase 3 order; a data appendix (per table: read by / written by) parsed from the Evidence lines; the machine-only appendix; and — when given `--harvest` — three more sections built from what the scan collected: **Findings** (dead surface, tables nothing touches, tables with no row-level security, destructive actions with no confirmation step), **Who's allowed to do what** (the database's own access rules, read from the migrations), and **Keys & services** (external services the app depends on, and every secret/environment variable the code expects, each with where it is first used).
+
+**Findings are computed candidates, not verdicts.** Before publishing, verify each one the same way as any claim: read the cited code. A finding that survives is among the most valuable lines in the map — the BM run caught a dead navigation button this way. If something flagged is intentional, keep the line and say it is intentional; deleting it hides the question from the next reader. The one input that needs a human sentence is the machine-notes file — a small JSON of `{route: "what fetches this"}`.
+
+Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o map.json` produces the structured, machine-readable version of the whole map (the contract an importer consumes — pages, capabilities, actions, tables, all with evidence), and `python scripts/tree_from_map.py map/ -o tree.md` renders the sitemap as a properly nested tree (in the flat sitemap, indentation means "links to"; in the tree it means "contains" — both views are useful, never confuse them). For an app with NO router at all (vanilla HTML/JS), `scripts/nav_edges.py` and `scripts/index_calls.py` are the Phase 2/3 strategy: screens instead of routes, and data calls attributed to the function that contains them.
+
+## Page template (fill every field; write "None" rather than omitting)
+
+```markdown
+# /account/settings — Account Settings
+
+**Purpose:** Where you manage your personal account details and security.
+**Who can see it:** Signed-in users only.
+**Arrives from:** Header avatar menu → "Settings"; post-signup redirect.
+**Reached from outside:** None — internal only.
+  <!-- other valid values: a link in an email / the payment provider after paying /
+       a search result / another program connecting. Who can reach a page is often
+       the most useful line in the whole entry. -->
+**Shows on load:** Your profile details and notification preferences.
+  - READS: `profiles` (display_name, email, avatar_url), `notification_prefs`
+  - Evidence: src/routes/account/settings.tsx:14-31
+
+## Capability: Manage your account
+### Action: Update your username
+- What happens: You type a new name and save; it changes everywhere your name appears.
+- Trigger: "Display name" field + "Save changes" button
+- Feedback: Success toast; field shows the new value.
+- Evidence: handler `onSaveProfile` src/components/ProfileForm.tsx:42 → server fn `updateProfile` src/server/profile.ts:18 → UPDATE `profiles` (display_name)
+
+### Action: Reset your password
+- What happens: You request a reset link; an email is sent to your address.
+- Trigger: "Send reset link" button
+- Feedback: Confirmation banner; button disabled 60s.
+- Evidence: src/components/SecurityCard.tsx:27 → `supabase.auth.resetPasswordForEmail` → (auth service; no app tables)
+
+## Capability: Control your notifications
+### Action: Turn email digests on or off
+- What happens: Flipping the toggle immediately changes whether you get the weekly summary email.
+- Trigger: "Weekly digest" toggle
+- Evidence: src/components/NotifPrefs.tsx:33 → server fn `setPref` src/server/prefs.ts:9 → UPDATE `notification_prefs` (weekly_digest)
+```
+
+An optional field, used whenever tracing reveals one: `**⚠ Defect worth knowing about:** <what is broken, in user terms> — Evidence: file:line`. A reader tracing what a button does is in the ideal position to notice that it does nothing; recording that is first-class output, not a digression.
+
+Match this register exactly. "What happens" lines are written to the user as "you". A read-only page states `**Capabilities:** None — this page is for reading.` and stops there. If a page's purpose can't be stated without code vocabulary, you haven't understood it yet — read more code, then write.
+
+## Quality bars
+
+- 100% of user-facing routes have page files; machine-only routes all appear in the appendix. A user-facing route with no page file is a failure.
+- Every action has Evidence; `check_evidence.py` passes with zero failures (or failures are marked `⚠ UNVERIFIED`).
+- Every "no inbound link" claim was checked against page links, shared chrome, AND config arrays, with param syntax normalized.
+- A non-technical reader can answer "what can I do on this page and what data does it change?" for any page without opening the code.
+- Depth is uniform: the last page mapped is as detailed as the first.
