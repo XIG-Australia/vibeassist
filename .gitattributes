@@ -1,0 +1,7 @@
+# Everything ships with LF. The shell scripts break on macOS and Linux if they
+# arrive with CRLF, and this repo is authored on Windows.
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
