@@ -1,37 +1,29 @@
 # VibeAssist plugin for Claude Code
 
-Drive your VibeAssist backlog from inside Claude Code. Queue a sprint in
-VibeAssist, then run `/vibeassist` — Claude pulls the sprint, sequences the
-tasks by dependency, does the work, and reports completion back so each task
-updates itself (status + notes/tech-details in the activity log).
+Keep control of what you're building.
 
-See the full design in [`docs/claude-code-integration.md`](../docs/claude-code-integration.md).
+AI coding tools build fast and lose the plot. You end up unable to say what was
+actually built, whether it matches what you asked for, or what broke on the way.
+These skills are for the person who owns the product, not the person writing the
+code.
 
-## Prerequisites
-
-- A VibeAssist account with at least one **sprint queued for Claude** (use the
-  "Send to Claude" action in VibeAssist).
-- A **Claude Code access token**: VibeAssist → Settings → Claude Code access →
-  Generate. Copy it once (only its hash is stored server-side).
+> **Keep the table below in step with `skills/`.** `plugin-readme.test.ts`
+> asserts every skill directory is named here, so adding or renaming one without
+> touching this file fails the tests rather than drifting quietly. It has
+> drifted before.
 
 ## Install
 
-**Install from the VibeAssist app (recommended) — one command.** VibeAssist
-serves this plugin as a zip, so you don't need Git at all. From the Claude
-Connection dialog, copy the command:
-
-```bash
-claude --plugin-url https://vibeassist.app/claude/vibeassist-plugin.zip
+```
+/plugin marketplace add XIG-Australia/vibeassist
+/plugin install vibeassist@vibeassist
 ```
 
-Loads it for the session. To keep it every session, unzip that file into
-`~/.claude/skills/vibeassist/`. (Needs a recent Claude Code — ~v2.1.128+.)
+Both are typed at **Claude Code's own prompt** — they are Claude commands, not
+terminal commands. Updates then arrive on their own;
+`/plugin marketplace update` forces one immediately.
 
-> The served zip is `public/claude/vibeassist-plugin.zip`, built from this
-> directory. **Regenerate it whenever you change the plugin:**
-> `npm run build:plugin-zip` (dependency-free `scripts/build-plugin-zip.cjs`).
-
-**Try it locally from source — for development.** From the VibeAssist repo root:
+For development, load it straight from a checkout instead:
 
 ```bash
 claude --plugin-dir ./claude-plugin
@@ -39,97 +31,54 @@ claude --plugin-dir ./claude-plugin
 
 `SKILL.md` edits are picked up live.
 
-**Install from the marketplace — for everyone else.** The repo doubles as a
-plugin marketplace (`.claude-plugin/marketplace.json` at the root points at this
-`claude-plugin/` directory). In Claude Code:
+## The skills
 
-```bash
-/plugin marketplace add xigcomau/vibeassist-app
-/plugin install vibeassist@vibeassist
-```
+| Skill | What it does | Say |
+| --- | --- | --- |
+| **vibeassist** | Pulls your queued sprints, works the tasks in dependency order, and reports each one back so the board updates itself. | _"work my VibeAssist sprint"_ |
+| **vibeassist-decompose** | Turns an idea — or an existing codebase — into a tree of asks through a Q&A walk. Also shapes a single ask on its own. | _"break this down into asks"_, _"shape the export ask"_ |
+| **vibeassist-map** | Maps a codebase the way its **users** meet it: every page, what you can do on each, and which tables each action reads or writes — with a `file:line` citation behind every claim, checked before it finishes. | _"map this codebase"_ |
+| **vibeassist-review** | The morning review. Walks what got built overnight and judges each delivery against what was actually asked for. | _"review what got built"_ |
 
-> The repo must be reachable by the user. For **public** distribution to
-> VibeAssist customers, host the plugin (this `claude-plugin/` dir + a
-> `marketplace.json`) in a **public** repo rather than the private app repo.
+## The mapper works on its own
 
-## Configure
+`vibeassist-map` needs no account and no connection. Point it at a repository
+and it produces a map a non-technical person can read. It handles file-based
+routers (TanStack Start, Expo Router, Next-style trees), react-router, and apps
+with no router at all; and it detects the data layer rather than assuming one.
 
-Set two environment variables (e.g. in your shell profile):
+It refuses to guess. Routes are enumerated from the filesystem, never recalled;
+every claim carries a citation; and the citations are checked before the map is
+written. If it cannot read your data layer it says so, instead of reporting that
+nothing touches any data.
 
-```bash
-export VIBEASSIST_URL="https://vibeassist.app"     # no trailing slash
-export VIBEASSIST_TOKEN="vak_..."                   # from VibeAssist settings
-```
+## The rest needs an account
 
-The token is sent as `Authorization: Bearer <token>`; it is never printed or
-committed.
+The worker, the decomposer and the review talk to your board over an
+authenticated connection. Sign up at [vibeassist.app](https://vibeassist.app),
+then connect from **Configuration → Claude connection** — it generates a token
+and gives you the exact block to paste into `~/.claude/settings.json`.
 
-### Running unattended (auto mode)
+Config lives in that file rather than in shell environment variables, so every
+Claude Code session reads it — desktop app and terminal alike — with none of the
+"I set the variable but the running session can't see it" traps.
 
-In `review` mode Claude asks before each action — just approve it. For
-`sprint`/`drain` or any headless/auto-accept run there's no one to approve:
-Claude Code's sandbox blocks the outbound calls to VibeAssist, and it prompts for
-every file edit and command. Pre-authorise the routine stuff **once** in
-`~/.claude/settings.json` (user scope — applies to every project):
+### Running unattended
 
-```json
-{
-  "permissions": {
-    "defaultMode": "acceptEdits",
-    "allow": [
-      "Bash(git *)",
-      "Bash(npm *)",
-      "Bash(npx *)",
-      "Bash(node *)",
-      "Bash(bun *)",
-      "Bash(curl *)",
-      "Bash(ls *)",
-      "Bash(cat *)",
-      "Bash(grep *)",
-      "Bash(find *)"
-    ],
-    "deny": [
-      "Bash(rm -rf *)",
-      "Bash(git push --force*)",
-      "Bash(git reset --hard *)",
-      "Read(.env*)",
-      "Edit(.env*)"
-    ]
-  },
-  "sandbox": { "network": { "allowedDomains": ["vibeassist.app", "*.vibeassist.app"] } }
-}
-```
-
-- `acceptEdits` auto-approves file edits (protected paths like `.git`/`.claude`
-  are never auto-approved).
-- `allow` covers git, npm/node/bun, curl (the sandbox pins it to your host), and
-  read-only shell.
-- `deny` keeps the dangerous things prompting — `rm -rf`, force-push,
-  `git reset --hard`, `.env` access.
-
-Merge these into any existing settings. (Plugins can't grant permissions on
-install, so this step is unavoidably manual — but it's a one-time paste.)
-
-## Use
-
-```
-/vibeassist            # review mode (default): one task at a time, confirm between
-/vibeassist sprint     # drain the current sprint, pause at the sprint boundary
-/vibeassist drain      # keep going across sprints until nothing is queued
-```
-
-## What it talks to
-
-Three endpoints on your VibeAssist backend (all `Authorization: Bearer` auth):
-
-| Call                                                 | Endpoint                             |
-| ---------------------------------------------------- | ------------------------------------ |
-| pull the queued sprint + tasks + context briefs      | `GET /api/public/claude/next-sprint` |
-| lock a task as work starts                           | `POST /api/public/claude/start`      |
-| report completion (notes, tech-details, commits, PR) | `POST /api/public/claude/complete`   |
+In review mode Claude asks before each action. For `sprint`/`drain` or any
+headless run there is nobody to approve, so pre-authorise the routine work once
+in `~/.claude/settings.json`. The connection page generates this for you with
+the categories you choose; it is not something to hand-assemble from a README.
 
 ## Safety
 
-- One branch/PR per task by default; confirms before destructive actions.
+- One branch and PR per task by default; destructive actions still confirm.
 - Stops after repeated failures rather than churning through a sprint.
-- Only ever sees the tasks you queued; the token scopes everything to your account.
+- Only ever sees the work you queued — the token scopes everything to your
+  account.
+
+## Versions
+
+All four skills carry the same version marker, stamped at build time from
+`.claude-plugin/plugin.json`, and mirrored into the app as
+`CURRENT_SKILL_VERSION` — so a stale install is detectable rather than silent.

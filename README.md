@@ -23,12 +23,12 @@ commands. Update later with `/plugin marketplace update`.
 | --- | --- | --- |
 | **vibeassist** | Pulls your queued sprints, works the tasks in dependency order, and reports each one back so the board updates itself. | _"work my VibeAssist sprint"_ |
 | **vibeassist-decompose** | Turns an idea — or an existing codebase — into a tree of asks, through a Q&A walk. Also shapes a single ask on its own. | _"break this down into asks"_, _"shape the export ask"_ |
-| **user-lens-map** | Maps a codebase the way its **users** meet it: every page, what you can do on each, and which tables each action reads or writes — with a `file:line` citation behind every claim, verified before it finishes. | _"map this codebase"_ |
+| **vibeassist-map** | Maps a codebase the way its **users** meet it: every page, what you can do on each, and which tables each action reads or writes — with a `file:line` citation behind every claim, verified before it finishes. | _"map this codebase"_ |
 | **vibeassist-review** | The morning review. Walks what got built overnight and judges each delivery against what was actually asked for. | _"review what got built"_ |
 
 ## The mapper works on its own
 
-`user-lens-map` needs no account and no connection. Point it at a repository and
+`vibeassist-map` needs no account and no connection. Point it at a repository and
 it produces a map a non-technical person can read. It supports file-based routers
 (TanStack Start, Expo Router, Next-style trees), react-router, and apps with no
 router at all; and it detects the data layer rather than assuming one.
