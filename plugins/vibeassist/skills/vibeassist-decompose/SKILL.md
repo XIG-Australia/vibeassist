@@ -3,7 +3,7 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield) or an existing codebase (breakdown/ingestion) into a well-formed Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — AND for shaping a single ask: "shape this ask", "shape the <name> ask", "spec this card", "flesh out this ask", "help me shape it", or similar. Three entries — greenfield (propose the shape from knowledge and judgment), breakdown (decompose from what the code actually contains), and single-ask shaping (skip the tree; run the shaping pass on the one ask the user brought). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.6.0 (single-sourced from plugin.json by scripts/build-plugin-zip.cjs — do not hand-edit; bump plugin.json and rebuild) -->
+<!-- vibeassist-skill-version: 0.7.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist idea decomposition — the walk
 
@@ -59,6 +59,62 @@ DERIVED from activity, never set by hand: decomposition's job ends at an
 agreed, shaped tree; the later rungs (queued / building / delivered / live)
 are computed downstream from sprints, build progress and deploys — not by you.
 
+## The kind system — the complete taxonomy
+
+Every ask carries a KIND from this list. The list is total: if it is not
+here, it is not in the system — restate it whole or mark the restatement
+partial (an omission a reader can't interpret is a defect).
+
+SURFACE — what a person experiences; keep/drop decisions live ONLY here:
+
+1. **Place** — where capabilities live. Three sizes, nesting: a _page_
+   (big), a _frame region_ (chrome with a fixed home on screen — menu bar,
+   header, sidebar — filed like a small page; its destination list rides as
+   one spec line, an entry promoted only when it has behavior of its own),
+   an _element_ (little — a widget or panel within a page).
+2. **Capability** — what you can do at a place.
+3. **Action** — one move a PERSON triggers, inside a capability.
+4. **Background** — a statement about a trigger nobody pulls: time, the
+   system, or another computer ("every Friday at 9, reminders go out"). The
+   trigger is recorded on the item. Default: every self-running function
+   gets a one-line background statement; skip it only when the rebuilt app
+   would behave no differently without it. (Rule 8's "engine" segment is
+   mostly background statements — the engine lens tag and this kind
+   describe the same things from two angles.)
+
+MACHINERY — what the surface USES; referenced from asks, never carded:
+
+5. **Function** — a named executable unit; the register lists every surface
+   item (action or background) that uses it. "Function" is also the
+   umbrella word for actions + background — but nothing is ever FILED as a
+   function at the surface: the trigger decides (person → action; no
+   person → background), and one function may rightly appear under both.
+6. **Data** — a named store the app keeps; referenced from surface items as
+   reads / writes / creates.
+
+RECONCILIATION — machinery survives surface drops (a function may still be
+used elsewhere), so a standing pass flags: functions no surface item (built
+OR planned) uses; data nothing reads (or is planned to read); data written
+but never read. Flags become retirement PROPOSALS the user ratifies —
+graveyard rules apply, never deletion.
+
+VOCABULARY, not kinds: a **feature** is a noun that crosses places (avatar,
+shopping cart) → a TAG/lens, never a tree level (rule 4's tags-as-lenses);
+the deliverables under it are capabilities, and the filing test is: _if you
+deleted it, what could the user no longer do?_
+
+ATTACHMENTS — spec lines riding on the ask they govern, at the lowest level
+where they are true (rule 2's shape-on-the-ask, named in full): rules and
+calculations · validation · feedback (success AND failure) · confirmation
+steps · state journeys (on the data item they belong to) · arrival
+(arrives-from / reached-from-outside) · visibility and permissions ·
+shows-on-load · live-updating behavior.
+
+CROSS-CUTTING REGISTERS: decisions/principles (dated, ratified, BIND named
+asks) · findings (flags pinned to asks) · app-level facts (sign-in journey,
+free-vs-paid line, global error machinery, delete cascades, database shape,
+keys & services).
+
 ## The decomposition rules
 
 1. **Sub-divide only for genuinely distinct wants.** The same want with more
@@ -111,7 +167,9 @@ are computed downstream from sprints, build progress and deploys — not by you.
    chores, health/watchdog, launcher/wake, an operator checklist) — do NOT nest
    under one page; forcing them under a single screen mis-files them. Keep them
    top-level/visible and surface them via an **`engine` (or `platform`) lens
-   tag**, never jumbled in as flat peers beside the screens. This is the
+   tag**, never jumbled in as flat peers beside the screens. (In kind terms:
+   the engine segment is background statements plus machinery references —
+   see the kind system above.) This is the
    two-segment doctrine — the surfaces the user sees (brain) vs the engine
    (spine) — and tags-as-lenses (rule 4) for what cuts across. It refines
    PLACEMENT only: a page is a real recognizable surface, not a taxonomy bucket.

@@ -179,6 +179,9 @@ def main():
             findings.append(f"**Table `{t}` has no row-level security enabled** — any signed-in client may be able to read or write it directly.")
         for r in user_routes:
             hv = harvest.get(r["path"], {})
+            writes = [d for d in hv.get("db", []) if d.get("op") not in (None, "READ", "READ?")]
+            if writes and not hv.get("feedback") and not hmeta.get("global_feedback"):
+                findings.append(f"**`{r['path']}` writes data but no user feedback was found on it (and no global handler exists)** — a failed save here may be silent.")
             dng = hv.get("dangerous", [])
             if dng and not hv.get("has_confirm_pattern"):
                 kinds = ", ".join(sorted({d["kind"] for d in dng}))
@@ -189,6 +192,85 @@ def main():
             for x in findings:
                 L.append(f"- {x}")
             L.append("")
+
+    # --- when things go wrong: the global feedback machinery, written once
+    if hmeta.get("global_feedback"):
+        L.append("# When things go wrong (how this app talks back)\n")
+        L.append("_The shared machinery that shows errors, progress, and sync state — wired once, applies app-wide. Pages say \"standard error handling\" and mean this._\n")
+        seen_gf = set()
+        for g in hmeta["global_feedback"]:
+            k = g["what"]
+            if k in seen_gf:
+                continue
+            seen_gf.add(k)
+            L.append(f"- `{k}` — {g['file']}:{g['line']}")
+        L.append("")
+
+    # --- what runs on its own
+    if hmeta.get("scheduled"):
+        L.append("# What runs on its own (no user present)\n")
+        for s2 in hmeta["scheduled"][:20]:
+            L.append(f"- {s2['snippet'].strip()[:100]} — {s2['file']}:{s2['line']}")
+        L.append("")
+
+    # --- messages the app sends
+    outbound_all = [(r["path"], o) for r in user_routes for o in harvest.get(r["path"], {}).get("outbound", [])] if harvest else []
+    if outbound_all:
+        L.append("# Messages the app sends out\n")
+        seen_ob = set()
+        for path, o in outbound_all:
+            k = (o["file"], o["line"])
+            if k in seen_ob:
+                continue
+            seen_ob.add(k)
+            L.append(f"- from `{path}`: {o['snippet'][:90]} — {o['file']}:{o['line']}")
+        L.append("")
+
+    # --- record journeys (state machines nobody drew)
+    if hmeta.get("state_enums"):
+        L.append("# Record journeys — the states things move through\n")
+        for name, vals in sorted(hmeta["state_enums"].items()):
+            L.append(f"- `{name}`: {' → '.join(vals)}")
+        L.append("_Order shown is declaration order; confirm real transitions in the page writeups._\n")
+
+    # --- delete consequences
+    if hmeta.get("delete_cascades") or hmeta.get("soft_delete_files"):
+        L.append("# What dies when you delete\n")
+        by_ref = defaultdict(list)
+        for c in hmeta.get("delete_cascades", []):
+            by_ref[c["references"]].append(c)
+        for ref in sorted(by_ref):
+            kinds = {c["on_delete"] for c in by_ref[ref]}
+            L.append(f"- deleting from `{ref}`: {len(by_ref[ref])} dependent table(s) — {', '.join(sorted(kinds))}")
+        if hmeta.get("soft_delete_files"):
+            L.append(f"- soft delete in use (`deleted_at`) — rows are hidden, not destroyed ({len(hmeta['soft_delete_files'])} migration file(s))")
+        L.append("")
+
+    # --- getting in and staying in
+    auth_all = [(r["path"], x) for r in user_routes for x in harvest.get(r["path"], {}).get("auth", [])] if harvest else []
+    if auth_all:
+        L.append("# Getting in and staying in (sign-in journey)\n")
+        seen_au = set()
+        for path, x in auth_all[:25]:
+            k = (x["file"], x["line"])
+            if k in seen_au:
+                continue
+            seen_au.add(k)
+            L.append(f"- `{path}`: {x['snippet'][:90]} — {x['file']}:{x['line']}")
+        L.append("")
+
+    # --- free vs paid
+    gates_all = [(r["path"], x) for r in user_routes for x in harvest.get(r["path"], {}).get("paid_gates", [])] if harvest else []
+    if gates_all:
+        L.append("# Free vs paid — where the app draws the line\n")
+        seen_pg = set()
+        for path, x in gates_all[:25]:
+            k = (x["file"], x["line"])
+            if k in seen_pg:
+                continue
+            seen_pg.add(k)
+            L.append(f"- `{path}`: {x['snippet'][:90]} — {x['file']}:{x['line']}")
+        L.append("")
 
     # --- who's allowed to do what
     if hmeta.get("rls_policies") or hmeta.get("rls_enabled"):
@@ -227,6 +309,14 @@ def main():
                                             else "an old address, kept working — sends you onward")
             L.append(f"- `{r['path']}` — {note}")
         L.append("")
+
+    # --- full database shape (the rebuilder's appendix)
+    if hmeta.get("schema_columns"):
+        L.append("# Full database shape (for rebuilding, not reading)\n")
+        for t in sorted(hmeta["schema_columns"]):
+            L.append(f"### `{t}`")
+            L.append(", ".join(f"`{c}`" for c in hmeta["schema_columns"][t]))
+            L.append("")
 
     # --- machine-only appendix
     if machine_routes:
