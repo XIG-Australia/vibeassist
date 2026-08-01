@@ -3,7 +3,7 @@ name: vibeassist-review
 description: The morning review — walk what VibeAssist built overnight, judge each delivery against its ask's acceptance criteria, record earned Truth Pass verdicts, and turn send-backs into reconciled records and new asks. Use when the user says "review what got built", "morning review", "what happened overnight", "check the overnight run", "verify the deliveries", "run the truth pass", "did it actually do what we agreed", or similar. This is NOT the worker skill's "review" mode (which governs how tasks are pulled during a build) — this skill is for judging FINISHED work after the build. Posture is skeptical reader, never author.
 ---
 
-<!-- vibeassist-skill-version: 0.6.0 (single-sourced from plugin.json by scripts/build-plugin-zip.cjs — do not hand-edit; bump plugin.json and rebuild) -->
+<!-- vibeassist-skill-version: 0.7.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist morning review — the Truth Pass
 
@@ -48,6 +48,8 @@ Open with one complete picture before any judging:
   section from every report, deduplicated, in run order. Nothing the user must
   do by hand may hide inside a task report.
 - Anything reported "Outside the ask" — surfaced, never buried.
+- Notable errors the builder worked around (the "Notable errors" line in
+  techDetails, and error notices on tasks) — surfaced, with the workaround.
 - Questions still waiting in the inbox.
 
 Then review ask-by-ask, not as one blob.

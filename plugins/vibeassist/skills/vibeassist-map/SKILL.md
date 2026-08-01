@@ -3,11 +3,13 @@ name: vibeassist-map
 description: Map a codebase from the user's perspective - a sitemap of pages and how they link, what each page lets a person do (in plain language), the actions available on each page, and which database tables each action reads or writes. Use this whenever the user asks to "understand this app", "map this codebase", "document what this app does", "import this codebase", "create a sitemap from code", or wants a functional spec of an existing application - even if they don't say "map" explicitly. Do NOT produce developer-architecture docs (modules, dependencies, layers) when this skill triggers; the output must be readable by a non-technical person.
 ---
 
-<!-- vibeassist-skill-version: 0.6.0 (single-sourced from plugin.json by scripts/build-plugin-zip.cjs — do not hand-edit; bump plugin.json and rebuild) -->
+<!-- vibeassist-skill-version: 0.7.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
-# User-Lens Codebase Map
+# VibeAssist codebase map
 
 Produce a functional map of an application as its *users* experience it. The reader is a product owner, not a developer. Code identifiers are evidence, never explanation.
+
+**The bar for done:** a competent builder who has NEVER seen this codebase could rebuild the app from the map alone and it would *function and operate the same* — different look, identical behavior. Every choice below serves that test. When unsure whether a detail belongs in the map, ask: would the rebuild behave differently without it? Yes → it goes in.
 
 ## The core rule (read this twice)
 
@@ -93,7 +95,10 @@ For each page:
 
 1. Read the route file and every component it renders (follow imports as deep as needed to reach the handler — depth is set by where the logic lives, which you learned in Phase 0).
 2. Inventory every interactive element: buttons, forms, toggles, links that mutate state, drag targets, keyboard shortcuts.
+   Then inventory what the page tells the user WITHOUT being asked — the passive layer: error toasts, sync/offline banners, retry behavior, live-updating regions. The harvest's `feedback` and `live_sync` candidates point at these; they have no trigger element, which is exactly why earlier maps missed them.
+   The harvest also carries per-page candidates for the other invisible layers — `validation` (what a form will refuse and why), `auth` (sign-in/session behavior on this page), `paid_gates` (where free stops), `outbound` (messages this page's actions cause to be sent), `state_literals` (status values this page moves records into). Same candidates-not-claims discipline: confirm each on a path the page's controls actually reach, then write it in user language. Repo-wide layers (scheduled work, record state enums, delete cascades) land in `_meta` and become their own MAP sections via the assembler — read them in Phase 0 so page writeups can reference the journeys records take.
 3. For each element, trace: handler → client mutation/query → server function or API endpoint → database statements → tables and columns touched, and whether it's a READ, INSERT, UPDATE, or DELETE.
+   **And state the RULES the trace passes through.** Wherever the path branches, calculates, or filters — a condition that gates the write, a formula that produces the number, an ordering rule — the action's writeup must state that rule in user terms ("a task counts as buildable when it has an agreed shape and no open questions"; "the total is hours × rate, rounded up to the half hour"). A rule you cannot state plainly is an action you have not finished tracing — and it is the first thing a rebuild gets wrong.
 4. Group actions into capabilities (noun-phrases a user would recognize: "Manage your account"). Typical pages have 1-7. **Zero is a valid answer** — a policy page you only read has no capabilities, and saying so is correct. Never invent a capability to fill the section; that is how a map starts lying.
 5. Note what the page displays on load (which tables are READ to render it).
 
@@ -125,7 +130,7 @@ Run the bundled assembler — never write MAP.md freehand, or the map changes sh
 python scripts/assemble.py map/ -o MAP.md --harvest map/_harvest.json [--machine-notes map/_machine_notes.json]
 ```
 
-It produces: a coverage table with counts read from the JSON (never typed); the stack summary from `_stack.md`; the `«global navigation»` set listed once instead of repeated on every page; the sitemap split public / signed-in with link edges; page files concatenated in Phase 3 order; a data appendix (per table: read by / written by) parsed from the Evidence lines; the machine-only appendix; and — when given `--harvest` — three more sections built from what the scan collected: **Findings** (dead surface, tables nothing touches, tables with no row-level security, destructive actions with no confirmation step), **Who's allowed to do what** (the database's own access rules, read from the migrations), and **Keys & services** (external services the app depends on, and every secret/environment variable the code expects, each with where it is first used).
+It produces: a coverage table with counts read from the JSON (never typed); the stack summary from `_stack.md`; the `«global navigation»` set listed once instead of repeated on every page; the sitemap split public / signed-in with link edges; page files concatenated in Phase 3 order; a data appendix (per table: read by / written by) parsed from the Evidence lines; the machine-only appendix; and — when given `--harvest` — up to TEN more sections built from what the scan collected — **What runs on its own** (scheduled/background work), **Messages the app sends out**, **Record journeys** (the state machines nobody drew), **What dies when you delete** (cascades and soft delete), **Getting in and staying in** (the sign-in journey), **Free vs paid** (where the app draws the line), plus the four from before: **When things go wrong** (the app's shared error/progress machinery, written once so pages can reference it), **Findings** (dead surface, tables nothing touches, tables with no row-level security, destructive actions with no confirmation step, writes with no visible feedback), **Who's allowed to do what** (the database's own access rules, read from the migrations), and **Keys & services** (external services the app depends on, and every secret/environment variable the code expects, each with where it is first used).
 
 **Findings are computed candidates, not verdicts.** Before publishing, verify each one the same way as any claim: read the cited code. A finding that survives is among the most valuable lines in the map — the BM run caught a dead navigation button this way. If something flagged is intentional, keep the line and say it is intentional; deleting it hides the question from the next reader. The one input that needs a human sentence is the machine-notes file — a small JSON of `{route: "what fetches this"}`.
 
@@ -151,7 +156,11 @@ Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o
 ### Action: Update your username
 - What happens: You type a new name and save; it changes everywhere your name appears.
 - Trigger: "Display name" field + "Save changes" button
-- Feedback: Success toast; field shows the new value.
+- Feedback: on success, a saved toast and the field shows the new value; on failure, an error toast ("Couldn't save — try again").
+- Rules: names are 2–40 characters; leading/trailing spaces are trimmed before saving. 
+  <!-- Feedback covers success AND failure. If no failure feedback exists, write
+       "on failure: nothing visible" and add it to Findings — a silent failed
+       save is a defect the owner wants to know about. -->
 - Evidence: handler `onSaveProfile` src/components/ProfileForm.tsx:42 → server fn `updateProfile` src/server/profile.ts:18 → UPDATE `profiles` (display_name)
 
 ### Action: Reset your password

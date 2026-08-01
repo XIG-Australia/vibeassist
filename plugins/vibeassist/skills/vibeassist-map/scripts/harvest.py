@@ -253,7 +253,7 @@ def harvest_file(f: pathlib.Path, repo: pathlib.Path, layers=("supabase", "sql")
     rel = str(f.relative_to(repo)).replace("\\", "/")
     drizzle_map = drizzle_map or {}
     prisma_map = prisma_map or {}
-    out = {"interactive": [], "server_fns": [], "db": [], "raw_sql": [], "storage": [], "rpc": [], "edge_fns": []}
+    out = {"interactive": [], "server_fns": [], "db": [], "raw_sql": [], "storage": [], "rpc": [], "edge_fns": [], "feedback": [], "live_sync": [], "validation": [], "auth": [], "paid_gates": [], "outbound": [], "state_literals": []}
     try:
         text = f.read_text(encoding="utf-8", errors="replace")
     except OSError:
@@ -264,6 +264,20 @@ def harvest_file(f: pathlib.Path, repo: pathlib.Path, layers=("supabase", "sql")
         n = i + 1
         if INTERACTIVE.search(line):
             out["interactive"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        if FEEDBACK_CALL.search(line) or ERROR_HOOK.search(line):
+            out["feedback"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        if SYNC_LIVE.search(line):
+            out["live_sync"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        if VALIDATION.search(line):
+            out["validation"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        if AUTH_CALL.search(line):
+            out["auth"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        if PAID_GATE.search(line):
+            out["paid_gates"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        if OUTBOUND_SEND.search(line):
+            out["outbound"].append({"file": rel, "line": n, "snippet": line.strip()[:160]})
+        for m in STATE_LITERAL.finditer(line):
+            out["state_literals"].append({"file": rel, "line": n, "value": m.group(1)})
         m = SERVER_FN_STRICT.search(line)
         name = None
         if m:
@@ -330,6 +344,16 @@ RLS_ENABLE = re.compile(r"alter\s+table\s+(?:public\.)?\"?(\w+)\"?\s+enable\s+ro
 RLS_POLICY = re.compile(r"create\s+policy\s+\"?([^\"\n]+?)\"?\s+on\s+(?:public\.)?\"?(\w+)\"?(?:\s+as\s+\w+)?(?:\s+for\s+(select|insert|update|delete|all))?(?:\s+to\s+([\w ,]+?))?\s+(?:using|with)", re.I | re.S)
 ENV_VAR = re.compile(r"process\.env\.(\w+)|import\.meta\.env\.(\w+)|Deno\.env\.get\(\s*['\"](\w+)['\"]")
 CONFIRM_PATTERN = re.compile(r"window\.confirm|\bconfirm\(|<AlertDialog|ConfirmDialog|useConfirm|\bAreYouSure")
+FEEDBACK_CALL = re.compile(r"\btoast\.?\w*\(|useToast\b|\bsonner\b|\bnotify\(|Alert\.alert\(|showMessage\(|enqueueSnackbar\(|message\.(?:error|success|warning)\(")
+ERROR_HOOK = re.compile(r"\bonError\s*[:=(]|<ErrorBoundary|componentDidCatch|\bErrorBoundary\b")
+SYNC_LIVE = re.compile(r"\.subscribe\(|\.channel\(|onSnapshot\(|refetchInterval|\bretry\s*:|navigator\.onLine|addEventListener\(\s*['\"]online|['\"]offline['\"]")
+VALIDATION = re.compile(r"z\.(?:object|string|number|coerce)\b|\.min\(|\.max\(|\.email\(|\.regex\(|required[:=]|minLength|maxLength|pattern=|yup\.")
+AUTH_CALL = re.compile(r"signInWith\w+|signIn\(|signUp\(|signOut\(|onAuthStateChange|getSession\(|resetPasswordForEmail|verifyOtp|useAuth\b|<Protected|RequireAuth")
+PAID_GATE = re.compile(r"\bisPro\b|is_premium|\bplan\b\s*[=!:]|\btier\b|subscription|entitlement|\bupgrade\b|Paywall|price_?[iI]d|lookup_key|checkout\.sessions?")
+OUTBOUND_SEND = re.compile(r"emails?\.send\(|sgMail\.send|sendMail\(|sendEmail|scheduleNotificationAsync|sendPushNotificationsAsync|messages\.create\(|\.send\(\s*\{")
+SCHEDULED = re.compile(r"cron\.schedule\(|node-cron|setInterval\(|Deno\.cron|pg_cron|schedule\s*=|every\s+\d+\s+(?:minutes|hours)", re.I)
+STATE_LITERAL = re.compile(r"""(?:status|state)\s*:\s*['\"](\w[\w-]*)['\"]""")
+GLOBAL_FEEDBACK = re.compile(r"<Toaster\b|<ToastProvider|ToastContainer|<Sonner\b|new QueryClient\(|<ErrorBoundary\b")
 SERVICE_DEPS = {  # package.json dependency -> human name (Keys & services list)
     "stripe": "Stripe (payments)", "@stripe/stripe-js": "Stripe (payments)",
     "resend": "Resend (email)", "@sendgrid/mail": "SendGrid (email)", "nodemailer": "SMTP email (nodemailer)",
@@ -341,6 +365,60 @@ SERVICE_DEPS = {  # package.json dependency -> human name (Keys & services list)
 }
 EMAIL_DEPS = {"resend", "@sendgrid/mail", "nodemailer"}
 PAYMENT_DEPS = {"stripe", "@stripe/stripe-js"}
+
+
+def collect_app_behaviors(repo: pathlib.Path):
+    """Repo-wide: scheduled work, record state values, delete consequences."""
+    scheduled, cascades, soft_delete, enums = [], [], [], {}
+    sql_files = sorted(repo.glob("supabase/migrations/*.sql"))[:300]
+    enum_decl = re.compile(r"create\s+type\s+\"?(\w+)\"?\s+as\s+enum\s*\(([^)]+)\)", re.I)
+    check_in = re.compile(r"\"?(\w+)\"?\s+\w+[^,]*check\s*\([^)]*in\s*\(([^)]+)\)", re.I)
+    fk = re.compile(r"references\s+(?:public\.)?\"?(\w+)\"?[^,]*?on\s+delete\s+(cascade|set\s+null|restrict)", re.I)
+    for sf in sql_files:
+        text = sf.read_text(encoding="utf-8", errors="replace")
+        rel = str(sf.relative_to(repo)).replace("\\", "/")
+        for m in enum_decl.finditer(text):
+            enums[m.group(1)] = [v.strip().strip("'\"") for v in m.group(2).split(",")][:12]
+        for m in check_in.finditer(text):
+            enums[m.group(1)] = [v.strip().strip("'\"") for v in m.group(2).split(",")][:12]
+        for m in fk.finditer(text):
+            cascades.append({"references": m.group(1), "on_delete": m.group(2).lower(), "file": rel,
+                             "line": text[:m.start()].count("\n") + 1})
+        if "deleted_at" in text:
+            soft_delete.append(rel)
+        for m in SCHEDULED.finditer(text):
+            scheduled.append({"file": rel, "line": text[:m.start()].count("\n") + 1, "snippet": text[m.start():m.start()+120].split("\n")[0]})
+    code_files = [p for pat in ("src/**/*.ts", "supabase/functions/**/*.ts", "app/**/*.ts") for p in repo.glob(pat) if "node_modules" not in p.parts][:600]
+    for f in code_files:
+        try:
+            t = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        rel = str(f.relative_to(repo)).replace("\\", "/")
+        for m in SCHEDULED.finditer(t):
+            scheduled.append({"file": rel, "line": t[:m.start()].count("\n") + 1, "snippet": t[m.start():m.start()+120].split("\n")[0]})
+    # full database shape: table -> [column type] from create table + add column
+    columns = {}
+    ct_block = re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?\"?(\w+)\"?\s*\(", re.I)
+    add_col = re.compile(r"alter\s+table\s+(?:public\.)?\"?(\w+)\"?\s+add\s+column\s+(?:if\s+not\s+exists\s+)?\"?(\w+)\"?\s+(\w+)", re.I)
+    for sf in sql_files:
+        text = sf.read_text(encoding="utf-8", errors="replace")
+        for m in ct_block.finditer(text):
+            depth, i = 1, m.end()
+            while i < len(text) and depth:
+                depth += text[i] == "("
+                depth -= text[i] == ")"
+                i += 1
+            body = text[m.end():i - 1]
+            cols = []
+            for raw in re.split(r",(?![^(]*\))", body):
+                w = raw.strip().split()
+                if len(w) >= 2 and w[0].lower() not in ("primary", "foreign", "unique", "constraint", "check", "like"):
+                    cols.append(f"{w[0].strip(chr(34))} {w[1]}")
+            columns[m.group(1)] = cols[:40]
+        for m in add_col.finditer(text):
+            columns.setdefault(m.group(1), []).append(f"{m.group(2)} {m.group(3)}")
+    return {"scheduled": scheduled[:40], "state_enums": enums, "delete_cascades": cascades[:60], "soft_delete_files": soft_delete[:20], "schema_columns": columns}
 
 
 def collect_permissions(repo: pathlib.Path):
@@ -435,10 +513,10 @@ def main():
             continue
         files = collect_files(entry, repo, aliases, args.depth)
         agg = {"slug": route_slug(r["path"]), "files": [str(f.relative_to(repo)).replace("\\", "/") for f in files],
-               "interactive": [], "server_fns": [], "db": [], "raw_sql": [], "storage": [], "rpc": [], "edge_fns": []}
+               "interactive": [], "server_fns": [], "db": [], "raw_sql": [], "storage": [], "rpc": [], "edge_fns": [], "feedback": [], "live_sync": [], "validation": [], "auth": [], "paid_gates": [], "outbound": [], "state_literals": []}
         for f in files:
             h = harvest_file(f, repo, extract_layers, drizzle_map, prisma_map)
-            for k in ("interactive", "server_fns", "db", "raw_sql", "storage", "rpc", "edge_fns"):
+            for k in ("interactive", "server_fns", "db", "raw_sql", "storage", "rpc", "edge_fns", "feedback", "live_sync", "validation", "auth", "paid_gates", "outbound", "state_literals"):
                 agg[k].extend(h[k])
         files_text = ""
         for f in files[:60]:
@@ -450,6 +528,16 @@ def main():
         agg["has_confirm_pattern"] = bool(CONFIRM_PATTERN.search(files_text))
         result[r["path"]] = agg
 
+    global_feedback = []
+    for f in [p for pat in ("src/**/*.tsx", "src/**/*.ts", "app/**/*.tsx") for p in repo.glob(pat) if "node_modules" not in p.parts][:600]:
+        try:
+            t = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for m in GLOBAL_FEEDBACK.finditer(t):
+            global_feedback.append({"what": m.group(0).strip("<(").strip(), "file": str(f.relative_to(repo)).replace("\\", "/"),
+                                    "line": t[:m.start()].count("\n") + 1})
+    behaviors = collect_app_behaviors(repo)
     rls_enabled, rls_policies = collect_permissions(repo)
     env_vars, services = collect_env_and_services(repo, pkg_deps)
     touched = {d["table"] for v in result.values() if isinstance(v, dict) for d in v.get("db", [])}
@@ -459,7 +547,8 @@ def main():
                        "rls_enabled": rls_enabled, "rls_policies": rls_policies,
                        "tables_without_rls": sorted(t for t in schema_tables if t not in rls_enabled),
                        "orphan_tables": orphan_tables,
-                       "env_vars": env_vars, "services": services}
+                       "env_vars": env_vars, "services": services,
+                       "global_feedback": global_feedback[:40], **behaviors}
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2), encoding="utf-8")
