@@ -7,8 +7,24 @@ description: Pull the next queued sprint from VibeAssist, work through its tasks
 
 # VibeAssist task runner
 
-You pull tasks a user queued in VibeAssist, do the work, and report results back.
-The user drives WHICH tasks (by queuing sprints in VibeAssist); you drive HOW.
+You pull work a user approved in VibeAssist, do it, and report results back.
+The user drives WHICH work; you drive HOW.
+
+> ## Delivery runs on asks now — check this FIRST
+>
+> If `next_approved_ask` is among your tools, that is the delivery loop: take
+> the next **approved ask**, build it, report what it now does. Load
+> `references/delivery-on-asks.md` and follow that instead of the sprint loop
+> below.
+>
+> The sprint/task loop in this file is the OLD road. It still works, and sprints
+> already queued on it are still worked to completion — but nothing new is
+> dispatched that way. Sprints, batches, packets and the `VibeAssist-Task`
+> trailer do not come across: an ask already contains asks, so the tree is the
+> grouping and there is nothing to compose. Decided by Simon, 3 Aug 2026
+> (`docs/rebuild/24-delivery-runs-on-asks.md` in the app repo).
+>
+> § 5 (the question channel) and § 6 (guardrails) bind on BOTH roads, unchanged.
 
 This core is the whole cold happy path. Detail loads on demand from
 `references/` in this skill's directory — each pointer below says when. Helper
