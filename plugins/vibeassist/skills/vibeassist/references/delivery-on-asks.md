@@ -37,6 +37,20 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    thing that makes work available. Tell them that; do not go looking for
    another way in.
 
+   **You are served leaves, not parents.** The deepest approved ask comes first,
+   and a parent is never handed out while a needed child of it is unfinished. A
+   parent is delivered by delivering its children, so serving one directly would
+   hand you something you cannot finish. Two things follow:
+   - **Do not go looking for the parent.** If a big ask the user is expecting
+     does not arrive, its children are arriving instead. That is the system
+     working.
+   - **Build only the ask you were handed.** Its children are someone else's
+     turn — possibly another worker's, right now. Reaching up to the parent, or
+     down into a child, is the scope creep this ordering exists to prevent.
+
+   An **extra** (`needed: false`) never blocks its parent: "Sign in" can be
+   delivered while Google login is still undecided.
+
 2. **Read what you were handed.** You get the **Shape** — `want`, `mustNot`,
    `doneWhen` — its place in the tree (parent, children), what it `touches`,
    and the actions it names.
@@ -71,6 +85,19 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    accepted — that verdict is the user's, and the tool will not make it for
    them. `outcome: "failed"` returns the ask to `approved` so another worker can
    take it; never leave an ask stranded on `building`.
+
+   **A worker that stops must record why.** `outcome: "failed"` is **refused**
+   unless `built` carries one plain sentence saying what stopped you. It is the
+   same single field, and the user reads it on the ask — so write it for them
+   ("the sign-in page needs a decision about what happens after Google login"),
+   not for a developer ("blocked on OAuth callback config"). Twice in one week a
+   session parked work and said nothing, the ask sat looking available, and the
+   reason lived only in a terminal that was later closed. That is what the
+   refusal exists to prevent. Stopping is fine; stopping silently is not.
+
+   There is deliberately **one** free-text field and there must never be a
+   second. The old `complete_task` had a `techDetails` beside it, and that field
+   is where developer working leaked back onto the board.
 
 7. **Stop at "PR opened."** The user reviews and merges. Then poll for the next
    approved ask and keep going until there are none.
