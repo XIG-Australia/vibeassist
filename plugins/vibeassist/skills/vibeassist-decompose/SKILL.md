@@ -65,7 +65,9 @@ Every ask carries a KIND from this list. The list is total: if it is not
 here, it is not in the system — restate it whole or mark the restatement
 partial (an omission a reader can't interpret is a defect).
 
-SURFACE — what a person experiences; keep/drop decisions live ONLY here:
+SURFACE — what a person experiences; keep/drop decisions live ONLY here.
+Three of these four become cards: a place, a capability, a background
+statement. **An action never does** — see 3.
 
 1. **Place** — where capabilities live. Three sizes, nesting: a _page_
    (big), a _frame region_ (chrome with a fixed home on screen — menu bar,
@@ -73,7 +75,15 @@ SURFACE — what a person experiences; keep/drop decisions live ONLY here:
    one spec line, an entry promoted only when it has behavior of its own),
    an _element_ (little — a widget or panel within a page).
 2. **Capability** — what you can do at a place.
-3. **Action** — one move a PERSON triggers, inside a capability.
+3. **Action** — one move a PERSON triggers, inside a capability. **An action
+   is never a card.** It is not the same size as a place or a capability: it
+   does one thing, and it comes out of describing the thing it sits on rather
+   than standing beside it. So an action is named INSIDE its capability (or
+   place), as part of that ask's shape — never as an ask of its own, and never
+   as a tree node. This does not remove actions: they are still real, still
+   named, still carry their trigger, what happens and what you're told
+   afterwards. They just stop being their own row. Simon, 4 August: "an action
+   is too small to be a card."
 4. **Background** — a statement about a trigger nobody pulls: time, the
    system, or another computer ("every Friday at 9, reminders go out"). The
    trigger is recorded on the item. Default: every self-running function
@@ -193,7 +203,8 @@ code is the truth. **Survey with the mapper first:** if the `vibeassist-map`
 skill is available (it ships in this same plugin), run it — or consume an
 existing `map/map.json` / `MAP.md` if a survey was already done — and decompose
 from its verified output: its pages ARE your top-level surfaces (rule 8), its
-capabilities/actions are your candidate sub-asks and shape, its Findings become
+capabilities are your candidate sub-asks and its actions are their shape — an
+action is never a card of its own (see the kind system) — its Findings become
 walk-questions, and every claim arrives with file:line evidence already
 checked. Only when the mapper cannot run, read the code broadly by hand
 (routes, tables, major components/services/jobs). Either way, decompose from
