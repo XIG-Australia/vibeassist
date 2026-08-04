@@ -27,10 +27,9 @@ through the walk, never treated as a build instruction.
 The `mcp__vibeassist__*` tools are the transport; **each tool's description
 carries its own mechanics** (arguments, defaults, side-effects) — this file is
 orchestration + judgment and never restates them. A decomposition leans on:
-`list_projects`, the board tools that read and create asks (their
-storage-level names live in the ONE persistence note under Materialize),
-`set_intent`, and the question channel (`ask` / `get_answer` /
-`get_updates`). If those tools are not present in this session, stop and tell
+`list_projects`, the board tools that read and write asks — `list_asks`,
+`create_ask`, `update_ask`, `move_ask` — and the question channel (`ask` /
+`get_answer` / `get_updates`). If those tools are not present in this session, stop and tell
 the user to connect first
 (VibeAssist → Claude connection, the one-click Connect button) — do not
 improvise a transport.
@@ -318,25 +317,24 @@ Only after acceptance, via the MCP tools:
 - Create each accepted ask with `create_ask` — omit `parentAskId` for a
   top-level ask, or pass the parent ask's id to nest a sub-ask, so the tree
   mirrors the agreed outline.
-- Set each ask's `intent_spec` cascade — goal / intent / guardrails /
-  acceptance — from the walk and shaping answers.
+- Set each ask's **Shape** with `update_ask` — `want` (what you want),
+  `mustDo` (what it must always do), `mustNot` (what it must never do) — from
+  the walk and shaping answers.
 - Card names are **place-names** in plain English (recognizable alone, rule
-  4); the description is one paragraph in the USER'S language — what it is
-  and covers, never implementation layers.
-- Propose 1–3 tags per card (lenses, never places).
+  4); `want` is one paragraph in the USER'S language — what it is and covers,
+  never implementation layers.
 - **Home every piece of work under the ask it belongs to.** If no ask fits,
   CREATE the ask to hold it — never a catch-all/umbrella bucket, ever.
 
-> **Storage note — this note only.** `create_ask` is ask-native: omit
-> `parentAskId` for a top-level ask, pass it to nest a sub-ask — you never
-> create an epic or a feature by name. Under the hood an ask is stored as a
-> `features` row (top-level = no parent; sub-ask = carries its parent); the
-> `epics` table and the legacy `create_epic`/`create_feature` tools survive
-> only for old data. Read the existing tree with `list_epics` +
-> `list_features` and set a description with `update_feature` (ask-native
-> read/update tools are a pending follow-up). "Epic" and "feature" are RETIRED
-> concepts — this note is the only place those words belong; everywhere else,
-> think, speak, and write in asks.
+> **Read before you propose.** `list_asks(projectId)` returns the tree the user
+> actually sees, and `list_asks(projectId, parentAskId)` returns what is already
+> inside one card. Suggesting something already on the board is the most common
+> way a walk wastes the user's time.
+>
+> The epics and features tools this skill used to name were retired on
+> 2026-07-31 along with the board they wrote to. There is one card type now, it
+> is an ask, and it nests. "Epic" and "feature" are not card types — "feature"
+> is ordinary English and nothing more.
 
 ## The graveyard — retire, never delete
 

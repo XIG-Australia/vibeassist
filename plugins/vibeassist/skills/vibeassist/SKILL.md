@@ -199,9 +199,10 @@ supports it) so a long, compaction-heavy build never drifts from what "done"
 means — re-read the criteria before you call the task finished. A task
 introducing the app's FIRST
 instance of an element type: build a sensible default from the existing
-tokens/sections and file `propose_design_section` in the same PR — never `/ask`
-for a design call (the tool's description carries the playbook). Confirm before
-anything destructive.
+tokens/sections and say in the PR description which type this is the first of
+and what you chose — never `/ask` for a design call, which would stall a build
+at 3am on a decision you can make and show. Confirm before anything
+destructive.
 
 c. **Git:** branch → push → pull request; NEVER commit to, fast-forward, or push
 `main` — a human merges the PR (for Lovable-managed projects the merge is also

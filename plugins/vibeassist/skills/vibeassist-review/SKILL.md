@@ -19,12 +19,29 @@ EARNED by evidence, never granted by a plausible report.
 
 **Transport is MCP-first**: the `mcp__vibeassist__*` tools carry their own
 mechanics in their descriptions — this file never restates them. The review
-leans on `get_updates` (what finished, what's waiting), `get_task` /
-`get_card_context` (the ask and its criteria), `record_verification` (the
-Truth Pass verdict), `record_review_reconciliation` (send-backs), `ask`
-(decisions to the user's inbox), and `set_where_this_stands` (the one-line
-head after a verdict changes an ask's story). Tools absent → tell the user to
-connect VibeAssist first; do not improvise a transport.
+leans on `get_updates` (what finished, what's waiting), `list_asks` (the ask,
+its Shape, and what is inside it), `create_ask` (a finding that becomes new
+work), `update_ask` (a Shape that turned out to be the thing that was wrong),
+and `ask` (every decision, to the user's inbox). Tools absent → tell the user
+to connect VibeAssist first; do not improvise a transport.
+
+> **What you cannot do, and must not pretend to.** There is no tool that
+> records a review verdict from this seat. The three that did —
+> `record_verification`, `record_review_reconciliation`, `set_where_this_stands`
+> — were retired on 2026-07-31 with the board they wrote to, and this file went
+> on naming them until 2026-08-04. A verdict recorded nowhere is a review that
+> did not happen, so do not claim one.
+>
+> Two real paths remain, and both are better than a silent verdict:
+>
+> - **The Truth Pass runs as a job, not from here.** A `verify_card` job
+>   exercises the feature and writes its verdict and evidence to the ask. If the
+>   user wants a verdict on the record, that is the door.
+> - **A send-back is the user's, and it already works.** They send an ask back
+>   on the board; the ask moves to `cameback` carrying their words.
+>
+> Your job in this seat is to show them the evidence and say plainly what you
+> think, one ask at a time — not to stamp the record yourself.
 
 ## 1 · Gather — what does the run claim?
 
@@ -76,20 +93,21 @@ is the point.
 
 ## 4 · Record — verdicts are the product of this session
 
-- **Every judged ask gets its Truth Pass verdict recorded** with
-  `record_verification` — the tool's description carries the verdict shapes
-  and mechanics. Record what you EARNED: verified only where the evidence
-  held; the honest lesser verdict elsewhere. An unrecorded review evaporates —
-  the board must remember what was checked, when, and on what evidence.
-- **Send-backs get reconciled, not just rejected.** When the user (or your
-  judging) sends work back, file `record_review_reconciliation` with your
-  assessment of WHY it missed — was the intent wrong, the execution wrong, or
-  the shape (the ask's own spec) wrong? A send-back whose cause is a bad
-  shape goes back through the shaping walk (`vibeassist-decompose`, single-ask
-  entry), not back to the builder unchanged — rebuilding to a broken spec
+- **Say your verdict on each ask, one at a time, through the inbox** (`ask`,
+  recommendation-first). The user's tap is what records it: they accept the
+  ask, or they send it back and their words travel with it. Never batch the
+  verdicts into one message — a list of six is a list nobody answers.
+- **A finding becomes an ask, not a note.** Something that is genuinely missing
+  or wrong becomes a new ask under the one it came from (`create_ask` with
+  `parentAskId`), proposed, for the user to accept. Anything else evaporates.
+- **Work out WHY it missed before you send it back** — was the build wrong, or
+  was the ask's own Shape wrong? A send-back whose cause is a bad Shape goes
+  back through the shaping walk (`vibeassist-decompose`, single-ask entry) and
+  the Shape gets fixed with `update_ask` first. Rebuilding to a broken Shape
   fails twice.
-- After a verdict changes an ask's story, refresh its one-line
-  "where this stands" head so the board reads true at a glance.
+- **If nothing you judged can be written down, say so in the summary.** A
+  review whose conclusions live only in this window is one the board will
+  contradict tomorrow.
 
 ## 5 · What review is NOT
 
@@ -106,9 +124,8 @@ is the point.
 
 ## Guardrails
 
-- Verdicts are earned, never vibes: no `record_verification` without the
-  evidence trail that justifies it, and never a stronger verdict than the
-  evidence supports.
+- Verdicts are earned, never vibes: never state one without the evidence trail
+  that justifies it, and never a stronger verdict than the evidence supports.
 - Default to fail when uncertain — the builder's own rule, applied by a
   reader with no authorship bias.
 - One verdict per ask, recorded right after judging THAT ask — never batched

@@ -16,10 +16,12 @@ There is no sprint to pull, no task to claim, and no batch to compose. You take
 | Old                              | New                                   |
 | -------------------------------- | ------------------------------------- |
 | `next_sprint` + `start_task`     | `next_approved_ask`                   |
+| (nothing)                        | `report_ask_progress` while you build |
 | `complete_task`                  | `report_ask_delivery`                 |
 | `VibeAssist-Task: <id>` trailer  | `VibeAssist-Ask: <id>` trailer        |
 | One PR per sprint                | One PR per ask                        |
 | `create_sprint` composes a batch | Nothing. The ask tree IS the grouping |
+| Sprint order                     | THE RUN — `set_run_order`, after asking |
 
 **Nesting replaces sprints.** An ask already contains asks. A big ask is
 delivered by delivering its children — that grouping is one the user authored,
@@ -58,6 +60,18 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    `doneWhen` is the definition of done. Everything outside the Shape is out of
    scope, and a gap in the Shape is a question for the user, not a guess.
 
+   **A question goes on the ask.** `ask({ askId, question, options,
+   recommendedOptionId, reasoning })` — the question shows on the card that is
+   stopped, and your build stays open, so you carry on the moment it is
+   answered. Do NOT raise a project-level question about an ask you are
+   building: it blocks nothing, it lands nowhere near the card, and the answer
+   has no way back to you. (Before 4 Aug 2026 that was the only option there
+   was, which is why so many builds went quiet.)
+
+   Between the question and the answer, work on something else or stop — but if
+   you stop, the question IS the record of why. Do not also report the delivery
+   failed; that would hand the ask to the next worker to hit the same wall.
+
    **You are NOT handed a technical brief, and that is deliberate.** Working out
    how to build it is your job. Simon: _"I care how it was built only as far as
    what goes into an ask, but the developer task-level work, I don't want
@@ -68,6 +82,20 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
 3. **Build it** on the `branch` you were given (`ask/<short-id>-<slug>`), cut
    from the latest `main`. One ask, one branch, one pull request.
 
+   **Say what you are doing while you do it.** `report_ask_progress({ askId,
+   doing })` — one short phrase in the product's words ("wiring the sign-in form
+   to the account it creates"), never files or approach. Call it when you move
+   to a different part of the work, and at least every twenty minutes or so on a
+   long build.
+
+   This is not decoration and it is not optional on a long build. Two things
+   depend on it: the person can see the work happening instead of staring at a
+   card that has said "building" for an hour, and your build is known to be
+   alive — the lease that decides whether an ask gets handed to someone else is
+   measured from the last thing you said, not from when you started. Go quiet
+   for the full lease and your ask is reclaimed, correctly, because from the
+   outside silence and death are the same thing.
+
 4. **Stamp every commit** with the `commitTrailer` you were handed —
    `VibeAssist-Ask: <id>` — as the last line after a blank line. That trailer is
    how commits find their way back to the ask; without it the link is guesswork.
@@ -76,6 +104,16 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    ever: a PR may not be opened on a red verify.
 
 6. **`report_ask_delivery({ askId, outcome, built, branch, commits })`.**
+
+   **It opens the pull request for you** from the branch, using VibeAssist's own
+   stored credentials — you need no GitHub token and no `gh`. The URL lands on
+   the ask, which is how the person can see where the work is sitting; a branch
+   name is not something anyone can look at. Pass `prUrl` only if you opened one
+   yourself. If it could not be opened the delivery is still recorded and the
+   reason comes back in `warnings` — say so, never swallow it.
+
+   The ask then reads **Delivered — "Ready for you"** on their board, and the
+   pull request merges itself once the checks are green.
 
    Write `built` in the **product's** words — what the thing now does for the
    person. Not files, not functions, not an approach. If a sentence would only
@@ -99,8 +137,21 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    second. The old `complete_task` had a `techDetails` beside it, and that field
    is where developer working leaked back onto the board.
 
-7. **Stop at "PR opened."** The user reviews and merges. Then poll for the next
-   approved ask and keep going until there are none.
+7. **Stop there.** The pull request merges itself on green; the ask says "Ready
+   for you" and the person decides whether it did what they wanted. Then poll
+   for the next approved ask and keep going until there are none.
+
+## The run — one ordered list, and it is theirs
+
+The run is the approved asks waiting for the next time they press go. It is an
+ordering, not a container: an approved ask left OUT of it is still built, after
+the queued ones. Nothing becomes invisible by not being queued — that was the
+mistake sprints made.
+
+You may **propose** what goes in it and in what order — "six asks are approved
+and aren't in the run; add them?" — through `ask`. Their tap is the consent, and
+only then do you call `set_run_order` with the whole order. Read the current run
+from `list_asks` (`runPosition` on each row; null means not in it).
 
 ## What does NOT come across
 
