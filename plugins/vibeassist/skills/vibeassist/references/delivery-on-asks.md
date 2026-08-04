@@ -58,6 +58,18 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    `doneWhen` is the definition of done. Everything outside the Shape is out of
    scope, and a gap in the Shape is a question for the user, not a guess.
 
+   **A question goes on the ask.** `ask({ askId, question, options,
+   recommendedOptionId, reasoning })` — the question shows on the card that is
+   stopped, and your build stays open, so you carry on the moment it is
+   answered. Do NOT raise a project-level question about an ask you are
+   building: it blocks nothing, it lands nowhere near the card, and the answer
+   has no way back to you. (Before 4 Aug 2026 that was the only option there
+   was, which is why so many builds went quiet.)
+
+   Between the question and the answer, work on something else or stop — but if
+   you stop, the question IS the record of why. Do not also report the delivery
+   failed; that would hand the ask to the next worker to hit the same wall.
+
    **You are NOT handed a technical brief, and that is deliberate.** Working out
    how to build it is your job. Simon: _"I care how it was built only as far as
    what goes into an ask, but the developer task-level work, I don't want

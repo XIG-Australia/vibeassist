@@ -52,21 +52,32 @@ rule matches that exact string. On output:
 
 ## Worker role
 
+`wakeEligibleAsks > 0` → **approved work is waiting, and this is the road
+delivery runs on.** Call `next_approved_ask` and run the loop in
+`references/delivery-on-asks.md`, then poll again and keep going while any
+remains. `ask: null` despite the wake means another worker took it — re-arm
+quietly, don't spin.
+
+(This wake did not exist until 4 Aug 2026. Nothing anywhere woke a worker for
+an approved ask, so approving one and leaving a worker listening did nothing at
+all — and there was no way to tell that from a broken machine.)
+
 `wakeEligibleSprints > 0` (or `queuedSprints > 0` with nothing else
-actionable) → a sprint is waiting: PULL IT via `next-sprint` and run the
-sprint loop from the core skill, then IMMEDIATELY re-poll for the next queued
-sprint and keep pulling while any remains. If `next-sprint` returns
-`sprint:null` despite the wake, another session claimed it first — re-arm
-quietly, don't spin or complain. Other fields → surface once to the user, keep
-listening.
+actionable) → a sprint is waiting on the OLD road: PULL IT via `next-sprint`
+and run the sprint loop from the core skill, then IMMEDIATELY re-poll and keep
+pulling while any remains. If `next-sprint` returns `sprint:null` despite the
+wake, another session claimed it first — re-arm quietly. Other fields →
+surface once to the user, keep listening.
 
 **Flow:** run **drain** first (work everything already queued), then enter the
 listening loop. A started sprint is the consent envelope — never ask
 "continue?" between tasks or sprints; the stop conditions are the ones in the
 core Guardrails only.
 
-**DRAIN MEANS DRAIN — a worker never exits with sprints still queued
-(regression guard, task f6c3618b).** After a sprint's last `/complete` and its
+**DRAIN MEANS DRAIN — a worker never exits with work still waiting
+(regression guard, task f6c3618b).** On the ask road the queue-empty signal is
+`next_approved_ask` returning `ask: null`; on the sprint road it is
+`sprint:null`. Nothing else counts as empty. After a sprint's last `/complete` and its
 PR is opened, do NOT end the turn: immediately re-poll (`get_updates` →
 `next-sprint`) and pull the NEXT queued sprint, and keep going while ANY
 dispatchable sprint remains — `sprint:null` is the ONLY "queue empty" signal.
@@ -104,36 +115,31 @@ connect the MCP server to fulfil them") and keep listening.
   act ONLY on the tasks the comments actually implicate — the number needing
   rework may be **0** (the comments were a misunderstanding, or the work already
   satisfies them) or just one. Protocol:
-  1. The job's `input` carries `{ featureId, reviewId }`. Call
-     `get_card_context` with the job's projectId + featureId — the packet's
-     `reviews` section holds the review record: the user's comments (their
-     words, verbatim) and the frozen `snapshot` (`docIds` / `taskIds` /
-     `batchIds`) of what the verdict covered.
-  2. Read the snapshot's tasks (`get_task`) and, where the comments demand it,
-     the delivered docs/code, and ASSESS which task(s) were not delivered as
-     requested.
-  3. **Send back** an implicated task: `update_task` → `status: "backlog"`,
-     appending the relevant comment excerpt to its notes (status revert + note —
-     the user's words travel with the task).
-  4. **Re-mint** work the comments describe that no existing task covers:
-     `create_task` with `draft: false` (the user already spoke — these are real
-     backlog tasks, never draft-gated), anchored to THIS ask (`featureId`), the
-     description carrying the user's comment **VERBATIM** plus the review id, and
-     note `review_sendback` in the description for audit.
-  5. **Leave alone** every task the comments don't implicate — it keeps its
-     delivered status.
-  6. **Write the reconciliation back — ALWAYS, 0-task outcomes included**:
-     `record_review_reconciliation { projectId, featureId, reviewId,
-sentBackTaskIds, mintedTaskIds, summary, jobId }`. On a 0-task outcome pass
-     empty arrays and a summary explaining WHY nothing changed — never silently
-     clear; the user must see "assessed — nothing needed changing because X", not
-     the ask going quiet. Then `complete_ai_job` (result may carry
-     `{ changed: N }`).
-  - **Guardrails**: scope is the snapshot's `taskIds` plus new mints on THIS ask
-    only — never touch another ask's tasks; never delete anything; quote the
-    user's comments, never paraphrase them into task descriptions without the
-    original attached; the count changed may be 0 and that is a valid,
-    reportable outcome.
+  1. The job's `input` carries `{ featureId, reviewId }`. Read the ask with
+     `list_asks(projectId)` — its row, its Shape, and what is inside it — and
+     the user's comments from the job input.
+  2. ASSESS what the comments actually implicate. Read the delivered code where
+     the comments demand it. The honest answer is often "nothing" — the comment
+     was a misunderstanding, or the work already satisfies it.
+  3. **Re-mint** work the comments describe that nothing on the board covers:
+     `create_ask` under THIS ask (`parentAskId`), carrying the user's words
+     **VERBATIM** in `want`. It arrives proposed; the user accepts it.
+  4. **Fix the Shape when the Shape is what was wrong.** If the comments show
+     the ask asked for the wrong thing, `update_ask` it — rebuilding to a broken
+     Shape fails twice.
+  5. **Leave alone** everything the comments don't implicate.
+  6. **Say what you concluded — ALWAYS, including when nothing changed.**
+     `complete_ai_job(jobId, result: { changed: N, summary: "<plain sentence>" })`,
+     and when N is 0 the summary must say WHY. The user has to read "I checked,
+     and nothing needed changing because X" — never the ask going quiet.
+  - **Guardrails**: stay on THIS ask and its children — never touch another
+    ask's work; never delete anything; quote the user's comments rather than
+    paraphrasing them; a count of 0 is a valid, reportable outcome.
+  - **Known gap (2026-08-04):** the tool that wrote a permanent reconciliation
+    record onto the review — `record_review_reconciliation` — was retired with
+    the old board and has no ask-native replacement yet. Until it does, the
+    summary in your result is the only record, so write it as though it is the
+    only thing anyone will read. It is.
 
 ## Sleep policy — an idle run ENDS deliberately, it never idles forever
 
