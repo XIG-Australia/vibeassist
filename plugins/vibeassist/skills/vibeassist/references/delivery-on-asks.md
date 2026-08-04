@@ -16,6 +16,7 @@ There is no sprint to pull, no task to claim, and no batch to compose. You take
 | Old                              | New                                   |
 | -------------------------------- | ------------------------------------- |
 | `next_sprint` + `start_task`     | `next_approved_ask`                   |
+| (nothing)                        | `report_ask_progress` while you build |
 | `complete_task`                  | `report_ask_delivery`                 |
 | `VibeAssist-Task: <id>` trailer  | `VibeAssist-Ask: <id>` trailer        |
 | One PR per sprint                | One PR per ask                        |
@@ -79,6 +80,20 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
 
 3. **Build it** on the `branch` you were given (`ask/<short-id>-<slug>`), cut
    from the latest `main`. One ask, one branch, one pull request.
+
+   **Say what you are doing while you do it.** `report_ask_progress({ askId,
+   doing })` — one short phrase in the product's words ("wiring the sign-in form
+   to the account it creates"), never files or approach. Call it when you move
+   to a different part of the work, and at least every twenty minutes or so on a
+   long build.
+
+   This is not decoration and it is not optional on a long build. Two things
+   depend on it: the person can see the work happening instead of staring at a
+   card that has said "building" for an hour, and your build is known to be
+   alive — the lease that decides whether an ask gets handed to someone else is
+   measured from the last thing you said, not from when you started. Go quiet
+   for the full lease and your ask is reclaimed, correctly, because from the
+   outside silence and death are the same thing.
 
 4. **Stamp every commit** with the `commitTrailer` you were handed —
    `VibeAssist-Ask: <id>` — as the last line after a blank line. That trailer is
