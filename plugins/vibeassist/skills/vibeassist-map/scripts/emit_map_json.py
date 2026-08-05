@@ -101,6 +101,16 @@ def parse_page(md):
                 page["showsOnLoad"] = {"text": value, "reads": [], "evidence": []}
             elif key:
                 page[key] = value
+            elif label.lower() == "what it's for" and cap is not None and act is None:
+                # A CAPABILITY SAYS WHAT IT IS FOR.
+                #
+                # Until now a capability was a NAME and a list of actions, and
+                # nothing else. Everything the reading learned about it lived on
+                # its actions, so the capability itself arrived on the board with
+                # no words of its own — a card whose whole description was a
+                # template sentence. Two thirds of a mapped board is capability
+                # cards, so two thirds of the board read as empty.
+                cap["purpose"] = value
             elif label.lower() == "capabilities":
                 # "**Capabilities:** None — this page is for reading."
                 page["readOnly"] = value.lower().startswith("none")
