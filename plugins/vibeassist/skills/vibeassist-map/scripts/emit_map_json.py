@@ -42,6 +42,35 @@ CORE = {
 }
 CORE_BY_LABEL = {v.lower(): k for k, v in CORE.items()}
 
+# A CAPABILITY'S OWN WORDS.
+#
+# A capability used to be a name and a list of actions, so everything the
+# reading learned lived on the actions and the capability card itself arrived
+# with nothing of its own. Capability cards are two thirds of a mapped board.
+# Reported after a re-read: "they do seem to be in there, but is very thin."
+#
+# The consumer has been asking for this field for a while — it reads
+# `capability.purpose` and falls back to a template sentence with a page name
+# dropped into it. Nothing has ever produced it, because the template had no
+# line to write it on.
+CAP_PURPOSE_LABELS = {"what it's for", "what its for", "purpose"}
+
+# A DEFECT THE TRACE TURNED UP.
+#
+# The template's field is "**⚠ Defect worth knowing about:**". The glyph is the
+# point on the page and a nuisance here, so labels are normalised before
+# matching — leading non-letters stripped — rather than the marker being matched
+# literally in five places.
+DEFECT_LABEL = re.compile(r"^defect\b|^\W*defect\b", re.I)
+# Evidence is separated from the sentence by an em dash in the template's own
+# example: "<what is broken, in user terms> — Evidence: file:line".
+DEFECT_EVIDENCE = re.compile(r"\s*[—-]?\s*Evidence:\s*(?P<ev>.+)$", re.I)
+
+
+def norm_label(label):
+    """Strip decoration so '⚠ Defect worth knowing about' matches 'defect'."""
+    return re.sub(r"^[^A-Za-z]+", "", label).strip().lower()
+
 
 def cites(text):
     out = []
@@ -66,7 +95,7 @@ def tables(text):
 
 def parse_page(md):
     """One page file -> dict. Unknown **Label:** fields are preserved."""
-    page = {"capabilities": [], "notes": {}, "readOnly": False}
+    page = {"capabilities": [], "notes": {}, "readOnly": False, "defects": []}
     cap = act = None
     for raw in md.splitlines():
         line = raw.rstrip()
@@ -79,7 +108,7 @@ def parse_page(md):
 
         m = CAP.match(line)
         if m:
-            cap = {"name": m.group("name").strip(), "actions": []}
+            cap = {"name": m.group("name").strip(), "purpose": None, "actions": []}
             page["capabilities"].append(cap)
             act = None
             continue
@@ -96,21 +125,50 @@ def parse_page(md):
         m = FIELD.match(line)
         if m:
             label, value = m.group("label").strip(), m.group("value").strip()
+            flat = norm_label(label)
+
+            # A DEFECT IS A LIST, NOT A LABEL.
+            #
+            # These used to land in `notes`, which is a dict keyed on the label —
+            # so a page that turned up TWO defects reported one, and the second
+            # was overwritten by a key it happened to share. A page with two
+            # things wrong is exactly the page you want to hear about twice.
+            #
+            # Recorded at page level even when found mid-action: the field is
+            # about the app, and the consumer attaches it to the place. Its
+            # evidence is split out so the claim can be checked without a person
+            # parsing prose.
+            if DEFECT_LABEL.match(flat) or DEFECT_LABEL.match(label):
+                ev = DEFECT_EVIDENCE.search(value)
+                page["defects"].append({
+                    "text": DEFECT_EVIDENCE.sub("", value).strip(" —-").strip(),
+                    "evidence": cites(ev.group("ev")) if ev else cites(value),
+                    "action": act["name"] if act else None,
+                    "capability": cap["name"] if cap else None,
+                })
+                continue
+
+            # A CAPABILITY SAYS WHAT IT IS FOR.
+            #
+            # A capability was a NAME and a list of actions and nothing else, so
+            # everything the reading learned about it lived on its actions and
+            # the capability itself arrived on the board with no words of its
+            # own — a card whose whole description was a template sentence with
+            # a page name in it. Capability cards are two thirds of a mapped
+            # board, so two thirds of the board read as empty.
+            #
+            # Only when a capability is open and no action is: page-level fields
+            # all precede the first capability heading, so this cannot swallow
+            # one of them.
+            if cap is not None and act is None and flat in CAP_PURPOSE_LABELS:
+                cap["purpose"] = value
+                continue
+
             key = CORE_BY_LABEL.get(label.lower())
             if key == "showsOnLoad":
                 page["showsOnLoad"] = {"text": value, "reads": [], "evidence": []}
             elif key:
                 page[key] = value
-            elif label.lower() == "what it's for" and cap is not None and act is None:
-                # A CAPABILITY SAYS WHAT IT IS FOR.
-                #
-                # Until now a capability was a NAME and a list of actions, and
-                # nothing else. Everything the reading learned about it lived on
-                # its actions, so the capability itself arrived on the board with
-                # no words of its own — a card whose whole description was a
-                # template sentence. Two thirds of a mapped board is capability
-                # cards, so two thirds of the board read as empty.
-                cap["purpose"] = value
             elif label.lower() == "capabilities":
                 # "**Capabilities:** None — this page is for reading."
                 page["readOnly"] = value.lower().startswith("none")
@@ -142,10 +200,70 @@ def parse_page(md):
     return page
 
 
+# WHAT THE SCAN LEARNED ABOUT THE APP AS A WHOLE.
+#
+# assemble.py has taken --harvest for a long time and builds ten MAP.md sections
+# from it: what runs on its own, what the app emails out, the journeys records
+# take, what dies when you delete, the sign-in path, where free stops, the
+# shared error machinery, findings, who is allowed to do what, and the keys it
+# needs. This script did not take the flag at all, so every one of those reached
+# a human reader and NOTHING reached an importer. Half the reading stopped at
+# the page files.
+#
+# Renamed on the way out. `_meta` is a scratch key in an intermediate file;
+# `app` is what the thing IS, and the consumer should not have to know the name
+# of our working directory to read it.
+META_TO_APP = {
+    "data_layers": "dataLayers",
+    "schema_tables": "schemaTables",
+    "schema_columns": "schemaColumns",
+    "scheduled": "scheduled",
+    "state_enums": "stateEnums",
+    "delete_cascades": "deleteCascades",
+    "soft_delete_files": "softDeleteFiles",
+    "rls_enabled": "rlsEnabled",
+    "rls_policies": "rlsPolicies",
+    "tables_without_rls": "tablesWithoutRls",
+    "orphan_tables": "orphanTables",
+    "env_vars": "envVars",
+    "services": "services",
+    "global_feedback": "globalFeedback",
+}
+
+# PER-PAGE SIGNALS, CARRIED AS SIGNALS.
+#
+# These are regex hits, and the skill is emphatic that the harvest is "a list of
+# CANDIDATES, not a list of claims" — a page resolving 45 files may be offered
+# 23 tables while truly touching 8. They still belong in the file: "this page
+# sends mail" and "free stops here" are worth knowing even unconfirmed.
+#
+# So they travel under `signals`, separately from the prose a person wrote and
+# checked, and the consumer must never render them as agreed shape. Capped the
+# way assemble.py caps them, because a board does not become truer at hit 200.
+SIGNAL_KEYS = {
+    "outbound": "outbound",
+    "paid_gates": "paidGates",
+    "auth": "auth",
+    "validation": "validation",
+    "live_sync": "liveSync",
+    "feedback": "feedback",
+    "state_literals": "stateLiterals",
+}
+SIGNAL_CAP = 20
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("map_dir")
     ap.add_argument("-o", "--out", default="map.json")
+    ap.add_argument(
+        "--harvest",
+        default=None,
+        help="map/_harvest.json - carries what runs on its own, what the app "
+             "sends out, record journeys, delete cascades, access rules, keys "
+             "and services through to the importer. Without it the importer "
+             "sees pages and nothing else.",
+    )
     args = ap.parse_args()
 
     mp = pathlib.Path(args.map_dir)
@@ -156,6 +274,15 @@ def main():
     machine_notes = json.loads(notes_f.read_text(encoding="utf-8")) if notes_f.is_file() else {}
     stack_f = mp / "_stack.md"
     stack = stack_f.read_text(encoding="utf-8").strip() if stack_f.is_file() else None
+
+    # Default to the conventional location, so the common invocation carries the
+    # whole reading without anyone having to know the flag exists. An explicit
+    # --harvest still wins, and a missing file is not an error: a map assembled
+    # without a harvest is still a map.
+    harvest_f = pathlib.Path(args.harvest) if args.harvest else (mp / "_harvest.json")
+    harvest = json.loads(harvest_f.read_text(encoding="utf-8")) if harvest_f.is_file() else {}
+    hmeta = harvest.get("_meta", {})
+    app = {out_key: hmeta[key] for key, out_key in META_TO_APP.items() if hmeta.get(key)}
 
     # slug rule from SKILL.md Phase 3, so both ends agree
     def slug(p):
@@ -196,12 +323,21 @@ def main():
         if path in machine_notes:
             rec["note"] = machine_notes[path]
 
+        hv = harvest.get(path, {})
+        signals = {
+            out_key: hv[key][:SIGNAL_CAP]
+            for key, out_key in SIGNAL_KEYS.items()
+            if hv.get(key)
+        }
+        if signals:
+            rec["signals"] = signals
+
         pg = pages.get(path)
         if pg:
             for k in ("title", "purpose", "whoCanSeeIt", "arrivesFrom",
                       "reachedFromOutside", "showsOnLoad", "capabilities",
-                      "readOnly", "notes", "pageFile"):
-                if k in pg:
+                      "readOnly", "notes", "pageFile", "defects"):
+                if k in pg and pg[k] not in (None, [], {}):
                     rec[k] = pg[k]
             for label in pg.get("notes", {}):
                 if label != "Capabilities":
@@ -230,11 +366,19 @@ def main():
         out_routes.append(rec)
 
     user = [r for r in out_routes if r["audience"] == "user"]
+    defects = sum(len(r.get("defects", [])) for r in out_routes)
     doc = {
         # NOT renamed with the skill. This is a FORMAT identifier: anything
         # holding a map.json already written matches on it, and the importer
         # checks it. Branding churn must not invalidate existing files.
-        "schema": "user-lens-map/1",
+        #
+        # /2 ADDS `app`, `signals`, `defects` AND `capabilities[].purpose`.
+        # Every /1 field is unchanged and still present, so a /2 reader handles
+        # both. The bump is for the OTHER direction: a /1 reader given this file
+        # would silently drop all four, and the consumer's version check exists
+        # precisely so it says so instead. Adding fields under the old number is
+        # what makes that check worthless.
+        "schema": "user-lens-map/2",
         "generator": "emit_map_json.py (reference implementation)",
         "stack": stack,
         "counts": {
@@ -247,16 +391,39 @@ def main():
             "tables": len(table_index),
             "noInboundEdge": sum(1 for r in user if r.get("noInboundEdge")),
             "noWayIn": sum(1 for r in user if r.get("noWayIn")),
+            "defects": defects,
+            "capabilities": sum(len(r.get("capabilities", [])) for r in out_routes),
+            "capabilitiesWithPurpose": sum(
+                1 for r in out_routes for c in r.get("capabilities", []) if c.get("purpose")
+            ),
         },
         "routes": out_routes,
         "tables": dict(sorted(table_index.items())),
     }
+    if app:
+        doc["app"] = app
     pathlib.Path(args.out).write_text(json.dumps(doc, indent=2), encoding="utf-8")
 
     c = doc["counts"]
     print(f"wrote {args.out}: {c['mapped']}/{c['userFacing']} user pages mapped, "
           f"{c['machineOnly']} machine, {c['redirects']} redirect, "
           f"{c['tables']} tables")
+    # SAY WHETHER THE APP-WIDE HALF TRAVELLED.
+    #
+    # Silence is how this went unnoticed: the file looked complete, the counts
+    # looked right, and ten sections of what the scan learned were simply not in
+    # it. A run that quietly ships half a reading must not read as a clean run.
+    if app:
+        print(f"  app-wide: {', '.join(sorted(app))}")
+    else:
+        print(f"  WARNING: no harvest read ({harvest_f}) — the importer gets pages")
+        print( "           and nothing else: no scheduled work, no outbound mail, no")
+        print( "           record journeys, no delete cascades, no access rules, no keys.")
+    print(f"  {c['defects']} defect(s); {c['capabilitiesWithPurpose']}/{c['capabilities']} "
+          f"capabilities say what they are for")
+    if c["capabilities"] and not c["capabilitiesWithPurpose"]:
+        print("  WARNING: no capability states its purpose — every capability card will")
+        print("           arrive on the board with a template sentence and nothing else.")
     print(f"  {c['noInboundEdge']} with no internal link, of which "
           f"{c['noWayIn']} have NO way in at all:")
     for r in out_routes:

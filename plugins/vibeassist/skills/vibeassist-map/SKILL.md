@@ -134,7 +134,15 @@ It produces: a coverage table with counts read from the JSON (never typed); the 
 
 **Findings are computed candidates, not verdicts.** Before publishing, verify each one the same way as any claim: read the cited code. A finding that survives is among the most valuable lines in the map — the BM run caught a dead navigation button this way. If something flagged is intentional, keep the line and say it is intentional; deleting it hides the question from the next reader. The one input that needs a human sentence is the machine-notes file — a small JSON of `{route: "what fetches this"}`.
 
-Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o map.json` produces the structured, machine-readable version of the whole map (the contract an importer consumes — pages, capabilities, actions, tables, all with evidence), and `python scripts/tree_from_map.py map/ -o tree.md` renders the sitemap as a properly nested tree (in the flat sitemap, indentation means "links to"; in the tree it means "contains" — both views are useful, never confuse them). For an app with NO router at all (vanilla HTML/JS), `scripts/nav_edges.py` and `scripts/index_calls.py` are the Phase 2/3 strategy: screens instead of routes, and data calls attributed to the function that contains them.
+Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o map.json` produces the structured, machine-readable version of the whole map (the contract an importer consumes — pages, capabilities, actions, tables, all with evidence), and
+
+**It reads `_harvest.json` too, and this matters more than it sounds.** For a long time it did not, while `assemble.py` did — so everything app-wide the scan learned (what runs on its own, what the app sends out, record journeys, delete cascades, the sign-in path, free vs paid, access rules, keys and services) reached a human reader in MAP.md and reached an importer NOT AT ALL. Half the reading stopped at the page files. It now picks `map/_harvest.json` up automatically; `--harvest` only overrides the location. **If it prints `WARNING: no harvest read`, the map you are about to hand over is pages and nothing else — fix that before shipping it**, because a file that looks complete and silently omits half the reading is worse than one that fails.
+
+Output is stamped `user-lens-map/2`. Every `/1` field is unchanged; `/2` adds the app-wide `app` section, per-page `signals`, `defects`, and `capabilities[].purpose`. The number exists so a consumer that only understands `/1` says so rather than quietly dropping four things — which is exactly why adding fields without bumping it would be the wrong move.
+
+`signals` carries the harvest's per-page regex hits (outbound mail, paid gates, sign-in, validation). They are **candidates, not claims** — the same discipline as Phase 3 — and are marked as such so a consumer never renders them as agreed behaviour. The prose you wrote and checked is the claim; these are leads.
+
+Also bundled: `python scripts/tree_from_map.py map/ -o tree.md` renders the sitemap as a properly nested tree (in the flat sitemap, indentation means "links to"; in the tree it means "contains" — both views are useful, never confuse them). For an app with NO router at all (vanilla HTML/JS), `scripts/nav_edges.py` and `scripts/index_calls.py` are the Phase 2/3 strategy: screens instead of routes, and data calls attributed to the function that contains them.
 
 ## Page template (fill every field; write "None" rather than omitting)
 
@@ -180,6 +188,8 @@ Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o
 
 An optional field, used whenever tracing reveals one: `**⚠ Defect worth knowing about:** <what is broken, in user terms> — Evidence: file:line`. A reader tracing what a button does is in the ideal position to notice that it does nothing; recording that is first-class output, not a digression.
 
+**Write one line per defect, and repeat the field as many times as needed** — page level for something wrong with the page, or directly under an Action for something wrong with that control. Do not join two defects into one sentence: they are carried as a list and attached individually to the thing they are about, so a page with two problems should arrive as two. Keep the `— Evidence:` on the same line; it is split from the sentence on the way out, so the claim can be checked without anyone re-reading prose.
+
 Match this register exactly. "What happens" lines are written to the user as "you". A read-only page states `**Capabilities:** None — this page is for reading.` and stops there. If a page's purpose can't be stated without code vocabulary, you haven't understood it yet — read more code, then write.
 
 ## Quality bars
@@ -190,3 +200,6 @@ Match this register exactly. "What happens" lines are written to the user as "yo
 - Every capability has a **What it's for** line, and it says something its name does not already say. "Manage your account — lets you manage your account" is a failure; it is the sentence the owner reads on the card.
 - A non-technical reader can answer "what can I do on this page and what data does it change?" for any page without opening the code.
 - Depth is uniform: the last page mapped is as detailed as the first.
+- `emit_map_json.py` counted the **What it's for** lines above and did not warn — a run where no capability states one produces a board of cards that all read the same.
+- `emit_map_json.py` printed an app-wide line, not `WARNING: no harvest read`. A map.json without it is half a reading wearing a complete one's face.
+- Defects are one line each, not joined, and each carries its own Evidence.
