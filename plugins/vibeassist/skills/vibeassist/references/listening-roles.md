@@ -36,6 +36,30 @@ rule matches that exact string. On output:
 
 - `{"round_complete":true}` (inside the JSON) → idle heartbeat; re-arm
   immediately, say nothing.
+
+> **KEEP GOING. ENDING YOUR TURN IS THE EXPENSIVE THING.**
+>
+> A headless session runs in print mode: **one turn, then the process exits.**
+> Nothing resumes it — the daemon notices it went and starts a whole new
+> session, which pays the boot and the MCP connect again before it can hear
+> anything.
+>
+> Measured on the owner's machine, 5 August: standby sessions ended after 220s,
+> 174s and 691s, each followed by ~15s of nothing and then 17–122s of connecting.
+> So every few minutes there was a window of half a minute to two and a half
+> minutes where **nobody was listening**, and a brand-new session booted and
+> re-read all of this — a few hundred cold starts a day whether or not anything
+> needed answering.
+>
+> So an idle round is NOT a reason to wrap up. Re-arm and keep re-arming: dozens
+> of quiet rounds in one turn is the CORRECT shape, and it costs almost nothing
+> because the server holds each poll open and idle waiting burns no tokens. Do
+> not summarise, do not narrate the quiet rounds, do not offer to stop.
+>
+> The ONLY reasons to end a turn are the ones already written down: the sleep
+> policy fires (idle grace or quiet hours), the recovery bound is spent, or the
+> user says stop. "Nothing happened for a while" is not one of them — it is the
+> normal state of a listener and the whole thing you are here to do.
 - `STANDBY ERROR …` → a CONFIG problem (missing env) — stop and tell the user
   exactly what it printed.
 - `STANDBY TRANSIENT …` or the command was KILLED externally (stopped with no

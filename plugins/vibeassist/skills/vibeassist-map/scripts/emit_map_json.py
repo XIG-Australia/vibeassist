@@ -148,9 +148,18 @@ def parse_page(md):
                 })
                 continue
 
-            # A capability's own purpose, when one is open and no action is.
-            # Page-level fields all precede the first capability heading, so
-            # this cannot swallow one of them.
+            # A CAPABILITY SAYS WHAT IT IS FOR.
+            #
+            # A capability was a NAME and a list of actions and nothing else, so
+            # everything the reading learned about it lived on its actions and
+            # the capability itself arrived on the board with no words of its
+            # own — a card whose whole description was a template sentence with
+            # a page name in it. Capability cards are two thirds of a mapped
+            # board, so two thirds of the board read as empty.
+            #
+            # Only when a capability is open and no action is: page-level fields
+            # all precede the first capability heading, so this cannot swallow
+            # one of them.
             if cap is not None and act is None and flat in CAP_PURPOSE_LABELS:
                 cap["purpose"] = value
                 continue

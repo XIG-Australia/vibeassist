@@ -99,7 +99,7 @@ For each page:
    The harvest also carries per-page candidates for the other invisible layers — `validation` (what a form will refuse and why), `auth` (sign-in/session behavior on this page), `paid_gates` (where free stops), `outbound` (messages this page's actions cause to be sent), `state_literals` (status values this page moves records into). Same candidates-not-claims discipline: confirm each on a path the page's controls actually reach, then write it in user language. Repo-wide layers (scheduled work, record state enums, delete cascades) land in `_meta` and become their own MAP sections via the assembler — read them in Phase 0 so page writeups can reference the journeys records take.
 3. For each element, trace: handler → client mutation/query → server function or API endpoint → database statements → tables and columns touched, and whether it's a READ, INSERT, UPDATE, or DELETE.
    **And state the RULES the trace passes through.** Wherever the path branches, calculates, or filters — a condition that gates the write, a formula that produces the number, an ordering rule — the action's writeup must state that rule in user terms ("a task counts as buildable when it has an agreed shape and no open questions"; "the total is hours × rate, rounded up to the half hour"). A rule you cannot state plainly is an action you have not finished tracing — and it is the first thing a rebuild gets wrong.
-4. Group actions into capabilities (noun-phrases a user would recognize: "Manage your account"). Typical pages have 1-7. **Zero is a valid answer** — a policy page you only read has no capabilities, and saying so is correct. Never invent a capability to fill the section; that is how a map starts lying.
+4. Group actions into capabilities (noun-phrases a user would recognize: "Manage your account"), and give each ONE LINE saying what it is for — what a person achieves by using it, not a restatement of its name. A capability travels to the owner's board as a card of its own, and without that line the card arrives with no words on it: "they do seem to be in there, but very thin." Typical pages have 1-7. **Zero is a valid answer** — a policy page you only read has no capabilities, and saying so is correct. Never invent a capability to fill the section; that is how a map starts lying.
 5. Note what the page displays on load (which tables are READ to render it).
 
 Save as `map/pages/<route-slug>.md`.
@@ -161,15 +161,7 @@ Also bundled: `python scripts/tree_from_map.py map/ -o tree.md` renders the site
   - Evidence: src/routes/account/settings.tsx:14-31
 
 ## Capability: Manage your account
-**What it's for:** Everything to do with your own login and how you sign in.
-  <!-- REQUIRED, one line. A capability used to be a name and a list of actions,
-       so everything the reading learned lived on the actions and the capability
-       itself arrived with nothing of its own — and capability cards are two
-       thirds of an imported board. Reported after a re-read: "they do seem to
-       be in there, but is very thin." Say what a person achieves with the whole
-       group, not what any one control does. If the only sentence you can write
-       is the name again, the grouping is wrong — merge or split it. -->
-
+**What it's for:** Keeping the details other people see about you correct, and your sign-in secure.
 ### Action: Update your username
 - What happens: You type a new name and save; it changes everywhere your name appears.
 - Trigger: "Display name" field + "Save changes" button
@@ -187,6 +179,7 @@ Also bundled: `python scripts/tree_from_map.py map/ -o tree.md` renders the site
 - Evidence: src/components/SecurityCard.tsx:27 → `supabase.auth.resetPasswordForEmail` → (auth service; no app tables)
 
 ## Capability: Control your notifications
+**What it's for:** Deciding which emails this app is allowed to send you.
 ### Action: Turn email digests on or off
 - What happens: Flipping the toggle immediately changes whether you get the weekly summary email.
 - Trigger: "Weekly digest" toggle
@@ -204,8 +197,9 @@ Match this register exactly. "What happens" lines are written to the user as "yo
 - 100% of user-facing routes have page files; machine-only routes all appear in the appendix. A user-facing route with no page file is a failure.
 - Every action has Evidence; `check_evidence.py` passes with zero failures (or failures are marked `⚠ UNVERIFIED`).
 - Every "no inbound link" claim was checked against page links, shared chrome, AND config arrays, with param syntax normalized.
+- Every capability has a **What it's for** line, and it says something its name does not already say. "Manage your account — lets you manage your account" is a failure; it is the sentence the owner reads on the card.
 - A non-technical reader can answer "what can I do on this page and what data does it change?" for any page without opening the code.
 - Depth is uniform: the last page mapped is as detailed as the first.
-- Every capability states **what it's for** in one line. `emit_map_json.py` counts these and warns when none do — a run where no capability says what it is for produces a board of cards that all read the same.
+- `emit_map_json.py` counted the **What it's for** lines above and did not warn — a run where no capability states one produces a board of cards that all read the same.
 - `emit_map_json.py` printed an app-wide line, not `WARNING: no harvest read`. A map.json without it is half a reading wearing a complete one's face.
 - Defects are one line each, not joined, and each carries its own Evidence.
