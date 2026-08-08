@@ -38,7 +38,10 @@ to connect VibeAssist first; do not improvise a transport.
 >   exercises the feature and writes its verdict and evidence to the ask. If the
 >   user wants a verdict on the record, that is the door.
 > - **A send-back is the user's, and it already works.** They send an ask back
->   on the board; the ask moves to `cameback` carrying their words.
+>   on the board; it returns to `shaping` carrying their words, with the reason
+>   **came back** on the second axis. (`cameback` was a status until 7 August;
+>   it is a reason now, not a state — anything going back into work is being
+>   worked out again.)
 >
 > Your job in this seat is to show them the evidence and say plainly what you
 > think, one ask at a time — not to stamp the record yourself.
