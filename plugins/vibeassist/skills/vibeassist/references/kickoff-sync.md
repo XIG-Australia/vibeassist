@@ -10,7 +10,7 @@ safe, Package install, Formatting). **VA stores the preference; the user's
 machine enforces it** — this sync is how the preference reaches the machine,
 and it is ALWAYS the user's call. Every write below is offer-first in EVERY
 mode, worker and drain included: editing the user's settings file is a config
-change on their machine, not sprint work, so the sprint consent envelope does
+change on their machine, not build work, so the consent to build an Ask does
 NOT cover it.
 
 ## Incremental allow-rules sync (`commandApprovals`)
@@ -70,8 +70,8 @@ categories + git + safe reads + curl, the `deny` floor, and
   own deny entries); set `sandbox.network.allowedDomains` to include the
   baseline's domains; and add the parent of your verified clone dir to
   `permissions.additionalDirectories` per `additionalDirectoriesHint` (so edits
-  in a per-sprint worktree don't prompt). Preserve everything the user already
-  has. This yields a worker that runs a sprint end-to-end with zero prompts —
+  in a worktree don't prompt). Preserve everything the user already
+  has. This yields a worker that runs an Ask end-to-end with zero prompts —
   the goal is to make AUTO/BYPASS MODE UNNECESSARY, never to reach for it.
 - **Never** widen `Bash(curl:*)` without also writing the sandbox pin — the
   baseline always ships them together; keep them together on merge.

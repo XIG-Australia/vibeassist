@@ -5,7 +5,7 @@
 read it BEFORE arming the listening loop.
 
 The terminal session is a LISTENER the user starts ONCE per working session;
-everything after is pushed from VA (Start sprint, questions, jobs). Never make
+everything after is pushed from VA (Start, questions, jobs). Never make
 the user type further instructions into the terminal — if you need
 information, use the `/ask` question channel, not the chat.
 
@@ -18,11 +18,15 @@ packaged source is this skill's `scripts/va-standby.sh` (the STANDBY variant).
 The CONTENT differs by role in exactly one place:
 
 - **worker** variant polls with `&sprints=1`, so the server also wakes it when
-  a queued sprint is waiting for a worker (`wakeEligibleSprints` — the fix for
-  "Start pressed, worker listening, nothing happened").
-- **standby** variant must NOT send it — a responder can't consume a sprint,
-  and waking on one degrades the long-poll into a busy loop (the 2026-07-08
-  live bug; see `references/incidents.md`).
+  an approved Ask is waiting (the fix for "Start pressed, worker listening,
+  nothing happened"). The parameter keeps its old spelling on purpose, so an
+  installed launcher and an older copy of this script keep waking correctly
+  without being updated first; `&work=1` is the name it should have and is
+  accepted too. What it wakes ON changed with the sprint road's removal — a
+  queued task no longer ends the hold, because nothing can consume one.
+- **standby** variant must NOT send it — a responder can't take an Ask, and
+  waking on one degrades the long-poll into a busy loop (the 2026-07-08 live
+  bug; see `references/incidents.md`).
 
 At kickoff, write `~/.claude/va-standby.sh` if it's missing or doesn't match
 YOUR role's variant: copy the packaged `scripts/va-standby.sh` for standby;

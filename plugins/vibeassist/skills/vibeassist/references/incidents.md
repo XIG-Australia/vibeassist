@@ -10,7 +10,7 @@ where that rule now lives.
 A standby responder ran the worker variant of the long-poll (with
 `&sprints=1`), so the server woke it for queued sprints it could never
 consume, degrading the long-poll into a busy loop. → Rule: the standby variant
-must NOT send `&sprints=1`; a standby that wakes with only sprint counts set is
+must NOT send `&sprints=1`; a standby that wakes with only work counts set is
 running the wrong variant and self-heals by rewriting the script.
 (`references/listening-roles.md`.)
 
@@ -21,7 +21,7 @@ terminal; VA showed a healthy queue while nothing moved for 70 minutes. The
 same day established the preflight gap: a worker died mid-task on
 `gh: command not found` (exit 127) with the truth visible only in the
 terminal. → Rules: NO INVISIBLE PAUSES (every deliberate stop goes through
-`/ask`); a started sprint overrides review-mode's per-task pause; run the tool
+`/ask`); a claimed Ask is built through to its report, not paused mid-way; run the tool
 preflight at kickoff and surface missing tools as a `kind:notice`. (Core
 Guardrails + Kickoff.)
 
@@ -30,8 +30,8 @@ Guardrails + Kickoff.)
 The canonical clone had been flipped onto a sprint branch, so a `db:push` ran
 from a checkout holding NONE of the day's migration files — it reported
 "nothing to push" while prod was missing schema. → Rule: the canonical clone is
-pinned to `main` at all times; build ONLY in per-sprint worktrees
-(`git worktree add -b <branch> <clone>-<sprintShortId> origin/main`); machine
+pinned to `main` at all times; build ONLY in worktrees
+(`git worktree add -b <ask.branch> <clone>-<askShortId> origin/main`); machine
 command guidance is pull-first. (Core Guardrails.)
 
 ## 2026-07-14 — the stale-env trap (valid token misread as revoked)
@@ -61,7 +61,8 @@ core §1; contract pinned by `src/lib/va-check-script.test.ts`.)
 
 A listening worker delivered one packet, drained its ai_jobs, then cleanly
 exited with 6 sprints still queued — two confirmed cycles. → Rule: DRAIN MEANS
-DRAIN — `sprint:null` is the only "queue empty" signal; the worker role
+DRAIN — `ask: null` from `next_approved_ask` is the only "queue empty" signal
+(it was `sprint:null` when this happened); the worker role
 overrides `config.mode` boundary pauses; every exit notice states its reason.
 (`references/listening-roles.md`.)
 
@@ -77,7 +78,7 @@ one tagged blob. (Core loop, complete step.)
 ## Task-ID index for the guardrails
 
 - 75a89899 — repo-safety preflight replaces the weak `git branch` glance.
-- 8f0ab37f / 3e849762 — draft PRs while pushing / no finished sprint left as a
+- 8f0ab37f / 3e849762 — draft PRs while pushing / no finished Ask left as a
   draft (draft PRs skip preview deploys; a draft can't merge).
 - 1bcede1e / 99867b7b — "Manual steps" section mandatory, operator-grade
   (stated folder, plain language, success signal).
