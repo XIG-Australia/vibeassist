@@ -12,7 +12,11 @@ visible in git), never a stash — so the tree is clean and parked work can neve
 leak into another task's commits. Record where you stopped (what's done, what
 the answer unblocks) so ANY session can resume it.
 
-## `config.onQuestion` (from the `next-sprint` response; default `continue`)
+## `config.onQuestion` (from `next_approved_ask`; default `continue`)
+
+> It used to arrive on the `next-sprint` response. That endpoint went with the
+> sprint road on 8 August 2026; the per-project run config rides with the
+> approved ask instead.
 
 - **wait** (or you have no other safe task) — poll for the answer:
 

@@ -35,9 +35,11 @@ transcribing.
 
 **MCP-first.** If the `mcp__vibeassist__*` tools are present (one-click OAuth
 connect), use them for the whole loop — they authenticate automatically and
-mirror the REST endpoints 1:1 (`next_sprint`, `start_task`, `complete_task`,
+mirror the REST endpoints (`next_approved_ask`, `report_ask_delivery`,
 `ask`/`get_answer`, `get_updates`, `open_pr`), and each tool's description
-carries its own playbook. No env vars or token check needed on this path.
+carries its own playbook. The sprint tools they used to name — `next_sprint`,
+`start_task`, `complete_task` — were removed with the sprint road on 8 August
+2026. No env vars or token check needed on this path.
 
 **Curl fallback (paste-a-key).** Needs two env vars visible to Bash:
 `VIBEASSIST_URL` (default `https://vibeassist.app`, no trailing slash) and
@@ -222,12 +224,12 @@ migration → also run `bun run db:types` and commit the regenerated types file
 release-blocker).
 
 d2. **Self-review before reporting (opt-in — only when `config.selfReview` is
-true; a per-project POC, off by default).** Before `complete_task`, spawn ONE
-independent reviewer subagent (the Task/Agent tool) with NO authorship context:
-_"You did NOT write this code. Read the diff for this task. For EACH acceptance
-criterion output pass/fail plus the file:line that satisfies it. Default to fail
-if uncertain."_ If any criterion comes back fail, FIX it in-loop and re-review —
-do not report the task done. **One level of nesting only: the reviewer must not
+true; a per-project POC, off by default).** Before `report_ask_delivery`, spawn
+ONE independent reviewer subagent (the Task/Agent tool) with NO authorship
+context: _"You did NOT write this code. Read the diff for this Ask. For EACH
+line of its Must do, output pass/fail plus the file:line that satisfies it.
+Default to fail if uncertain."_ If any line comes back fail, FIX it in-loop and
+re-review — do not report the Ask delivered. **One level of nesting only: the reviewer must not
 spawn its own subagents.** This catches a criterion miss here, in-loop, instead
 of at the post-merge verification gate. When `config.selfReview` is false, skip
 this step entirely (the server-side gate remains the backstop).
