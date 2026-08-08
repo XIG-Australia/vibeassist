@@ -3,7 +3,7 @@ name: vibeassist-map
 description: Map a codebase from the user's perspective - a sitemap of pages and how they link, what each page lets a person do (in plain language), the actions available on each page, and which database tables each action reads or writes. Use this whenever the user asks to "understand this app", "map this codebase", "document what this app does", "import this codebase", "create a sitemap from code", or wants a functional spec of an existing application - even if they don't say "map" explicitly. Do NOT produce developer-architecture docs (modules, dependencies, layers) when this skill triggers; the output must be readable by a non-technical person.
 ---
 
-<!-- vibeassist-skill-version: 0.8.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.9.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist codebase map
 

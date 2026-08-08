@@ -5,7 +5,7 @@
 read it BEFORE arming the listening loop.
 
 The terminal session is a LISTENER the user starts ONCE per working session;
-everything after is pushed from VA (Start sprint, questions, jobs). Never make
+everything after is pushed from VA (Start, questions, jobs). Never make
 the user type further instructions into the terminal — if you need
 information, use the `/ask` question channel, not the chat.
 
@@ -18,11 +18,15 @@ packaged source is this skill's `scripts/va-standby.sh` (the STANDBY variant).
 The CONTENT differs by role in exactly one place:
 
 - **worker** variant polls with `&sprints=1`, so the server also wakes it when
-  a queued sprint is waiting for a worker (`wakeEligibleSprints` — the fix for
-  "Start pressed, worker listening, nothing happened").
-- **standby** variant must NOT send it — a responder can't consume a sprint,
-  and waking on one degrades the long-poll into a busy loop (the 2026-07-08
-  live bug; see `references/incidents.md`).
+  an approved Ask is waiting (the fix for "Start pressed, worker listening,
+  nothing happened"). The parameter keeps its old spelling on purpose, so an
+  installed launcher and an older copy of this script keep waking correctly
+  without being updated first; `&work=1` is the name it should have and is
+  accepted too. What it wakes ON changed with the sprint road's removal — a
+  queued task no longer ends the hold, because nothing can consume one.
+- **standby** variant must NOT send it — a responder can't take an Ask, and
+  waking on one degrades the long-poll into a busy loop (the 2026-07-08 live
+  bug; see `references/incidents.md`).
 
 At kickoff, write `~/.claude/va-standby.sh` if it's missing or doesn't match
 YOUR role's variant: copy the packaged `scripts/va-standby.sh` for standby;
@@ -86,35 +90,30 @@ quietly, don't spin.
 an approved ask, so approving one and leaving a worker listening did nothing at
 all — and there was no way to tell that from a broken machine.)
 
-`wakeEligibleSprints > 0` (or `queuedSprints > 0` with nothing else
-actionable) → a sprint is waiting on the OLD road: PULL IT via `next-sprint`
-and run the sprint loop from the core skill, then IMMEDIATELY re-poll and keep
-pulling while any remains. If `next-sprint` returns `sprint:null` despite the
-wake, another session claimed it first — re-arm quietly. Other fields →
-surface once to the user, keep listening.
+**Sprint wakes are gone.** `wakeEligibleSprints` and `queuedSprints` used to
+mean "a sprint is waiting on the OLD road — pull it via `next-sprint`". That road
+was removed on 8 August 2026 (Simon: _"Finished and Asks only"_), the queue was
+verified empty across every project first, and `next_sprint` no longer exists. If
+those fields still arrive, **surface them once and keep listening** — do not go
+looking for a way to work them.
 
-**Flow:** run **drain** first (work everything already queued), then enter the
-listening loop. A started sprint is the consent envelope — never ask
-"continue?" between tasks or sprints; the stop conditions are the ones in the
-core Guardrails only.
+**Flow:** run **drain** first (work everything already approved), then enter the
+listening loop. An approved ask is the consent envelope — never ask "continue?"
+between asks; the stop conditions are the ones in the core Guardrails only.
 
 **DRAIN MEANS DRAIN — a worker never exits with work still waiting
-(regression guard, task f6c3618b).** On the ask road the queue-empty signal is
-`next_approved_ask` returning `ask: null`; on the sprint road it is
-`sprint:null`. Nothing else counts as empty. After a sprint's last `/complete` and its
-PR is opened, do NOT end the turn: immediately re-poll (`get_updates` →
-`next-sprint`) and pull the NEXT queued sprint, and keep going while ANY
-dispatchable sprint remains — `sprint:null` is the ONLY "queue empty" signal.
-The worker ROLE overrides `config.mode` here: a project whose `config.mode` is
-`sprint` or `review` is still fully DRAINED by a worker; those modes'
-boundary-pauses govern interactive `/vibeassist sprint|review` invocations,
-never the listening worker role. A clean early exit while `queuedSprints > 0`
-is a DEFECT, not a boundary stop (seen live 2026-07-18 — see
-`references/incidents.md`). A worker may stop ONLY when the queue is genuinely
-empty OR the sleep policy fires (idle grace / quiet hours); and its exit
-`kind:"notice"` MUST STATE THE REASON — "queue empty", "idle limit (N min)",
-or "quiet hours" — so an early exit is diagnosable from the board rather than
-looking like a silent stall.
+(regression guard, task f6c3618b).** The queue-empty signal is
+`next_approved_ask` returning `ask: null`. **Nothing else counts as empty.**
+After an ask's delivery is reported and its PR is opened, do NOT end the turn:
+immediately re-poll (`get_updates` → `next_approved_ask`) and pull the next
+approved ask, and keep going while any remains.
+
+A clean early exit while approved asks remain is a DEFECT, not a boundary stop
+(the same failure seen live on 2026-07-18 — see `references/incidents.md`). A
+worker may stop ONLY when the queue is genuinely empty OR the sleep policy fires
+(idle grace / quiet hours); and its exit `kind:"notice"` MUST STATE THE REASON —
+"queue empty", "idle limit (N min)", or "quiet hours" — so an early exit is
+diagnosable from the board rather than looking like a silent stall.
 
 ## Standby role
 

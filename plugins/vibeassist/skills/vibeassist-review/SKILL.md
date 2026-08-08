@@ -3,7 +3,7 @@ name: vibeassist-review
 description: The morning review — walk what VibeAssist built overnight, judge each delivery against its ask's acceptance criteria, record earned Truth Pass verdicts, and turn send-backs into reconciled records and new asks. Use when the user says "review what got built", "morning review", "what happened overnight", "check the overnight run", "verify the deliveries", "run the truth pass", "did it actually do what we agreed", or similar. This is NOT the worker skill's "review" mode (which governs how tasks are pulled during a build) — this skill is for judging FINISHED work after the build. Posture is skeptical reader, never author.
 ---
 
-<!-- vibeassist-skill-version: 0.8.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.9.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist morning review — the Truth Pass
 
@@ -38,7 +38,10 @@ to connect VibeAssist first; do not improvise a transport.
 >   exercises the feature and writes its verdict and evidence to the ask. If the
 >   user wants a verdict on the record, that is the door.
 > - **A send-back is the user's, and it already works.** They send an ask back
->   on the board; the ask moves to `cameback` carrying their words.
+>   on the board; it returns to `shaping` carrying their words, with the reason
+>   **came back** on the second axis. (`cameback` was a status until 7 August;
+>   it is a reason now, not a state — anything going back into work is being
+>   worked out again.)
 >
 > Your job in this seat is to show them the evidence and say plainly what you
 > think, one ask at a time — not to stamp the record yourself.
