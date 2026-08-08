@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "vibeassist",
+      "whenToUse": "Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says \"build my VibeAssist Asks\", \"work my VibeAssist queue\", \"drain my VibeAssist backlog\", or similar. Modes \u2014 \"review\" (default: one Ask at a time, confirm before the next), \"run\" (work through the run, then pause), \"drain\" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): \"worker\" (build approved Asks, then keep listening \u2014 new work starts automatically when the user presses Start in VA), \"standby\" (long-poll responder: watch for updates and act/surface them).",
+      "files": [
+        "SKILL.md",
+        "references/delivery-on-asks.md",
+        "references/incidents.md",
+        "references/kickoff-sync.md",
+        "references/listening-roles.md",
+        "references/question-channel.md",
+        "references/setup.md",
+        "scripts/va-check.sh",
+        "scripts/va-preflight.sh",
+        "scripts/va-standby.sh"
+      ]
+    },
+    {
+      "name": "vibeassist-decompose",
+      "whenToUse": "Turn a raw idea (greenfield) or an existing codebase (breakdown/ingestion) into a well-formed Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says \"decompose my idea\", \"break down this app\", \"break this down into asks\", \"build my idea tree\", \"turn this repo into asks\", \"map my codebase in VibeAssist\", \"ingest this project\" \u2014 AND for shaping a single ask: \"shape this ask\", \"shape the <name> ask\", \"spec this card\", \"flesh out this ask\", \"help me shape it\", or similar. Three entries \u2014 greenfield (propose the shape from knowledge and judgment), breakdown (decompose from what the code actually contains), and single-ask shaping (skip the tree; run the shaping pass on the one ask the user brought). Proposals are draft-first \u2014 the user accepts before the board changes.",
+      "files": [
+        "SKILL.md",
+        "references/decomposition-examples.md",
+        "references/graveyard.md",
+        "references/three-role-audience.md"
+      ]
+    },
+    {
+      "name": "vibeassist-map",
+      "whenToUse": "Map a codebase from the user's perspective - a sitemap of pages and how they link, what each page lets a person do (in plain language), the actions available on each page, and which database tables each action reads or writes. Use this whenever the user asks to \"understand this app\", \"map this codebase\", \"document what this app does\", \"import this codebase\", \"create a sitemap from code\", or wants a functional spec of an existing application - even if they don't say \"map\" explicitly. Do NOT produce developer-architecture docs (modules, dependencies, layers) when this skill triggers; the output must be readable by a non-technical person.",
+      "files": [
+        "SKILL.md",
+        "scripts/assemble.py",
+        "scripts/check_evidence.py",
+        "scripts/emit_map_json.py",
+        "scripts/gen_edges.py",
+        "scripts/harvest.py",
+        "scripts/index_calls.py",
+        "scripts/nav_edges.py",
+        "scripts/routes_file_based.py",
+        "scripts/routes_react_router.py",
+        "scripts/tree_from_map.py"
+      ]
+    },
+    {
+      "name": "vibeassist-review",
+      "whenToUse": "The morning review \u2014 walk what VibeAssist built overnight, judge each delivery against its ask's acceptance criteria, record earned Truth Pass verdicts, and turn send-backs into reconciled records and new asks. Use when the user says \"review what got built\", \"morning review\", \"what happened overnight\", \"check the overnight run\", \"verify the deliveries\", \"run the truth pass\", \"did it actually do what we agreed\", or similar. This is NOT the worker skill's \"review\" mode (which governs how tasks are pulled during a build) \u2014 this skill is for judging FINISHED work after the build. Posture is skeptical reader, never author.",
+      "files": ["SKILL.md"]
+    }
+  ]
+}

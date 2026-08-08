@@ -3,7 +3,7 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield) or an existing codebase (breakdown/ingestion) into a well-formed Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — AND for shaping a single ask: "shape this ask", "shape the <name> ask", "spec this card", "flesh out this ask", "help me shape it", or similar. Three entries — greenfield (propose the shape from knowledge and judgment), breakdown (decompose from what the code actually contains), and single-ask shaping (skip the tree; run the shaping pass on the one ask the user brought). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.8.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.9.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist idea decomposition — the walk
 
