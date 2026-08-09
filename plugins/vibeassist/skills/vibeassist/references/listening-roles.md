@@ -163,6 +163,60 @@ connect the MCP server to fulfil them") and keep listening.
     the old board and has no ask-native replacement yet. Until it does, the
     summary in your result is the only record, so write it as though it is the
     only thing anyone will read. It is.
+- **Job playbook — `fix_pr` (a pull request that will not merge).** VibeAssist
+  watches the PRs it opens, and until now it could only SAY when one went red:
+
+  > "I notice I have to often call sessions back to fix conflicts or CI and
+  >  other issues in PRs."
+
+  This job is the answer to that. It is the one job that does real work on a
+  branch, so read the whole entry before starting one.
+
+  **`input.brief` is the instruction and it is authoritative.** It names the
+  repository, the pull request, the branch, the head commit, the base branch
+  and what VibeAssist saw. Follow it in the order it gives. It also carries the
+  rules below, because they are the ones no guard can enforce from the app
+  side — the app already refuses to dispatch for a protected branch, a fork, a
+  deliberately-withheld destructive migration, or the same commit twice. What
+  it cannot check is what you do once you have the checkout.
+
+  1. **REPRODUCE IT FIRST.** Check the branch out at the named commit and run
+     the failing check yourself. Do not change a line before you have seen the
+     failure. If it will not reproduce, that IS the finding — report it and
+     stop.
+  2. **CHECK THE BASE BRANCH.** Run the same check there. If it fails there
+     too, this PR did not cause it: report that and stop. "Fixing" it on this
+     branch hides somebody else's breakage inside an unrelated pull request.
+  3. **Only that branch.** Never commit to the base or to a second PR.
+  4. **Never rewrite history.** No force-push, no rebase, no amending a pushed
+     commit. Add commits — somebody may have this branch checked out.
+  5. **Do not make the red go away.** Deleting a test, loosening a guard,
+     raising a ratchet baseline or adding an ignore is not a fix; it is the
+     failure plus a blindfold. If the check is genuinely wrong, say so instead
+     of editing it.
+  6. **Run the WHOLE suite before pushing**, not the one check that was red.
+
+  **Report in this exact shape** — the app reads these fields and turns them
+  into what the owner is told:
+
+  ```
+  complete_ai_job(jobId, result: {
+    pushed: true|false,          // did you actually push a commit?
+    reproduced: true|false,      // did the failure reproduce for you?
+    baseAlsoFails: true|false,   // does the base branch fail the same way?
+    summary: "<what was wrong, and what you did>"
+  })
+  ```
+
+  `pushed: true` is the only value that produces silence, and rightly — the
+  watcher sees your commit on its next pass and either merges it or reports the
+  new red. Every other outcome becomes a sentence in the owner's tray, so a
+  result that says nothing produces "VibeAssist tried to fix PR #N, pushed
+  nothing, and did not say why." Do not let that be your report.
+
+  **A report IS a complete answer here.** "The base branch is broken" and "it
+  would not reproduce" are both successful outcomes of this job. Pushing
+  nothing and saying nothing is the only failure.
 
 ## Sleep policy — an idle run ENDS deliberately, it never idles forever
 

@@ -112,6 +112,35 @@ def build(tmp, with_harvest=True):
     return json.loads(out.read_text(encoding="utf-8")), r.stdout
 
 
+# PAGELESS is what a plugin's reading looks like: no router, no routes, and
+# a surface made of things you invoke rather than places you go.
+PAGELESS = [
+    {"name": "Map a repository",
+     "purpose": "Read a codebase the way its users meet it and produce a map.",
+     "file": "plugins/vibeassist/skills/vibeassist-map/SKILL.md",
+     "actions": [{"name": "Run the mapper", "whatHappens": "map.json is written"}]},
+    {"name": "Review what got built",
+     "file": "plugins/vibeassist/skills/vibeassist-review/SKILL.md"},
+]
+
+
+def build_pageless(tmp):
+    """A repo with NO routes at all — the plugin's own shape."""
+    mp = tmp / "map"
+    (mp / "pages").mkdir(parents=True, exist_ok=True)
+    (mp / "_stack.md").write_text("A Claude Code plugin: skills, no router.", encoding="utf-8")
+    (mp / "_capabilities.json").write_text(json.dumps(PAGELESS), encoding="utf-8")
+    out = tmp / "map.json"
+    r = subprocess.run(
+        [sys.executable, str(HERE / "emit_map_json.py"), str(mp), "-o", str(out)],
+        capture_output=True, text=True,
+    )
+    if r.returncode != 0:
+        print(r.stdout, r.stderr)
+        raise SystemExit(f"emitter exited {r.returncode}")
+    return json.loads(out.read_text(encoding="utf-8")), r.stdout
+
+
 def main():
     with tempfile.TemporaryDirectory() as td:
         doc, stdout = build(pathlib.Path(td))
@@ -147,7 +176,9 @@ def main():
         check("kept out of capabilities", "signals" not in json.dumps(route["capabilities"]))
 
         print("the version says what changed")
-        check("stamped /2", doc["schema"] == "user-lens-map/2", doc["schema"])
+        check("stamped /3", doc["schema"] == "user-lens-map/3", doc["schema"])
+        check("a repo WITH pages grows no capabilities array",
+              "capabilities" not in doc)
 
         print("every /1 field is still there")
         for key in ("path", "sourceFile", "audience", "authRequired", "title",
@@ -163,6 +194,53 @@ def main():
             check("warns", "WARNING: no harvest read" in stdout2)
             check("no app section invented", "app" not in doc2)
             check("pages still work", doc2["routes"][0]["capabilities"][0]["purpose"] is not None)
+
+    # ── A repository that has no pages ──────────────────────────────────────
+    #
+    #   "the plug-in is placing asks at the page level but the plug-in does not
+    #    have any pages"
+    #
+    # The consumer end of this is held in the app's map-json.pageless.test.ts.
+    # This is the producer end, and it is the half that could not be checked
+    # from over there: that the emitter writes the field at all, that a repo
+    # WITH pages does not grow one, and that "no routes" and "the enumerator
+    # never ran" produce different outcomes.
+    print()
+    print("a repository that has no pages")
+    with tempfile.TemporaryDirectory() as td3:
+        doc3, stdout3 = build_pageless(pathlib.Path(td3))
+        check("capabilities travel", len(doc3.get("capabilities", [])) == 2)
+        check("no routes invented", doc3["routes"] == [])
+        check("named", doc3["capabilities"][0]["name"] == "Map a repository")
+        check("the file it came from survives",
+              doc3["capabilities"][0]["file"].endswith("SKILL.md"))
+        check("counted separately", doc3["counts"]["pagelessCapabilities"] == 2)
+        check("counted in the total too", doc3["counts"]["capabilities"] == 2)
+        check("purposes counted", doc3["counts"]["capabilitiesWithPurpose"] == 1)
+        # "0/0 user pages mapped" is what a BROKEN run prints. It is also the
+        # right answer here, and the two must not look identical on a terminal.
+        check("the run says it found no pages", "no pages:" in stdout3)
+        check("and does not warn about an empty map",
+              "no user-visible surface at all" not in stdout3)
+
+    print()
+    print("no routes AND no capabilities is a reading that did not happen")
+    with tempfile.TemporaryDirectory() as td4:
+        # `_routes.json` absent and nothing else written: the enumerator never
+        # ran. Emitting an empty map here would turn a failed reading into a
+        # confident empty board — "I could not look" printed as "I looked and
+        # there is nothing", which is the confusion this codebase keeps closing.
+        mp4 = pathlib.Path(td4) / "map"
+        (mp4 / "pages").mkdir(parents=True, exist_ok=True)
+        (mp4 / "_stack.md").write_text("A plugin.", encoding="utf-8")
+        r4 = subprocess.run(
+            [sys.executable, str(HERE / "emit_map_json.py"), str(mp4),
+             "-o", str(pathlib.Path(td4) / "map.json")],
+            capture_output=True, text=True,
+        )
+        check("refuses rather than writing an empty map", r4.returncode != 0, r4.stdout)
+        check("says which file is missing", "_routes.json" in (r4.stderr + r4.stdout))
+        check("says what to do instead", "_capabilities.json" in (r4.stderr + r4.stdout))
 
     print()
     if failures:

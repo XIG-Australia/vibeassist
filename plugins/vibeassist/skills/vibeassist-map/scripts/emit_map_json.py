@@ -267,7 +267,43 @@ def main():
     args = ap.parse_args()
 
     mp = pathlib.Path(args.map_dir)
-    routes = json.loads((mp / "_routes.json").read_text(encoding="utf-8"))
+
+    # A REPOSITORY THAT HAS NO PAGES (schema /3).
+    #
+    #   "the plug-in is placing asks at the page level but the plug-in does not
+    #    have any pages"
+    #
+    # Some repositories are not apps with screens. A plugin is skills and a
+    # manifest; a library is exported functions; a CLI is commands. Every phase
+    # above this line is about routes, so a reading of one of those had exactly
+    # one slot to put its surface in and filed each skill as a page. It was not
+    # wrong to try — a format with one slot gets everything put in that slot.
+    #
+    # `_capabilities.json` is the second slot: things a person can DO with the
+    # repository that do not happen anywhere in particular. See SKILL.md Phase 1b.
+    caps_f = mp / "_capabilities.json"
+    pageless = json.loads(caps_f.read_text(encoding="utf-8")) if caps_f.is_file() else []
+
+    # FAIL CLOSED ON A MISSING ROUTE LIST.
+    #
+    # "There are no routes" and "the route enumerator never ran" are different
+    # facts and must never produce the same file. Defaulting a missing
+    # `_routes.json` to [] would turn a reading that never happened into a
+    # confident empty map. So it is required — UNLESS the run said, by writing
+    # `_capabilities.json`, that this repository has no routes to enumerate.
+    routes_f = mp / "_routes.json"
+    if routes_f.is_file():
+        routes = json.loads(routes_f.read_text(encoding="utf-8"))
+    elif pageless:
+        routes = []
+    else:
+        raise SystemExit(
+            f"{routes_f} is missing and no {caps_f.name} was written.\n"
+            "  Either Phase 1 never ran (enumerate the routes, then re-run this),\n"
+            "  or this repository genuinely has no routes — in which case write\n"
+            "  its surface to map/_capabilities.json (SKILL.md Phase 1b). An empty\n"
+            "  map.json must never be the way we find out the reading did not happen."
+        )
     edges_f = mp / "_edges.json"
     edges = json.loads(edges_f.read_text(encoding="utf-8")) if edges_f.is_file() else []
     notes_f = mp / "_machine_notes.json"
@@ -372,13 +408,15 @@ def main():
         # holding a map.json already written matches on it, and the importer
         # checks it. Branding churn must not invalidate existing files.
         #
-        # /2 ADDS `app`, `signals`, `defects` AND `capabilities[].purpose`.
-        # Every /1 field is unchanged and still present, so a /2 reader handles
-        # both. The bump is for the OTHER direction: a /1 reader given this file
-        # would silently drop all four, and the consumer's version check exists
-        # precisely so it says so instead. Adding fields under the old number is
-        # what makes that check worthless.
-        "schema": "user-lens-map/2",
+        # /2 ADDED `app`, `signals`, `defects` AND `capabilities[].purpose`.
+        # /3 ADDS top-level `capabilities` — the surface of a repository that
+        # has no pages at all. Every earlier field is unchanged and still
+        # present, so a /3 reader handles all three. The bump is for the OTHER
+        # direction: an older reader given this file would silently drop what
+        # was added, and the consumer's version check exists precisely so it
+        # says so instead. Adding fields under the old number is what makes
+        # that check worthless.
+        "schema": "user-lens-map/3",
         "generator": "emit_map_json.py (reference implementation)",
         "stack": stack,
         "counts": {
@@ -392,14 +430,20 @@ def main():
             "noInboundEdge": sum(1 for r in user if r.get("noInboundEdge")),
             "noWayIn": sum(1 for r in user if r.get("noWayIn")),
             "defects": defects,
-            "capabilities": sum(len(r.get("capabilities", [])) for r in out_routes),
-            "capabilitiesWithPurpose": sum(
-                1 for r in out_routes for c in r.get("capabilities", []) if c.get("purpose")
+            "capabilities": (
+                sum(len(r.get("capabilities", [])) for r in out_routes) + len(pageless)
             ),
+            "capabilitiesWithPurpose": (
+                sum(1 for r in out_routes for c in r.get("capabilities", []) if c.get("purpose"))
+                + sum(1 for c in pageless if c.get("purpose"))
+            ),
+            "pagelessCapabilities": len(pageless),
         },
         "routes": out_routes,
         "tables": dict(sorted(table_index.items())),
     }
+    if pageless:
+        doc["capabilities"] = pageless
     if app:
         doc["app"] = app
     pathlib.Path(args.out).write_text(json.dumps(doc, indent=2), encoding="utf-8")
@@ -408,6 +452,24 @@ def main():
     print(f"wrote {args.out}: {c['mapped']}/{c['userFacing']} user pages mapped, "
           f"{c['machineOnly']} machine, {c['redirects']} redirect, "
           f"{c['tables']} tables")
+    # A PAGE-LESS READING MUST NOT READ AS A FAILED ONE.
+    #
+    # "0/0 user pages mapped" is what a broken run prints. It is also, for a
+    # plugin or a library, the correct answer — and the two must not look
+    # identical on the terminal, or the right answer gets re-run all night.
+    if pageless:
+        print(f"  no pages: {len(pageless)} capability/capabilities carry this "
+              f"repository's surface instead")
+        for cap in pageless[:8]:
+            print(f"    {cap.get('name') or '(unnamed)'}"
+                  f"{'  ' + cap['file'] if cap.get('file') else ''}")
+    elif not out_routes:
+        print("  WARNING: no routes AND no capabilities — this map says the repository")
+        print("           has no user-visible surface at all. That is almost never true.")
+        print("           If it genuinely has no pages, write its surface to")
+        print("           map/_capabilities.json (SKILL.md Phase 1b) rather than shipping")
+        print("           an empty map: an empty board is indistinguishable from a")
+        print("           reading that never happened.")
     # SAY WHETHER THE APP-WIDE HALF TRAVELLED.
     #
     # Silence is how this went unnoticed: the file looked complete, the counts
