@@ -351,7 +351,47 @@ VALIDATION = re.compile(r"z\.(?:object|string|number|coerce)\b|\.min\(|\.max\(|\
 AUTH_CALL = re.compile(r"signInWith\w+|signIn\(|signUp\(|signOut\(|onAuthStateChange|getSession\(|resetPasswordForEmail|verifyOtp|useAuth\b|<Protected|RequireAuth")
 PAID_GATE = re.compile(r"\bisPro\b|is_premium|\bplan\b\s*[=!:]|\btier\b|subscription|entitlement|\bupgrade\b|Paywall|price_?[iI]d|lookup_key|checkout\.sessions?")
 OUTBOUND_SEND = re.compile(r"emails?\.send\(|sgMail\.send|sendMail\(|sendEmail|scheduleNotificationAsync|sendPushNotificationsAsync|messages\.create\(|\.send\(\s*\{")
-SCHEDULED = re.compile(r"cron\.schedule\(|node-cron|setInterval\(|Deno\.cron|pg_cron|schedule\s*=|every\s+\d+\s+(?:minutes|hours)", re.I)
+# WHAT RUNS ON ITS OWN, WITH A NAME AND A SCHEDULE ON IT.
+#
+# This used to be one regex that matched the WORD — `pg_cron`, `schedule =`,
+# `every 5 minutes` — and recorded a hit as {file, line, snippet}. Two things
+# were wrong with that, and the second is why the board's `background` kind sat
+# empty while the scan had been finding crons the whole time.
+#
+# It was NOISE. On vibeassist-app it produced 40 "scheduled jobs", of which 17
+# were a bare `cron.schedule(` with the name on the next line, several were the
+# phrase "pg_cron" inside a SQL comment, and three were in a test file. A person
+# reading that list learns nothing; a board built from it would carry 40 cards
+# and no jobs.
+#
+# And it carried NO NAME AND NO SCHEDULE, which are precisely the two fields the
+# consumer reads: map-json.ts filters `app.scheduled` on `s.name` and prints
+# `s.schedule`. Every one of the 40 was therefore dropped on arrival — the
+# emitter passed them through faithfully and the importer could not use one of
+# them. Producer and consumer were each self-consistent and had never agreed.
+#
+# So this reads the DECLARATION rather than the mention. A job we cannot name is
+# not silently discarded either — see `scheduled_unnamed` — because "we found
+# something and could not name it" is a different fact from "there is nothing".
+#
+# pg_cron: SELECT cron.schedule('drain-queue', '* * * * *', $$ … $$)
+#          — the real form spans lines, so \s must be allowed to cross them.
+PG_CRON_JOB = re.compile(
+    r"""\bcron\.schedule\(\s*['"]([^'"\n]+)['"]\s*,\s*['"]([^'"\n]+)['"]""", re.I)
+# Deno.cron("nightly digest", "0 3 * * *", handler)
+DENO_CRON = re.compile(r"""\bDeno\.cron\(\s*['"]([^'"\n]+)['"]\s*,\s*['"]([^'"\n]+)['"]""")
+# node-cron: cron.schedule('*/5 * * * *', fn) — the schedule is the FIRST arg and
+# there is no name at all, which is the case PG_CRON_JOB must not misread.
+NODE_CRON = re.compile(r"""\bcron\.schedule\(\s*['"]([^'"\n]+)['"]""", re.I)
+# const poller = setInterval(fn, 60000) — a name only when someone bound one.
+INTERVAL_NAMED = re.compile(r"""\b(?:const|let|var)\s+(\w+)\s*=\s*setInterval\([^,]*,\s*(\d+)""")
+INTERVAL_BARE = re.compile(r"""\bsetInterval\(""")
+# Five or six fields of cron characters, and nothing else. This is what tells a
+# pg_cron name from a node-cron schedule in the same syntactic position.
+CRON_EXPR = re.compile(r"^[\d*/,\-]+(?:\s+[\d*/,\-]+){4,5}$")
+# Something schedule-shaped that we could NOT turn into a named job. Counted, not
+# emitted: a silent drop reads as "this app runs nothing on its own".
+SCHEDULE_HINT = re.compile(r"\bnode-cron\b|\bDeno\.cron\b|\bpg_cron\b|\bsetInterval\(", re.I)
 STATE_LITERAL = re.compile(r"""(?:status|state)\s*:\s*['\"](\w[\w-]*)['\"]""")
 GLOBAL_FEEDBACK = re.compile(r"<Toaster\b|<ToastProvider|ToastContainer|<Sonner\b|new QueryClient\(|<ErrorBoundary\b")
 SERVICE_DEPS = {  # package.json dependency -> human name (Keys & services list)
@@ -367,9 +407,95 @@ EMAIL_DEPS = {"resend", "@sendgrid/mail", "nodemailer"}
 PAYMENT_DEPS = {"stripe", "@stripe/stripe-js"}
 
 
+def is_test_file(rel: str) -> bool:
+    """A cron in a test is a fixture, not a job this app runs."""
+    low = rel.lower()
+    return (".test." in low or ".spec." in low or "__tests__/" in low
+            or low.startswith("test/") or "/test/" in low or "/e2e/" in low)
+
+
+def find_scheduled(text: str, rel: str):
+    """Named scheduled jobs in one file, plus a count of what could not be named.
+
+    Returns (jobs, unnamed) where a job is {name, schedule, file, line} — the
+    two fields the consumer actually reads. See the note above PG_CRON_JOB for
+    why matching the WORD instead of the DECLARATION produced forty jobs and
+    zero cards.
+    """
+    jobs, unnamed = [], 0
+    if is_test_file(rel):
+        return jobs, unnamed
+    line_of = lambda pos: text[:pos].count("\n") + 1
+
+    claimed = []  # spans already read as a named job, so one call is not two
+    for pat in (PG_CRON_JOB, DENO_CRON):
+        for m in pat.finditer(text):
+            first, second = m.group(1).strip(), m.group(2).strip()
+            # node-cron puts the SCHEDULE first and has no name. Same shape, so
+            # the cron expression is what tells them apart.
+            if CRON_EXPR.match(first) and not CRON_EXPR.match(second):
+                continue
+            jobs.append({"name": first, "schedule": second, "file": rel, "line": line_of(m.start())})
+            claimed.append(m.span())
+
+    for m in NODE_CRON.finditer(text):
+        if any(a <= m.start() < b for a, b in claimed):
+            continue
+        if not CRON_EXPR.match(m.group(1).strip()):
+            continue  # not a schedule; some other cron.schedule overload
+        name = nearest_binding(text, m.start())
+        if name:
+            jobs.append({"name": name, "schedule": m.group(1).strip(), "file": rel,
+                         "line": line_of(m.start())})
+        else:
+            unnamed += 1
+
+    for m in INTERVAL_NAMED.finditer(text):
+        ms = int(m.group(2))
+        jobs.append({"name": m.group(1), "schedule": every(ms), "file": rel,
+                     "line": line_of(m.start())})
+        claimed.append(m.span())
+    for m in INTERVAL_BARE.finditer(text):
+        if not any(a <= m.start() < b for a, b in claimed):
+            unnamed += 1
+
+    # Anything schedule-shaped we never turned into a job. Counted so a repo
+    # whose idiom we do not know reads as "we saw something here" rather than
+    # as "nothing runs on its own".
+    for m in SCHEDULE_HINT.finditer(text):
+        if not any(a <= m.start() < b for a, b in claimed) and "setInterval" not in m.group(0):
+            unnamed += 1
+    return jobs, unnamed
+
+
+def every(ms: int) -> str:
+    """60000 -> 'every minute'. A person does not read milliseconds."""
+    if ms % 3_600_000 == 0:
+        n = ms // 3_600_000
+        return "every hour" if n == 1 else f"every {n} hours"
+    if ms % 60_000 == 0:
+        n = ms // 60_000
+        return "every minute" if n == 1 else f"every {n} minutes"
+    if ms % 1000 == 0:
+        n = ms // 1000
+        return "every second" if n == 1 else f"every {n} seconds"
+    return f"every {ms}ms"
+
+
+def nearest_binding(text: str, pos: int) -> str | None:
+    """The identifier this call was bound to, if any, looking back a few lines."""
+    head = text[:pos].splitlines()[-4:]
+    for line in reversed(head):
+        m = re.search(r"\b(?:const|let|var|function|async function)\s+(\w+)", line)
+        if m:
+            return m.group(1)
+    return None
+
+
 def collect_app_behaviors(repo: pathlib.Path):
     """Repo-wide: scheduled work, record state values, delete consequences."""
     scheduled, cascades, soft_delete, enums = [], [], [], {}
+    unnamed_schedules = 0
     sql_files = sorted(repo.glob("supabase/migrations/*.sql"))[:300]
     enum_decl = re.compile(r"create\s+type\s+\"?(\w+)\"?\s+as\s+enum\s*\(([^)]+)\)", re.I)
     check_in = re.compile(r"\"?(\w+)\"?\s+\w+[^,]*check\s*\([^)]*in\s*\(([^)]+)\)", re.I)
@@ -386,8 +512,9 @@ def collect_app_behaviors(repo: pathlib.Path):
                              "line": text[:m.start()].count("\n") + 1})
         if "deleted_at" in text:
             soft_delete.append(rel)
-        for m in SCHEDULED.finditer(text):
-            scheduled.append({"file": rel, "line": text[:m.start()].count("\n") + 1, "snippet": text[m.start():m.start()+120].split("\n")[0]})
+        jobs, unnamed = find_scheduled(text, rel)
+        scheduled.extend(jobs)
+        unnamed_schedules += unnamed
     code_files = [p for pat in ("src/**/*.ts", "supabase/functions/**/*.ts", "app/**/*.ts") for p in repo.glob(pat) if "node_modules" not in p.parts][:600]
     for f in code_files:
         try:
@@ -395,8 +522,9 @@ def collect_app_behaviors(repo: pathlib.Path):
         except OSError:
             continue
         rel = str(f.relative_to(repo)).replace("\\", "/")
-        for m in SCHEDULED.finditer(t):
-            scheduled.append({"file": rel, "line": t[:m.start()].count("\n") + 1, "snippet": t[m.start():m.start()+120].split("\n")[0]})
+        jobs, unnamed = find_scheduled(t, rel)
+        scheduled.extend(jobs)
+        unnamed_schedules += unnamed
     # full database shape: table -> [column type] from create table + add column
     columns = {}
     ct_block = re.compile(r"create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?\"?(\w+)\"?\s*\(", re.I)
@@ -418,7 +546,21 @@ def collect_app_behaviors(repo: pathlib.Path):
             columns[m.group(1)] = cols[:40]
         for m in add_col.finditer(text):
             columns.setdefault(m.group(1), []).append(f"{m.group(2)} {m.group(3)}")
-    return {"scheduled": scheduled[:40], "state_enums": enums, "delete_cascades": cascades[:60], "soft_delete_files": soft_delete[:20], "schema_columns": columns}
+    # ONE JOB IS ONE JOB. A migration that repoints four crons mentions each of
+    # them more than once, and a re-scheduling migration re-declares a job that
+    # already exists — five rows for `drain-brief-refresh-queue` is five cards
+    # for one thing. Keyed on the name AND the schedule, so a job whose timing
+    # genuinely changed still reads as the change it was.
+    seen, unique = set(), []
+    for job in scheduled:
+        key = (job["name"].lower(), job["schedule"])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(job)
+    return {"scheduled": unique[:40], "scheduled_unnamed": unnamed_schedules,
+            "state_enums": enums, "delete_cascades": cascades[:60],
+            "soft_delete_files": soft_delete[:20], "schema_columns": columns}
 
 
 def collect_permissions(repo: pathlib.Path):

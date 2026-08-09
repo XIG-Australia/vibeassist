@@ -29,7 +29,26 @@ H1 = re.compile(r"^#\s+(?P<path>\S+)\s*(?:[—-]\s*(?P<title>.*))?$")
 CAP = re.compile(r"^##\s+Capability:\s*(?P<name>.+)$")
 ACT = re.compile(r"^###\s+Action:\s*(?P<name>.+)$")
 BULLET = re.compile(r"^\s*-\s+(?P<key>What happens|Trigger|Feedback|Evidence|READS):\s*(?P<value>.*)$", re.I)
-OP_TABLE = re.compile(r"\b(?P<op>READS?|INSERT(?:/UPDATE)?|UPDATE|DELETE)\b[^`\n]*?`(?P<table>\w+)`")
+# AN OPERATION AND EVERY TABLE IT NAMES.
+#
+# This was `\b(OP)\b[^`\n]*?`(\w+)`` — one operation, ONE table, and no dots.
+# Both halves lost real tables silently:
+#
+#   READ `projects`, `asks`   ->  [projects]   `asks` was dropped
+#   READ `public.users`       ->  []           dropped entirely
+#
+# The second is the case harvest.py goes out of its way to support ("Schema-
+# qualified names allowed: [\w.]+ not \w+, public.users would truncate") and the
+# emitter put back. A table lost here is lost from the card's `touches`, from
+# the data appendix, and from the read/write index — three places, no warning.
+#
+# So: find the operation, then take every backticked name that follows it up to
+# the next operation on the line.
+OP_WORD = re.compile(r"\b(?P<op>READS?|INSERT(?:/UPDATE)?|UPDATE|DELETE)\b")
+TICKED_NAME = re.compile(r"`(?P<table>[\w.]+)`")
+CODE_SUFFIX = re.compile(
+    r"\.(?:tsx?|jsx?|mjs|cjs|py|rb|go|rs|java|php|sql|md|json|ya?ml|toml|css|html?|svelte|vue)$",
+    re.I)
 
 # The five fields the template mandates. Anything else a run invents is kept
 # verbatim under `notes` rather than dropped — see the note this script prints.
@@ -67,6 +86,26 @@ DEFECT_LABEL = re.compile(r"^defect\b|^\W*defect\b", re.I)
 DEFECT_EVIDENCE = re.compile(r"\s*[—-]?\s*Evidence:\s*(?P<ev>.+)$", re.I)
 
 
+def plugin_version():
+    """The skill's own version, read from the plugin manifest.
+
+    Single-sourced from `.claude-plugin/plugin.json` — the same file SKILL.md's
+    version marker is stamped from — rather than written here, because two
+    hand-kept copies of a version number is one copy too many. None when the
+    scripts have been vendored somewhere without the manifest, which is honest:
+    a missing answer beats a stale one.
+    """
+    here = pathlib.Path(__file__).resolve()
+    for parent in here.parents:
+        manifest = parent / ".claude-plugin" / "plugin.json"
+        if manifest.is_file():
+            try:
+                return json.loads(manifest.read_text(encoding="utf-8")).get("version")
+            except (json.JSONDecodeError, OSError):
+                return None
+    return None
+
+
 def norm_label(label):
     """Strip decoration so '⚠ Defect worth knowing about' matches 'defect'."""
     return re.sub(r"^[^A-Za-z]+", "", label).strip().lower()
@@ -83,13 +122,24 @@ def cites(text):
 
 def tables(text):
     seen, out = set(), []
-    for m in OP_TABLE.finditer(text):
+    ops = list(OP_WORD.finditer(text))
+    for i, m in enumerate(ops):
         op = m.group("op").upper()
         op = "READ" if op.startswith("READ") else op
-        key = (m.group("table"), op)
-        if key not in seen:
-            seen.add(key)
-            out.append({"name": m.group("table"), "op": op})
+        # Everything this operation names, up to wherever the next one starts.
+        stop = ops[i + 1].start() if i + 1 < len(ops) else len(text)
+        for t in TICKED_NAME.finditer(text, m.end(), stop):
+            name = t.group("table")
+            # A file path in backticks is not a table. The template says not to
+            # backtick file names, and runs do it anyway. Matched on a KNOWN
+            # extension rather than "has a dot", because `public.users` has a dot
+            # and is exactly the schema-qualified name this is here to keep.
+            if "/" in name or CODE_SUFFIX.search(name):
+                continue
+            key = (name, op)
+            if key not in seen:
+                seen.add(key)
+                out.append({"name": name, "op": op})
     return out
 
 
@@ -328,11 +378,15 @@ def main():
         return s or "index"
 
     pages = {}
+    unreadable_pages = []
     for f in sorted((mp / "pages").glob("*.md")):
         p = parse_page(f.read_text(encoding="utf-8"))
         p["pageFile"] = f.name
         if p.get("path"):
             pages[p["path"]] = p
+        else:
+            # No `# /path — Title` heading, so nothing can attach it to a route.
+            unreadable_pages.append(f.name)
 
     inbound = {}
     for e in edges:
@@ -353,9 +407,25 @@ def main():
             "inbound": inbound.get(path, []),
             "mapped": path in pages,
         }
-        if r.get("audience") == "user":
-            # only meaningful for pages a person opens
+        # Only meaningful for a page a person opens AND that somebody actually
+        # read. On an unmapped route there is no "Reached from outside" line to
+        # consult, so the noWayIn test below has nothing to weigh the missing
+        # link against and would answer "nothing links here" about a page nobody
+        # examined. On this repo that flagged /auth/confirm (you arrive from an
+        # email) and /checkout/success (the payment provider sends you) — the two
+        # pages whose way in is external by design. A claim nobody checked must
+        # not arrive on the owner's board as something to triage.
+        if r.get("audience") == "user" and rec["mapped"]:
             rec["noInboundEdge"] = not rec["inbound"]
+        # WHERE A REDIRECT SENDS YOU.
+        #
+        # Phase 1 reads it, `_routes.json` carries it, and assemble.py prints it
+        # in MAP.md — "an old address, kept working — sends you to /new/path".
+        # This file dropped it, so the human half of the reading knew the
+        # destination and the importer got a redirect with nowhere to go. The
+        # same one-sided loss as the harvest, one field smaller.
+        if r.get("redirect_to"):
+            rec["redirectTo"] = r["redirect_to"]
         if path in machine_notes:
             rec["note"] = machine_notes[path]
 
@@ -418,6 +488,28 @@ def main():
         # that check worthless.
         "schema": "user-lens-map/3",
         "generator": "emit_map_json.py (reference implementation)",
+        # WHICH MAPPER WROTE THIS.
+        #
+        # `schema` says which FORMAT the file is in; it does not say which
+        # release of the skill produced it, and those are different questions
+        # with different answers. A reading written by an older plugin is a
+        # perfectly valid /2 or /3 file — the consumer reads it in full and has
+        # nothing to complain about — while carrying none of the defects, none
+        # of the app-wide facts, or none of the page-less capabilities that a
+        # newer mapper would have found. Without this, "your reading is thin
+        # because your plugin is old" is a diagnosis nobody can make, and the
+        # owner re-runs a half-hour pass to get the same thin file back.
+        #
+        # NEITHER THIS NOR `redirectTo` BUMPS THE SCHEMA, and that is a decision
+        # rather than an oversight. The number moves when an older reader would
+        # DROP SOMETHING IT NEEDED — the app's own words: a /1 file "is read in
+        # full… it simply carries less", and the complaint is reserved for a
+        # NEWER file, "the case where this reader would drop something and never
+        # know it had". A /3 reader given this file builds precisely the same
+        # board; it just cannot tell you which mapper wrote it. Bumping for that
+        # would refuse every reading until the app shipped a reader for a version
+        # that changes nothing about what a card IS.
+        "generatorVersion": plugin_version(),
         "stack": stack,
         "counts": {
             "routes": len(out_routes),
@@ -470,6 +562,30 @@ def main():
         print("           map/_capabilities.json (SKILL.md Phase 1b) rather than shipping")
         print("           an empty map: an empty board is indistinguishable from a")
         print("           reading that never happened.")
+    # A PAGE FILE THAT MATCHED NO ROUTE IS WORK THROWN AWAY IN SILENCE.
+    #
+    # Pages are keyed by the `# /path — Title` heading and routes are iterated
+    # from _routes.json, so a page whose heading does not match a route is read,
+    # parsed, and never looked at again. Everything in it goes: its capabilities,
+    # its actions, its defects, its verified citations — a full Phase 3 pass on
+    # one page, gone for a trailing slash or a route renamed mid-run. Tested with
+    # a one-character typo in the heading: the run printed an identical clean
+    # summary and the file was one page lighter.
+    #
+    # Loud, and listing them, because the fix is a one-word edit ONLY if you know
+    # which file to make it in.
+    orphans = sorted(set(pages) - {r["path"] for r in out_routes})
+    if orphans or unreadable_pages:
+        print("")
+        print("WARNING: page file(s) that reached nothing — their capabilities, actions")
+        print("         and defects are NOT in this map:")
+        for path in orphans:
+            print(f"    {pages[path]['pageFile']}  heading says {path}, which is not a route")
+        for name in unreadable_pages:
+            print(f"    {name}  no '# /path — Title' heading to attach it by")
+        print("         Fix the heading to match _routes.json exactly (or the route list),")
+        print("         then re-run. A map that silently drops a page is worse than one")
+        print("         that refuses.")
     # SAY WHETHER THE APP-WIDE HALF TRAVELLED.
     #
     # Silence is how this went unnoticed: the file looked complete, the counts
