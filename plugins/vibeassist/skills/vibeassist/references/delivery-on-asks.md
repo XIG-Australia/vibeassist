@@ -1,27 +1,33 @@
 # Delivery runs on asks — the loop
 
-**Load this when:** `next_approved_ask` is available, or the user talks about
-building an ask rather than working a sprint. This is the delivery loop. The
-sprint loop in `SKILL.md` is the OLD road — still driveable while sprints are
-queued on it, but nothing new should be dispatched that way.
+**Load this when:** you want the delivery loop in more depth than `SKILL.md`
+§ 4 gives it. That section is the loop; this is the reasoning behind it and the
+detail that did not fit.
 
 Decided by Simon on 3 August 2026: _"Yes — rebuild delivery on asks, leave the
-rest in the bin."_
+rest in the bin."_ The sprint road was deleted on 8 August 2026 — tools,
+endpoints and all — after `next_sprint` returned nothing on every project.
 
 ## What changed, in one line
 
 There is no sprint to pull, no task to claim, and no batch to compose. You take
 **the next approved ask**, build it, and report what it now does.
 
-| Old                              | New                                   |
-| -------------------------------- | ------------------------------------- |
-| `next_sprint` + `start_task`     | `next_approved_ask`                   |
-| (nothing)                        | `report_ask_progress` while you build |
-| `complete_task`                  | `report_ask_delivery`                 |
-| `VibeAssist-Task: <id>` trailer  | `VibeAssist-Ask: <id>` trailer        |
-| One PR per sprint                | One PR per ask                        |
-| `create_sprint` composes a batch | Nothing. The ask tree IS the grouping |
+| Gone (8 Aug 2026)                | What does the job now                   |
+| -------------------------------- | --------------------------------------- |
+| `next_sprint` + `start_task`     | `next_approved_ask`                     |
+| (nothing)                        | `report_ask_progress` while you build   |
+| `complete_task`                  | `report_ask_delivery`                   |
+| `VibeAssist-Task: <id>` trailer  | `VibeAssist-Ask: <id>` trailer          |
+| One PR per sprint                | One PR per ask                          |
+| `create_sprint` composes a batch | Nothing. The ask tree IS the grouping   |
 | Sprint order                     | THE RUN — `set_run_order`, after asking |
+
+**Both doors, every step.** Each of those three tools has an HTTP twin
+(`/api/public/claude/next-approved-ask`, `report-ask-progress`,
+`report-ask-delivery`), so a paste-a-key worker with nothing but curl drives the
+same road. If you find one missing, that is a defect, not a reason to reach for
+something older.
 
 **Nesting replaces sprints.** An ask already contains asks. A big ask is
 delivered by delivering its children — that grouping is one the user authored,

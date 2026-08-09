@@ -50,76 +50,171 @@ product owner thinks in. It is what you'd point at and build.
 depth** — an ask contains sub-asks, and a sub-ask is simply an ask with a
 parent. Each ask is one card on the board; the map is one tree of asks and
 nothing else. Tasks attach to an ask as its build notes and never become
-cards. Every ask carries a Structured-Intent `intent_spec` — the cascade of
-**goal / intent / guardrails / acceptance**, each element individually
-ratifiable by the user — plus a derived state (shaping → needs-answers →
-proposed → agreed → queued → building → delivered → live). Those states are
-DERIVED from activity, never set by hand: decomposition's job ends at an
-agreed, shaped tree; the later rungs (queued / building / delivered / live)
-are computed downstream from sprints, build progress and deploys — not by you.
+cards.
 
-## The kind system — the complete taxonomy
+**The shape, and it is three lines — not four.** Rewritten 7 August 2026; the
+old `goal / intent / guardrails / acceptance` cascade is gone, because goal and
+intent were the same thought twice.
 
-Every ask carries a KIND from this list. The list is total: if it is not
-here, it is not in the system — restate it whole or mark the restatement
-partial (an omission a reader can't interpret is a defect).
+| Line | Asks |
+| --- | --- |
+| **What you want** | The why lives in here too |
+| **Must do** | What it must ALWAYS do. A standing requirement, not a finish line |
+| **Must not** | What it must never do. **Inherits down** — a child shows its ancestors' must-nots marked "also applies here", resolved by walking the chain. NEVER copy the text onto a child |
 
-SURFACE — what a person experiences; keep/drop decisions live ONLY here:
+### The states, and they are SET, not derived
 
-1. **Place** — where capabilities live. Three sizes, nesting: a _page_
-   (big), a _frame region_ (chrome with a fixed home on screen — menu bar,
-   header, sidebar — filed like a small page; its destination list rides as
-   one spec line, an entry promoted only when it has behavior of its own),
-   an _element_ (little — a widget or panel within a page).
-2. **Capability** — what you can do at a place.
-3. **Action** — one move a PERSON triggers, inside a capability.
-4. **Background** — a statement about a trigger nobody pulls: time, the
-   system, or another computer ("every Friday at 9, reminders go out"). The
-   trigger is recorded on the item. Default: every self-running function
-   gets a one-line background statement; skip it only when the rebuilt app
-   would behave no differently without it. (Rule 8's "engine" segment is
-   mostly background statements — the engine lens tag and this kind
-   describe the same things from two angles.)
+**Seven, on one axis. Exactly one, always.**
 
-MACHINERY — what the surface USES; referenced from asks, never carded:
+`proposed` → `shaping` → `approved` → `queued` → `building` → `delivered` →
+`accepted`
 
-5. **Function** — a named executable unit; the register lists every surface
-   item (action or background) that uses it. "Function" is also the
-   umbrella word for actions + background — but nothing is ever FILED as a
-   function at the surface: the trigger decides (person → action; no
-   person → background), and one function may rightly appear under both.
-6. **Data** — a named store the app keeps; referenced from surface items as
-   reads / writes / creates.
+**The old list said `shaping → needs-answers → proposed → agreed → queued →
+building → delivered → live`, and that states are "DERIVED from activity, never
+set by hand". Both halves were wrong.**
 
-RECONCILIATION — machinery survives surface drops (a function may still be
-used elsewhere), so a standing pass flags: functions no surface item (built
-OR planned) uses; data nothing reads (or is planned to read); data written
-but never read. Flags become retirement PROPOSALS the user ratifies —
-graveyard rules apply, never deletion.
+| Old | Now |
+| --- | --- |
+| `needs-answers` | **Not a status.** It is a REASON — see the second axis below |
+| `agreed` | `approved` |
+| `live` | **Not a status.** Going live is a date recorded on the Ask, because shipping is a threshold crossed, not a phase occupied |
+| `proposed` after `shaping` | `proposed` comes FIRST — it means the assistant suggested it and it is not yours yet |
+| "derived, never set by hand" | **Set deliberately.** Proposing, approving and queueing are things a person DOES. A status derived from activity cannot express "agreed, but not now" |
 
-VOCABULARY, not kinds: a **feature** is a noun that crosses places (avatar,
-shopping cart) → a TAG/lens, never a tree level (rule 4's tags-as-lenses);
-the deliverables under it are capabilities, and the filing test is: _if you
-deleted it, what could the user no longer do?_
+**`dropped` is not on this axis either.** It is a flag, because dropping can
+happen from anywhere and a status holding it would overwrite where the Ask got
+to. A dropped Ask keeps its status and shows it: "dropped while approved".
 
-ATTACHMENTS — spec lines riding on the ask they govern, at the lowest level
-where they are true (rule 2's shape-on-the-ask, named in full): rules and
-calculations · validation · feedback (success AND failure) · confirmation
-steps · state journeys (on the data item they belong to) · arrival
-(arrives-from / reached-from-outside) · visibility and permissions ·
-shows-on-load · live-updating behavior.
+### The second axis — why it is not moving
 
-CROSS-CUTTING REGISTERS: decisions/principles (dated, ratified, BIND named
-asks) · findings (flags pinned to asks) · app-level facts (sign-in journey,
-free-vs-paid line, global error machinery, delete cascades, database shape,
-keys & services).
+Separate from the status, because a status word is a noun and cannot also carry
+a verb. **At most one shows. Higher wins.**
+
+1. **needs you** — you are the blocker, right now
+2. **stopped without finishing** — the last attempt died, **and something
+   checked**. Silence alone NEVER sets this
+3. **came back** — you sent it back
+4. **parent not ready** — what it sits under is not ready
+5. **something it uses isn't ready** — what it LINKS to is not ready; its parent
+   may be perfectly fine
+
+**On hold is separate again**, and it masks the reason without erasing it —
+lifting the hold brings the question back so it can still be answered.
+
+**Decomposition's job still ends at a shaped, approved tree.** What changed is
+that the later rungs are not "computed downstream" — they are recorded as the
+work actually moves.
+
+## Type — there is ONE kind of thing
+
+**Rewritten 7 August 2026.** This section used to describe four surface kinds
+(place, capability, action, background) and call itself total. It was the
+pre-4-August model and it is gone.
+
+> **There is one kind of thing: the Ask.** It carries a **type**, and the type
+> changes only what the card asks you about. It never decides where something can
+> sit, never gates a field, and is never destructive when changed.
+
+| Type           | What the Ask leans on                              |
+| -------------- | -------------------------------------------------- |
+| **place**      | Look and format, what is on it, and what it can do |
+| **capability** | What it does, its rules, and what it changes       |
+| **null**       | Nobody has typed it yet — legitimate, never guessed |
+
+**`null` is "nobody has said". It is not "neither".** An untyped Ask shows the
+full set of prompts instead of a focused one. NEVER pick a type to avoid leaving
+it empty.
+
+### Two place sizes
+
+A place-typed Ask may be sized: **page** (big — a screen with its own address) or
+**element** (little — a widget or panel). `place_size` is nullable and null means
+nobody has sized it, which is UNKNOWN, not "page".
+
+**`frame` was dropped on 7 August.** It used to mean chrome with a fixed home on
+screen — a header, a sidebar. That is not a size, it is WHERE IT SITS: an element
+under the root appears everywhere by virtue of being under the root.
+
+### What happened to action and background
+
+**Action is not a type.** The only thing separating it from capability was how
+big it is, and depth already carries that. An action normally falls out of
+describing the thing it sits on, so name it INSIDE that thing's shape. A card for
+one is possible when a person genuinely asks for that one control — it is a small
+capability. **Never propose one as a card.**
+
+**Background is not a type. It became the TRIGGER.** "How is this reached or set
+off" is a property every Ask can carry — a page reached by a menu item, a
+capability reached by a button, a job set off by a schedule. Record it in
+`trigger_description`. An Ask with a trigger displays it wherever the Ask appears.
+
+### Machinery — unchanged, and still never carded
+
+**Function** — a named executable unit; the register lists every surface item
+that uses it. **Data** — a named store, referenced from surface items as
+reads / writes / creates.
+
+Machinery is referenced from Asks and **never becomes an Ask**. Reconciliation
+still stands: functions nothing uses, data nothing reads, data written but never
+read — all become retirement PROPOSALS the user ratifies, never deletions.
+
+### Folders — new on 4 August
+
+**A folder is a named container in the tree.** It holds Asks and other folders.
+It has **no shape, no status, no type and no queue position**, and it is never
+built.
+
+**Nesting an Ask under an Ask is a CLAIM** — that this belongs to that. **Putting
+one in a folder is not a claim about anything.** So a person can group work
+without inventing a relationship that is not real.
+
+An Ask has exactly ONE home: under another Ask, or in a folder. Never both.
+
+### VOCABULARY, not types
+
+A **feature** is a noun that crosses places (avatar, shopping cart) → a TAG/lens,
+never a tree level. The deliverables under it are capabilities, and the filing
+test is: _if you deleted it, what could the user no longer do?_
+
+### FINE PRINT — spec lines riding on the Ask they govern
+
+At the lowest level where they are true. **Nine sections:**
+
+rules and calculations · validation · feedback (success AND failure) ·
+confirmation steps · **state journeys** · visibility and permissions ·
+shows-on-load · **when there is nothing there** · live-updating behaviour
+
+**Two changes from the old list, both 4 August:**
+
+- **`arrival` is GONE.** It merged into the **trigger**. Where it recorded a
+  condition rather than a route — "landed cold with no session", "deep-linked
+  mid-flow" — that is **shows-on-load**.
+- **State journeys live on the ASK that owns the thing**, not "on the data item
+  they belong to". Data is machinery and machinery is never carded, so the old
+  wording named the one home that cannot exist — and nothing was ever written
+  because of it.
+
+A journey is a sentence you read: `draft → sent → paid`. That is all. Do not
+build a graph, and do not require each transition to name its cause.
+
+**"When there is nothing there" is new** and it is on EVERY Ask, not only places.
+A search with no matches and a list with nothing to approve are empty cases too,
+and they are the ones that ship as a blank rectangle. Record **which kind of
+empty** it is — "nothing sits inside this one, it is the whole thing" is a
+different sentence from "nothing lives here yet".
+
+### CROSS-CUTTING REGISTERS
+
+decisions/principles (dated, ratified, BIND named asks) · findings (flags pinned
+to asks) · app-level facts (sign-in journey, free-vs-paid line, global error
+machinery, delete cascades, database shape, keys & services).
 
 ## The decomposition rules
 
 1. **Sub-divide only for genuinely distinct wants.** The same want with more
    detail is still ONE ask. Depth appears only where wants genuinely fork.
-2. **Shape and guardrails live ON the ask, not beside it** — captured as the
-   ask's spec (its intent / guardrails / acceptance). They are crucial
+2. **The shape lives ON the ask, not beside it** — captured as the
+   ask's SHAPE (want / must do / must not). They are crucial
    detail, never spun out as sub-asks.
 3. **Prefer a shallow tree — as JUDGMENT, not law.** Depth for detail is
    almost always wrong, and that much is firm. But how deep a real thing
@@ -215,7 +310,7 @@ marked proposed / not-built**, sitting beside what exists.
 export ask", "spec this card"). Skip the tree work entirely: find the ask on the
 board (or create it if it's new intake), then run the shaping pass below on
 just that ask — same walk mechanics, recommendation-first, batched, landing the
-answers in its `intent_spec` cascade. Say which ask it landed on. This is the
+answers into its SHAPE — want, must do, must not. Say which ask it landed on. This is the
 same front gate the worker skill enforces mid-run ("chat is intake"): when a
 build session hands a voiced request over, THIS is where it gets shaped.
 
@@ -233,14 +328,14 @@ cannot shape a card until you've decided whether it should even BE one card.
 For each existing card, read the code it names, classify it, THEN act:
 
 - **Evidence-rich, single capability** → shape it flat from its dossier
-  (routes / tables / apis / files → intent / guardrails / acceptance).
+  (routes / tables / apis / files → want / must do / must not).
 - **Naked** (no dossier) → the code is still the truth. Trace it from the
   card's name + description to the code that implements it — its evidence may
   live under a _sibling_ card — build the evidence, then shape. Never shape a
   naked card from its title alone.
 - **Umbrella** → a card whose real shape splits across levels is not one ask.
   Propose its **child asks** and shape each; give the parent only an umbrella
-  intent, no flat guardrails/acceptance. (e.g. _Sprints_ → **Create / Run /
+  want, no flat must-do/must-not list. (e.g. _Sprints_ → **Create / Run /
   Review**.)
 - **Latent sibling** → when the code reveals a capability the card isn't
   really about, spin it off as its **own ask** beside this one rather than
@@ -280,7 +375,7 @@ never restructure the whole board in one silent sweep.
 ## Shape every ask — the tree is not the finish line
 
 A tree of bare titles is not a finished decomposition. After the tree is
-agreed, run a **shaping pass per ask**: capture the guardrails and detail
+agreed, run a **shaping pass per ask**: capture the must-nots and detail
 that make it properly specified.
 
 - For a UI ask: columns, states, behaviour, filters, sorting, design rules.
@@ -289,8 +384,8 @@ that make it properly specified.
 
 Shaping questions follow the same walk mechanics — recommendation-first,
 batched, mostly proposals the user confirms. The answers become the ask's
-**acceptance checklist**, written into its `intent_spec` cascade (goal /
-intent / guardrails / acceptance). Shape ask-by-ask in batches; don't block
+**must-do**, written into its SHAPE (want / must do / must not). Shape
+ask-by-ask in batches; don't block
 the whole tree on one card's shaping.
 
 **The cascade INHERITS — write deltas, never restatements.** An ask inherits
@@ -301,13 +396,13 @@ underneath its parent, never a copy:
   own goal only when it genuinely narrows the parent's.
 - **intent** accumulates down the whole chain — write the intent specific to
   THIS ask; the parents' still apply above it.
-- **guardrails** are the union of every level's — add only the ones this ask
+- **must not** is the union of every level's — add only the ones this ask
   introduces, and link one with `refines` to the parent rule it makes more
   specific rather than repeating it.
-- **acceptance** is the exception — it does NOT inherit; each ask carries its
+- **must do** is the exception — it does NOT inherit; each ask carries its
   OWN criteria, the observable "done" for this ask alone.
 
-Never copy a parent's goal or guardrails onto a child; the tree already
+Never copy a parent's want or must-nots onto a child; the tree already
 carries them down, and a restatement is a lie waiting to drift out of sync.
 
 ## Materialize on the board
