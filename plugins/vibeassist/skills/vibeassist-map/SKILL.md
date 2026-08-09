@@ -3,7 +3,7 @@ name: vibeassist-map
 description: Map a codebase from the user's perspective - a sitemap of pages and how they link, what each page lets a person do (in plain language), the actions available on each page, and which database tables each action reads or writes. Use this whenever the user asks to "understand this app", "map this codebase", "document what this app does", "import this codebase", "create a sitemap from code", or wants a functional spec of an existing application - even if they don't say "map" explicitly. Do NOT produce developer-architecture docs (modules, dependencies, layers) when this skill triggers; the output must be readable by a non-technical person.
 ---
 
-<!-- vibeassist-skill-version: 0.8.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.9.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist codebase map
 
@@ -47,6 +47,40 @@ The reliable first test is structural: **does the route declare a rendered compo
 Coverage requirement: **100% of user-facing routes get full page files.** Machine-only and redirect routes are NEVER given full page files — each gets one line in its own appendix section: machine-only as "`/webhooks/stripe` — receives payment events from Stripe", redirects as "`/old/path` — an old address, kept working — sends you to `/new/path`". Do not drop either silently; hiding real surface area is how maps lie.
 
 Output `map/_routes.json`: one entry per route with `path`, `source_file`, `layout_chain`, `auth_required` (from middleware/guards if detectable), `audience` (`user` | `machine` | `redirect`), `redirect_to` (for redirects, when readable).
+
+### Phase 1b — When the repository has NO pages (skip if Phase 1 found routes)
+
+Everything above this line assumes the thing you are reading is an app with screens. Some repositories are not. A **plugin** is skills and a manifest. A **library** is exported functions. A **CLI** is commands. An **MCP server** is tools another program calls. None of them has a router, a route, or anywhere a person can be.
+
+Until now this skill had one slot for user-visible surface — a route — and every phase demanded pages. So a reading of the VibeAssist plugin did the only thing the shape allowed and filed each of its four skills as a page:
+
+> "the plug-in is placing asks at the page level but the plug-in does not have any pages"
+
+That was not a careless reading. **A format with one slot gets everything put in that slot.** This is the second slot.
+
+**The test:** can a person *go* there? A page is somewhere you are. A skill you invoke, a command you run, a function you import, a tool another program calls — you do not go to any of them, you *use* them. If Phase 1 found no routes and this repository still plainly does something for somebody, its surface is capabilities, not pages.
+
+**Do NOT reach for this to avoid work.** If the repository has pages, its capabilities belong on them, exactly as Phase 3 says. This is only for surface that genuinely has no address. A repository with both keeps its pages and lists only the address-less part here.
+
+Enumerate deterministically, the same discipline as Phase 1 — from the manifest, the exports, the command registration, the tool list. Not from memory, and not from the README's marketing copy.
+
+Write `map/_capabilities.json`: a list of
+
+```json
+{ "name": "Map a repository",
+  "purpose": "Read a codebase the way its users meet it and produce a map.",
+  "file": "plugins/vibeassist/skills/vibeassist-map/SKILL.md",
+  "actions": [{ "name": "Run the mapper",
+                "whatHappens": "map.json and MAP.md are written",
+                "trigger": "the user asks to map a codebase",
+                "tables": [] }] }
+```
+
+Same rules as a capability anywhere else. `name` is user language. **`purpose` is the one line saying what a person achieves** — without it the card arrives on the owner's board with a template sentence and nothing to agree or correct, which is the "very thin" complaint that got `purpose` added in the first place. `file` is where it lives, so the card can be checked against something.
+
+Then **skip Phases 2 and 3** — there is no linkage to trace and no page files to write — and go to Phase 4. Phase 5's emitter picks `_capabilities.json` up automatically.
+
+**Both files missing is a failure, not an empty map.** If Phase 1 wrote no `_routes.json` and you write no `_capabilities.json`, the emitter refuses rather than producing an empty map. That is deliberate: an empty board and a reading that never happened look identical to the person receiving it, and the second must never be printed as the first.
 
 ### Phase 2 — Map page linkage (navigation lives in THREE places)
 
@@ -138,7 +172,9 @@ Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o
 
 **It reads `_harvest.json` too, and this matters more than it sounds.** For a long time it did not, while `assemble.py` did — so everything app-wide the scan learned (what runs on its own, what the app sends out, record journeys, delete cascades, the sign-in path, free vs paid, access rules, keys and services) reached a human reader in MAP.md and reached an importer NOT AT ALL. Half the reading stopped at the page files. It now picks `map/_harvest.json` up automatically; `--harvest` only overrides the location. **If it prints `WARNING: no harvest read`, the map you are about to hand over is pages and nothing else — fix that before shipping it**, because a file that looks complete and silently omits half the reading is worse than one that fails.
 
-Output is stamped `user-lens-map/2`. Every `/1` field is unchanged; `/2` adds the app-wide `app` section, per-page `signals`, `defects`, and `capabilities[].purpose`. The number exists so a consumer that only understands `/1` says so rather than quietly dropping four things — which is exactly why adding fields without bumping it would be the wrong move.
+Output is stamped `user-lens-map/3`. Every `/1` field is unchanged; `/2` added the app-wide `app` section, per-page `signals`, `defects`, and `capabilities[].purpose`; `/3` adds top-level `capabilities` — the surface of a repository that has no pages (Phase 1b). The number exists so a consumer that only understands an earlier version says so rather than quietly dropping what was added — which is exactly why adding fields without bumping it would be the wrong move.
+
+**A page-less run does not print like a broken one.** `0/0 user pages mapped` is what a failed enumeration looks like, and for a plugin it is also the right answer, so the emitter says `no pages: N capabilities carry this repository's surface instead` and names them. If it instead warns that the map has **no user-visible surface at all**, believe it: that is a reading which found nothing, and shipping it would put an empty board in front of somebody.
 
 `signals` carries the harvest's per-page regex hits (outbound mail, paid gates, sign-in, validation). They are **candidates, not claims** — the same discipline as Phase 3 — and are marked as such so a consumer never renders them as agreed behaviour. The prose you wrote and checked is the claim; these are leads.
 

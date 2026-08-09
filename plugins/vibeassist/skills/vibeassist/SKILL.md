@@ -3,7 +3,7 @@ name: vibeassist
 description: Pull the next queued sprint from VibeAssist, work through its tasks (sequencing them by dependency), and report completion back so tasks update themselves. Use when the user runs /vibeassist, or says "work my VibeAssist sprint", "pull my VibeAssist tasks", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one task at a time, confirm before next), "sprint" (drain the sprint, pause at the boundary), "drain" (keep going across sprints). Listening roles (smart kickoff, run once per working session): "worker" (drain queued sprints, then keep listening — new sprints start automatically when the user presses Start in VA), "standby" (long-poll responder: watch for updates and act/surface them).
 ---
 
-<!-- vibeassist-skill-version: 0.8.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.9.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 
 # VibeAssist task runner
 

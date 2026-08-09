@@ -1,0 +1,6 @@
+# A compiled copy of a script is not a deliverable. One was committed beside
+# emit_map_json.py and went stale the moment the source changed — a binary of
+# the OLD emitter, shipping inside the plugin, that nothing reads and nobody
+# would think to check.
+__pycache__/
+*.pyc

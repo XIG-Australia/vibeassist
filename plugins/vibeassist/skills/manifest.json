@@ -41,6 +41,7 @@
         "scripts/nav_edges.py",
         "scripts/routes_file_based.py",
         "scripts/routes_react_router.py",
+        "scripts/selftest_emit_map_json.py",
         "scripts/tree_from_map.py"
       ]
     },
