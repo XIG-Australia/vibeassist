@@ -78,7 +78,9 @@ Write `map/_capabilities.json`: a list of
 
 Same rules as a capability anywhere else. `name` is user language. **`purpose` is the one line saying what a person achieves** — without it the card arrives on the owner's board with a template sentence and nothing to agree or correct, which is the "very thin" complaint that got `purpose` added in the first place. `file` is where it lives, so the card can be checked against something.
 
-Then **skip Phases 2 and 3** — there is no linkage to trace and no page files to write — and go to Phase 4. Phase 5's emitter picks `_capabilities.json` up automatically.
+Then **skip Phases 2, 3 and 4** and go to Phase 5, which picks `_capabilities.json` up automatically.
+
+Phase 4 is skipped because it has nothing to check: `check_evidence.py` reads `map/pages/`, and there are no page files. **That is a real hole and you close it by hand.** The gate exists so a claim cannot be published without a citation somebody can check, and skipping it does not suspend that rule — before you finish, re-read each capability's source file and confirm what you wrote is what is there. Say in your feedback that you verified by hand and how many you checked; a run that quietly skipped the only verification step must not read like one that passed it.
 
 **Both files missing is a failure, not an empty map.** If Phase 1 wrote no `_routes.json` and you write no `_capabilities.json`, the emitter refuses rather than producing an empty map. That is deliberate: an empty board and a reading that never happened look identical to the person receiving it, and the second must never be printed as the first.
 
