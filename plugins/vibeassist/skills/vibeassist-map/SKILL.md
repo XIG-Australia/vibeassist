@@ -78,9 +78,17 @@ Write `map/_capabilities.json`: a list of
 
 Same rules as a capability anywhere else. `name` is user language. **`purpose` is the one line saying what a person achieves** — without it the card arrives on the owner's board with a template sentence and nothing to agree or correct, which is the "very thin" complaint that got `purpose` added in the first place. `file` is where it lives, so the card can be checked against something.
 
-Then **skip Phases 2, 3 and 4** and go to Phase 5, which picks `_capabilities.json` up automatically.
+Then **skip Phases 2 and 3** and go to Phase 5, which picks `_capabilities.json` up automatically.
 
-Phase 4 is skipped because it has nothing to check: `check_evidence.py` reads `map/pages/`, and there are no page files. **That is a real hole and you close it by hand.** The gate exists so a claim cannot be published without a citation somebody can check, and skipping it does not suspend that rule — before you finish, re-read each capability's source file and confirm what you wrote is what is there. Say in your feedback that you verified by hand and how many you checked; a run that quietly skipped the only verification step must not read like one that passed it.
+**Phase 4 still runs — in capability mode.** It used to be skipped, because `check_evidence.py` reads `map/pages/` and there are none, so it exited with an error on a perfectly good reading of a plugin. Point it at the capabilities instead:
+
+```bash
+python scripts/check_evidence.py map/pages/ --capabilities map/_capabilities.json
+```
+
+(It finds `_capabilities.json` beside the pages directory on its own, so the bare Phase 4 command works too.) It checks the half a machine can check: every capability has a name, and names a file that exists.
+
+**The other half is still yours, by hand.** A file existing is not the claim; what you wrote about it is. Before you finish, re-read each capability's source and confirm what you wrote is what is there. Say in your feedback that you verified by hand and how many you checked — a run that skipped the only verification step must not read like one that passed it.
 
 **Both files missing is a failure, not an empty map.** If Phase 1 wrote no `_routes.json` and you write no `_capabilities.json`, the emitter refuses rather than producing an empty map. That is deliberate: an empty board and a reading that never happened look identical to the person receiving it, and the second must never be printed as the first.
 
@@ -150,7 +158,9 @@ python scripts/check_evidence.py map/pages/
 
 It extracts every `file:line` citation, asserts the file exists, the line range is in bounds, AND that the cited range actually contains the symbols/tables named in the Evidence line. Existence alone is not enough — a citation can point at a real file and the wrong line.
 
-**A failed check means RE-TRACE, not soften.** Do not reword a failing claim until it is vague enough to be safe — that produces exactly the useless output this skill exists to prevent. Re-read the code and fix the citation, or delete the claim. Anything you cannot re-verify gets an explicit `⚠ UNVERIFIED` marker.
+**It also fails an Action that carries NO Evidence line at all.** It used to read only lines containing "Evidence:", so a missing citation was the one shape the gate could not see — while the quality bar below claimed every action has one. An action with nothing behind it is traced or deleted; those are the two honest endings.
+
+**A failed check means RE-TRACE, not soften.** Do not reword a failing claim until it is vague enough to be safe — that produces exactly the useless output this skill exists to prevent. Re-read the code and fix the citation, or delete the claim. Anything you cannot re-verify gets an explicit `⚠ UNVERIFIED` marker — the checker honours that marker, counts those lines separately and prints them, so an unverified claim is a stated cost rather than a hidden one. (It used to fail them anyway, which left this paragraph's own escape hatch leading nowhere.) Report the count in your feedback.
 
 Practical tip: grep for the line number BEFORE writing each Evidence line, not after. Cite what you found, don't find what you cited.
 
@@ -177,6 +187,12 @@ Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o
 Output is stamped `user-lens-map/3`. Every `/1` field is unchanged; `/2` added the app-wide `app` section, per-page `signals`, `defects`, and `capabilities[].purpose`; `/3` adds top-level `capabilities` — the surface of a repository that has no pages (Phase 1b). The number exists so a consumer that only understands an earlier version says so rather than quietly dropping what was added — which is exactly why adding fields without bumping it would be the wrong move.
 
 **A page-less run does not print like a broken one.** `0/0 user pages mapped` is what a failed enumeration looks like, and for a plugin it is also the right answer, so the emitter says `no pages: N capabilities carry this repository's surface instead` and names them. If it instead warns that the map has **no user-visible surface at all**, believe it: that is a reading which found nothing, and shipping it would put an empty board in front of somebody.
+
+**If it warns about a page file that reached nothing, STOP and fix the heading.** A page file is attached to a route by its `# /path — Title` heading, so a heading that does not match a route exactly — a trailing slash, a rename between Phase 1 and Phase 3, a typo — means the whole file is parsed and then dropped: its capabilities, its actions, its defects and every citation you verified. It used to happen in silence, and the run printed the same clean summary it prints when everything landed. The warning names the file and what its heading says; the fix is one word, in a file you now know.
+
+Two more things the emitter carries that a reader of MAP.md would otherwise have and an importer would not: a redirect's destination (`redirectTo`), and `generatorVersion` — the plugin release that produced the file. `schema` says which FORMAT this is; it cannot say that a thin reading is thin because the mapper was old, which is the question somebody actually asks when a board arrives with no defects on it.
+
+**`noWayIn` is only ever claimed about a page that was actually read.** A route with no page file has no **Reached from outside** line to weigh a missing link against, so a partial run used to report "nothing links to this page" about pages nobody had opened — on one repo that flagged the email-confirmation page and the payment-provider return page, the two whose way in is external by design. A claim nobody checked must not arrive on the owner's board as something to triage.
 
 `signals` carries the harvest's per-page regex hits (outbound mail, paid gates, sign-in, validation). They are **candidates, not claims** — the same discipline as Phase 3 — and are marked as such so a consumer never renders them as agreed behaviour. The prose you wrote and checked is the claim; these are leads.
 
@@ -233,7 +249,7 @@ Match this register exactly. "What happens" lines are written to the user as "yo
 ## Quality bars
 
 - 100% of user-facing routes have page files; machine-only routes all appear in the appendix. A user-facing route with no page file is a failure.
-- Every action has Evidence; `check_evidence.py` passes with zero failures (or failures are marked `⚠ UNVERIFIED`).
+- Every action has Evidence — `check_evidence.py` now fails an action that has none, so this bar is enforced rather than asserted — and it passes with zero failures. Anything you genuinely could not check is marked `⚠ UNVERIFIED`, which the checker counts and prints; report that count rather than letting it pass unmentioned.
 - Every "no inbound link" claim was checked against page links, shared chrome, AND config arrays, with param syntax normalized.
 - Every capability has a **What it's for** line, and it says something its name does not already say. "Manage your account — lets you manage your account" is a failure; it is the sentence the owner reads on the card.
 - A non-technical reader can answer "what can I do on this page and what data does it change?" for any page without opening the code.
@@ -241,3 +257,5 @@ Match this register exactly. "What happens" lines are written to the user as "yo
 - `emit_map_json.py` counted the **What it's for** lines above and did not warn — a run where no capability states one produces a board of cards that all read the same.
 - `emit_map_json.py` printed an app-wide line, not `WARNING: no harvest read`. A map.json without it is half a reading wearing a complete one's face.
 - Defects are one line each, not joined, and each carries its own Evidence.
+- `emit_map_json.py` warned about no page file reaching nothing. A page whose heading does not match a route is dropped whole, and the run otherwise looks identical to one where everything landed.
+- The scripts' own selftests pass: `python3 scripts/selftest_emit_map_json.py` and `python3 scripts/selftest_check_evidence.py`. They hold the contract this map is one half of — run them after touching any script here, and especially after fixing one under the process rule in Phase 4.
