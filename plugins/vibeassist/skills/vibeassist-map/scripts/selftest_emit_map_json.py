@@ -342,6 +342,28 @@ def main():
         check("says which file is missing", "_routes.json" in (r4.stderr + r4.stdout))
         check("says what to do instead", "_capabilities.json" in (r4.stderr + r4.stdout))
 
+    # THE COLUMNS THE TEMPLATE MANDATES.
+    #
+    # "READS: `profiles` (display_name, email, avatar_url)" and "UPDATE
+    # `profiles` (display_name)" are both template lines, and the parenthesis
+    # was being thrown away — so every reading wrote down which FIELDS a page
+    # touches and the consumer's Data tab said "the reading does not produce
+    # fields". It does.
+    print("\nthe columns a page touches survive the emitter")
+    from emit_map_json import tables as _tables
+    reads = _tables("READS: `profiles` (display_name, email, avatar_url), `notification_prefs`")
+    check("columns kept for the table that named them",
+          reads[0] == {"name": "profiles", "op": "READ",
+                       "columns": ["display_name", "email", "avatar_url"]}, reads)
+    check("and ABSENT for the one that did not — never an empty list standing "
+          "in for 'we looked and found none'",
+          "columns" not in reads[1], reads)
+    wrote = _tables("handler onSave src/x.tsx:42 -> UPDATE `profiles` (display_name)")
+    check("evidence lines carry them too", wrote[0].get("columns") == ["display_name"], wrote)
+    prose = _tables("READS: `orders` (whatever the reader wrote here; not columns)")
+    check("prose in the parenthesis is not mistaken for a column",
+          "columns" not in prose[0], prose)
+
     print()
     if failures:
         print(f"FAILED: {len(failures)} — {', '.join(failures)}")
