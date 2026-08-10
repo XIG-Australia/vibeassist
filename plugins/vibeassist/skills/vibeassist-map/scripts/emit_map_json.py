@@ -45,7 +45,10 @@ BULLET = re.compile(r"^\s*-\s+(?P<key>What happens|Trigger|Feedback|Evidence|REA
 # So: find the operation, then take every backticked name that follows it up to
 # the next operation on the line.
 OP_WORD = re.compile(r"\b(?P<op>READS?|INSERT(?:/UPDATE)?|UPDATE|DELETE)\b")
-TICKED_NAME = re.compile(r"`(?P<table>[\w.]+)`")
+# A column name, so prose inside the parenthesis is not mistaken for one.
+# "(display_name, email)" is columns; "(auth service; no app tables)" is not.
+COLUMN_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+TICKED_NAME = re.compile(r"`(?P<table>[\w.]+)`(?:\s*\((?P<cols>[^)]*)\))?")
 CODE_SUFFIX = re.compile(
     r"\.(?:tsx?|jsx?|mjs|cjs|py|rb|go|rs|java|php|sql|md|json|ya?ml|toml|css|html?|svelte|vue)$",
     re.I)
@@ -136,10 +139,34 @@ def tables(text):
             # and is exactly the schema-qualified name this is here to keep.
             if "/" in name or CODE_SUFFIX.search(name):
                 continue
+            # THE COLUMNS THE TEMPLATE WRITES, KEPT.
+            #
+            # The page template mandates them on both the reads line and the
+            # evidence line -- "READS: `profiles` (display_name, email,
+            # avatar_url)", "UPDATE `profiles` (display_name)" -- and this
+            # captured the backticked table and threw the parenthesis away. So
+            # every reading has been writing down exactly WHICH FIELDS a page
+            # touches, and the consumer's Data tab has been saying "the reading
+            # does not produce fields". It does. Nothing was reading them.
+            #
+            # Same shape as the rest: absent when the run did not say, never an
+            # empty list standing in for "we looked and found none".
+            cols = [c.strip(" `") for c in (t.group("cols") or "").split(",")]
+            cols = [c for c in cols if c and COLUMN_NAME.fullmatch(c)]
             key = (name, op)
             if key not in seen:
                 seen.add(key)
-                out.append({"name": name, "op": op})
+                out.append({"name": name, "op": op, **({"columns": cols} if cols else {})})
+            elif cols:
+                # The same table named twice under one operation, once with
+                # columns and once without: keep the union rather than the first
+                # sighting, which would depend on the order a sentence happened
+                # to be written in.
+                for row in out:
+                    if row["name"] == name and row["op"] == op:
+                        merged = row.get("columns", []) + [c for c in cols if c not in row.get("columns", [])]
+                        row["columns"] = merged
+                        break
     return out
 
 
