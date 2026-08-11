@@ -1,0 +1,35 @@
+name: checks
+
+# This repository had no CI at all. Both things it runs here are checks that
+# already existed and were only ever run by hand — which is the same as not
+# having them, since the failure they catch is precisely the one you forget.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The version-moved check diffs against the pull request's base, so
+          # the base commit has to be in the clone. Depth 0 is the blunt,
+          # reliable way to guarantee that for a repository this small.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Both scripts are dependency-free on purpose: they ship inside a plugin
+      # that runs on other people's machines, so anything they need would have
+      # to be installed there too.
+      - name: The version moves when the plugin does
+        run: |
+          python3 scripts/check_plugin_version.py \
+            --base "origin/${{ github.base_ref || github.event.repository.default_branch }}"
+
+      - name: The map emitter still emits what the skill's template mandates
+        run: python3 plugins/vibeassist/skills/vibeassist-map/scripts/selftest_emit_map_json.py
