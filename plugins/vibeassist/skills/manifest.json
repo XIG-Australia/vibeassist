@@ -19,12 +19,14 @@
     },
     {
       "name": "vibeassist-decompose",
-      "whenToUse": "Turn a raw idea (greenfield) or an existing codebase (breakdown/ingestion) into a well-formed Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says \"decompose my idea\", \"break down this app\", \"break this down into asks\", \"build my idea tree\", \"turn this repo into asks\", \"map my codebase in VibeAssist\", \"ingest this project\" — AND for shaping a single ask: \"shape this ask\", \"shape the <name> ask\", \"spec this card\", \"flesh out this ask\", \"help me shape it\", or similar. Three entries — greenfield (propose the shape from knowledge and judgment), breakdown (decompose from what the code actually contains), and single-ask shaping (skip the tree; run the shaping pass on the one ask the user brought). Proposals are draft-first — the user accepts before the board changes.",
+      "whenToUse": "Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says \"decompose my idea\", \"break down this app\", \"break this down into asks\", \"build my idea tree\", \"turn this repo into asks\", \"map my codebase in VibeAssist\", \"ingest this project\" — for a rebuild — \"rebuild this app\", \"rewrite it from scratch\", \"the ideas are right but the implementation is awful\", \"re-platform this\" — and for shaping one ask — \"shape this ask\", \"spec this ask\", \"flesh out this ask\". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.",
       "files": [
         "SKILL.md",
         "references/decomposition-examples.md",
         "references/graveyard.md",
-        "references/three-role-audience.md"
+        "references/rebuild.md",
+        "references/three-role-audience.md",
+        "scripts/check_language.py"
       ]
     },
     {
