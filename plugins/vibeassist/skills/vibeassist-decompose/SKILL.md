@@ -1,9 +1,11 @@
 ---
 name: vibeassist-decompose
-description: Turn a raw idea (greenfield) or an existing codebase (breakdown/ingestion) into a well-formed Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — AND for shaping a single ask: "shape this ask", "shape the <name> ask", "spec this card", "flesh out this ask", "help me shape it", or similar. Three entries — greenfield (propose the shape from knowledge and judgment), breakdown (decompose from what the code actually contains), and single-ask shaping (skip the tree; run the shaping pass on the one ask the user brought). Proposals are draft-first — the user accepts before the board changes.
+description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.10.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.11.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.11.0 (14 Aug 2026): added the plugin-only markdown-file transport — the free-tier path (one file, heading=tree, prose shape, two doors decompose/map, findings on overlap, one-way import). -->
+<!-- 0.10.0 delivered as a .skill; these changes are NOT yet in the plugin source (XIG-Australia/vibeassist) — that merge is still outstanding. -->
 
 # VibeAssist idea decomposition — the walk
 
@@ -22,17 +24,21 @@ overnight build until its ask is shaped and agreed. Chat is INTAKE, not a
 delivery chute — a request voiced in chat is captured as an ask and taken
 through the walk, never treated as a build instruction.
 
-## Transport — MCP-first
+## Transport — the board, or a markdown file
 
-The `mcp__vibeassist__*` tools are the transport; **each tool's description
-carries its own mechanics** (arguments, defaults, side-effects) — this file is
-orchestration + judgment and never restates them. A decomposition leans on:
-`list_projects`, the board tools that read and write asks — `list_asks`,
-`create_ask`, `update_ask`, `move_ask` — and the question channel (`ask` /
-`get_answer` / `get_updates`). If those tools are not present in this session, stop and tell
-the user to connect first
-(VibeAssist → Claude connection, the one-click Connect button) — do not
-improvise a transport.
+Two places asks can land, and you pick by what's present:
+
+- **The board (MCP).** When the `mcp__vibeassist__*` tools are in the session,
+  they are the transport; **each tool's description carries its own mechanics**
+  (arguments, defaults, side-effects) — this file is orchestration + judgment and
+  never restates them. A decomposition leans on `list_projects`, the board tools
+  that read and write asks — `list_asks`, `create_ask`, `update_ask`, `move_ask`
+  — and the question channel (`ask` / `get_answer` / `get_updates`).
+- **A markdown file (plugin-only / free tier).** When those tools are NOT
+  present, do not stop — this is the free-tier path, not a missing dependency.
+  Materialize the asks into a single markdown file instead (see "Materialize to
+  a markdown file", below). The walk is identical; only where the asks land
+  changes.
 
 ## The core concept — what an ask is
 
@@ -43,24 +49,217 @@ product owner thinks in. It is what you'd point at and build.
   user's level. They live under an ask as evidence, never as tree nodes.
 - An ask is **not a shape-detail**. Options, fields, rules and behaviours are
   the ask's SHAPE — its spec — and hang ON the ask, never beside it.
-- "Ask" is the genus. Card, room, peek, list-row are display forms of the
-  same entity — different views, one thing.
+- **The word is "ask", always.** Card, room, peek and list-row are just how
+  an ask is drawn on screen — display words, never the noun. Say "ask" in
+  every proposal, question and record. The owner's correction, verbatim:
+  "not cards, asks."
 
 **The data model you decompose into:** the tree is **asks, nested to any
 depth** — an ask contains sub-asks, and a sub-ask is simply an ask with a
-parent. Each ask is one card on the board; the map is one tree of asks and
+parent. Each ask is one ask on the board; the map is one tree of asks and
 nothing else. Tasks attach to an ask as its build notes and never become
-cards.
+asks.
 
 **The shape, and it is three lines — not four.** Rewritten 7 August 2026; the
 old `goal / intent / guardrails / acceptance` cascade is gone, because goal and
 intent were the same thought twice.
 
-| Line | Asks |
+| Line | What it is |
 | --- | --- |
-| **What you want** | The why lives in here too |
-| **Must do** | What it must ALWAYS do. A standing requirement, not a finish line |
-| **Must not** | What it must never do. **Inherits down** — a child shows its ancestors' must-nots marked "also applies here", resolved by walking the chain. NEVER copy the text onto a child |
+| **What you want** | The picture, in one or two short sentences. The why lives in here too. A competent builder infers the rest |
+| **Must do** | Callouts a builder might MISS — needed, but not obvious from the want. Empty is fine |
+| **Must not** | Refusals of what a builder might WRONGLY add or assume. Empty is fine. **Inherits down** — a child shows its parents' must-nots marked "also applies here". NEVER copy the text onto a child |
+
+**Say nothing twice.** If the want says "$20 through Stripe when the
+customer books", then "charge exactly $20" as a must-do is noise — it
+restates what any builder already read. Full doctrine: "Must do and must
+not — corrections, not summaries", below.
+
+### The cake rule — an ask means what it says, and no more
+
+The failure this whole system exists to prevent, in the founder's image: the
+user asked for a chocolate cake and the build session delivered a chocolate
+*experience* — fountains, oompa-loompas, no off switch. Vibe-coding tools
+fail this way because they treat **silence as licence**: anything the shape
+doesn't forbid becomes room for invention, and the result is an app the user
+never asked for wearing the name of the one they did.
+
+So the rule, binding in every mode and every shaping pass:
+
+- **The default reading of every ask is the plainest competent version of
+  the want.** Not the impressive version, not the "delightful" version — the
+  plain one. The user can always ask for more; they should never have to
+  fight off more.
+- **Silence is not licence.** A capability, screen, option, animation or
+  flourish the shape does not name is not permitted-by-omission — it is
+  UNDECIDED, and undecided means a walk-question or a held ask, never a
+  delivery.
+- **Fence the scope where the temptation is real.** During shaping, ask
+  "how plain?" and write the answer down. The generic fence lives ONCE, as
+  an app-level rule: "Build only what the asks say. Anything extra is a
+  question first." A per-ask must-not is added only where a builder would
+  plausibly add something this user doesn't want ("no extra fields beyond
+  title, due and status", "no settings screen"). Don't repeat the generic
+  fence on every ask.
+- **The shape is the stop button.** Review judges delivered-vs-agreed
+  against the shape's lines, so an unrequested embellishment is a
+  *violation* to send back, never a bonus to applaud. Write shapes tight
+  enough that this is checkable.
+
+This is why a bare-titled ask is dangerous, not just unfinished: a title
+with no fence is an invitation for the build session to imagine the rest.
+
+### Must do and must not — corrections, not summaries
+
+The want is general on purpose. A competent builder reads "take a flat $20
+card deposit through Stripe when the customer books; the balance is paid in
+person" and correctly infers the charge amount, the processor and the
+moment. That inference is expected and welcome — the cake rule stops new
+capabilities, screens and options, never ordinary competence within the
+want.
+
+The two must lines exist for where inference goes wrong, and only there:
+
+- **Must do** calls out what a builder might MISS — needed, but not obvious
+  from the want. For the deposit: "send a confirmation text", "block out the
+  time in the calendar once payment succeeds". Neither is in the want, and a
+  builder could plausibly skip both.
+- **Must not** refuses what a builder might WRONGLY add or assume —
+  something that could be considered a real option, actively refuted in
+  advance. "Never save customer card details." "Never refund from the app."
+  In the owner's words: must-nots are "things that could be considered as a
+  possible option, but we're making sure they're actively refuted."
+
+Three rules follow:
+
+1. **Say nothing twice.** Nothing repeats across want, must-do and must-not.
+   "Charge exactly $20" under that want is noise — the want already said it.
+   A repeated line isn't just clutter: it drifts out of sync with the want
+   and then the shape argues with itself.
+2. **Both lines are optional.** A want clear enough to need no corrections
+   is a finished shape. Forcing a line is worse than leaving it empty.
+3. **The test, per candidate line:** would a competent builder, reading only
+   the want, get this wrong? Might miss it → must-do. Might wrongly assume
+   it → must-not. Would get it right anyway → leave it out. ("Never delete
+   all records when one is deleted" — nobody would; noise.) Might be wanted
+   later → a held ask, not a shape line.
+
+**Which line does a mixed thought go on?** Some corrections carry a do and a
+don't in one thought — soft delete is the classic: hide the record, keep the
+row. Ask which mistake you are correcting. A builder's default reading of
+"delete" is to remove the row — you are refusing that default, so it is a
+must-not, and it names the replacement in the same breath: "Never remove a
+deleted record from the database. Hide it from view." One thought, one line,
+one home. Never split it across both sections — two copies of one fact
+drift apart.
+
+### Actions are sentences, never structure
+
+Delete, save, archive, approve, resend — the small verbs on an ask. A real
+map of a real app carried 196 of them. None is a tree node, and none gets
+its own record inside the ask. How each lands is decided by size:
+
+- **Nothing to correct → absent.** "Open a project" is implied by the want.
+  Write nothing.
+- **One thing to say → one line.** "Delete asks once and cannot be undone."
+- **Several rules → a named block** of two or three short lines inside the
+  shape: "**Rotate the webhook secret:** asks first. Say plainly that the
+  old secret stops working."
+
+The ask carries the contract; the map (when one exists) carries the full
+record with evidence. Never copy the map's action detail onto the ask —
+attach it.
+
+**Two layers, one test.** A map's action writeup mixes the owner's layer
+(what happens, the rules as behaviour, the feedback shown) with the
+developer's layer (handlers, tables, mechanisms, file:line). When lifting
+onto an ask, keep only what passes this test: **could the owner see it or
+say it?** Worked on a real delete action: "only offered on a dropped ask,
+as a second step", "never takes the functions or data it used", "the
+Deleted message names anything left behind" — all owner layer, all valid
+shape lines. "Enforced by a database trigger on `asks`" — mechanism; its
+owner-level truth ("no matter how the delete happens, it can't take
+machinery") is what goes on the ask, and the mechanism stays in the map.
+The evidence trail always stays in the map. Implementation detail copied
+onto an ask goes stale the moment the code changes; the attached map is
+dated testimony, the ask is the standing contract.
+
+### The language rule — plain words, few words
+
+A standing must-not from the product owner, in their words: **never use
+convoluted language.** Everything the user reads — ask names, wants,
+must-dos, must-nots, questions, options — is written in the fewest and
+simplest words that keep the meaning.
+
+This is a hard rule, not a style preference. The board is a contract. The
+owner reads it on a phone. The build session builds what the words say. A
+ask the owner has to read twice hides mistakes. Plain words are the
+cheapest guardrail there is.
+
+How to write:
+
+- One thought per sentence. Short sentences.
+- Everyday words. "Use", not "utilize". "Book a time", not "secure an
+  appointment slot".
+- Say the thing. "Never open a pop-up on top of another pop-up", not "avoid
+  stacked modal interaction patterns".
+- No developer jargon on asks unless the owner used the word first.
+- Cut filler: "seamless", "robust", "intuitive", "streamlined",
+  "comprehensive", "delightful", "leverage", "empower", "experience",
+  "journey" say nothing. Delete them.
+- No metaphors on asks.
+- A want is one or two short sentences. If it needs more, it is probably
+  two asks.
+- The test: read it aloud. Would the owner say it that way? If not,
+  rewrite. Cut words until cutting changes the meaning.
+
+Bad → good:
+
+| Bad | Good |
+| --- | --- |
+| "A streamlined, mobile-first booking experience enabling customers to seamlessly select services and secure appointment slots" | "Customers pick a service and book a time. Works on a phone." |
+| "Must not proliferate stacked modal interaction paradigms" | "Never open a pop-up on top of another pop-up." |
+| "Robust session persistence ensuring contextual continuity across save operations" | "Saving never reloads the page or loses your place." |
+
+**The second disease: bard-speak.** Simple words can still make a garbage
+sentence. Bard-speak is writing that sounds wise instead of saying the
+thing — aphorisms, poetic fragments, "X, not Y" constructions, method talk.
+The owner called it "like talking to a 12th century bard" and it is the
+biggest failure this rule exists to kill. Real ask text that failed, and
+what it should have been:
+
+| Wrote | Should have written |
+| --- | --- |
+| "the screen you land on after sign-in; the app's home" | "Your home screen." |
+| "say plainly the diary is full for that period and show the salon phone number (this is 'nothing fits', not an error)" | "If no times are free, say so and show the phone number." |
+| "Everything else stays a leaf — its detail is shape, not structure." | Nothing. This is method talk. Never write it where the user reads. |
+| "Child of Task board. Ancestors' must-nots apply." | "The Task board rules apply here too." |
+
+The rules that kill it:
+
+- **Never use this method's vocabulary on an ask.** Leaf, shape, carve,
+  ancestor, cascade, inherit, lens, umbrella, altitude, fence, cake,
+  register, materialize — these words are for YOU, reading this file. The
+  owner never sees them. Bookkeeping ("which rules apply here") is either
+  carried silently by the tree or said plainly: "The Task board rules apply
+  here too."
+- **If a sentence sounds wise, rewrite it.** Asks state facts. They never
+  philosophize, never balance one idea against another for effect.
+- **No "X, not Y" constructions.** Say what it is. The contrast is padding.
+- **No semicolons on asks.** Write two sentences.
+- **The over-the-counter test.** Say the line out loud as if the owner is
+  standing in front of you. If you wouldn't say it that way, don't write it
+  that way.
+
+**Check before you show.** Run `scripts/check_language.py` over every draft
+proposal — tree outlines, shapes, question batches — before the user sees
+it, and fix what it flags. It catches filler words, method vocabulary,
+semicolons and overlong sentences; the over-the-counter read catches the
+rest.
+
+**Do not copy this file's voice onto the board.** This method file explains
+rules to a model, and it talks like it — it would fail its own checker. The
+board talks like its owner: plain, short, direct.
 
 ### The states, and they are SET, not derived
 
@@ -105,50 +304,91 @@ lifting the hold brings the question back so it can still be answered.
 that the later rungs are not "computed downstream" — they are recorded as the
 work actually moves.
 
-## Type — there is ONE kind of thing
+## Labels — Page, Element, Capability, Automation
 
-**Rewritten 7 August 2026.** This section used to describe four surface kinds
-(place, capability, action, background) and call itself total. It was the
-pre-4-August model and it is gone.
+**Rewritten 12 August 2026, agreed with the product owner.** The old
+place/capability/background model and its `place_size` field are described at
+the end of this section only because the transport still stores those values.
 
-> **There is one kind of thing: the Ask.** It carries a **type**, and the type
-> changes only what the card asks you about. It never decides where something can
-> sit, never gates a field, and is never destructive when changed.
+> **There is one kind of thing: the Ask.** It carries a **label**, and the
+> label only tells you what kind of thing you're looking at. It never decides
+> where something can sit, never gates a field, and is never destructive when
+> changed. Unlabelled is legitimate — never guess a label to fill the blank.
 
-| Type           | What the Ask leans on                              |
-| -------------- | -------------------------------------------------- |
-| **place**      | Look and format, what is on it, and what it can do |
-| **capability** | What it does, its rules, and what it changes       |
-| **null**       | Nobody has typed it yet — legitimate, never guessed |
+| Label | Means | Where it lives |
+| --- | --- | --- |
+| **Page** | A screen with its own address | Its own ask |
+| **Element** | A piece of a page the owner can point at — a panel, a table, an avatar, a banner | Child of its page |
+| **Capability** | Something you can do | A line on its page or element. Its own ask ONLY when promoted — see below |
+| **Automation** | Runs by itself, on a schedule or trigger | Always its own ask. It has no surface to live on |
 
-**`null` is "nobody has said". It is not "neither".** An untyped Ask shows the
-full set of prompts instead of a focused one. NEVER pick a type to avoid leaving
-it empty.
+Relationships are said as **parent** and **child**, plainly: "child of Task
+board" is fine. "Ancestors' must-nots apply" is not — say "The Task board
+rules apply here too", or let the tree carry it silently.
 
-### Two place sizes
+### Capabilities live ON the thing — the cart rule
 
-A place-typed Ask may be sized: **page** (big — a screen with its own address) or
-**element** (little — a widget or panel). `place_size` is nullable and null means
-nobody has sized it, which is UNKNOWN, not "page".
+A capability belongs to a surface. By default it is written on the shape of
+the page or element it sits on, as a must-do line — never pulled out as its
+own ask. The owner's example, now the named rule: **a cart table where you
+can delete items or update quantities has NO capability asks. Delete and
+update are two lines on the cart.** They are not their own thing in their
+own right, so they get no ask.
 
-**`frame` was dropped on 7 August.** It used to mean chrome with a fixed home on
-screen — a header, a sidebar. That is not a size, it is WHERE IT SITS: an element
-under the root appears everywhere by virtue of being under the root.
+This matters most when reading code (breakdown, enrichment, or a map
+ingest): every click handler in the code looks like a capability. It isn't.
+**Controls found in code default to shape lines on the surface that holds
+them.** A tree that lists Delete-item, Update-quantity and Apply-voucher as
+children of Cart has mistaken handlers for wants.
 
-### What happened to action and background
+### Promotion — when a capability earns its own ask
 
-**Action is not a type.** The only thing separating it from capability was how
-big it is, and depth already carries that. An action normally falls out of
-describing the thing it sits on, so name it INSIDE that thing's shape. A card for
-one is possible when a person genuinely asks for that one control — it is a small
-capability. **Never propose one as a card.**
+Promote a capability from shape line to child ask when any of these is true:
 
-**Background is not a type. It became the TRIGGER.** "How is this reached or set
-off" is a property every Ask can carry — a page reached by a menu item, a
-capability reached by a button, a job set off by a schedule. Record it in
-`trigger_description`. An Ask with a trigger displays it wherever the Ask appears.
+1. **It is its own delivery.** An ask is a work order — it gets queued,
+   built, delivered and reviewed as a unit. If you'd want it built and
+   reviewed separately, it's an ask. "Book a groom" — yes. "Export to CSV"
+   on the task board — a line, it arrives with the board.
+2. **It needs its own shape.** Its must-dos and must-nots would crowd the
+   parent.
+3. **It's reused across surfaces** (the avatar rule).
 
-### Machinery — unchanged, and still never carded
+A capability that passes none of these stays a line. Two quick sanity tests
+for the floor: the **demo test** (could you show it on its own in a sprint
+review?) and the **friend test** (would the owner mention it when describing
+the app to a friend?). Dialogs, confirmations, form fields, validation,
+empty states, sort and filter controls, single buttons — always shape, never
+asks.
+
+**The button is never the thing.** The owner's example: "decompose my idea"
+and "map the repo" are capabilities. Each is started by a button, and nobody
+would talk about the button — you talk about the capability. So when a
+control starts a big capability, the ask is the capability and the control
+is one line of its trigger. The owner's own speech decides which noun an ask
+wears: what they point at ("the cart") is an element; what they do ("map the
+repo") is a capability, whatever starts it.
+
+### The split rule — many capabilities means hidden elements
+
+When one surface's shape lists more than about 5–7 capabilities, it probably
+contains elements — find them and split, each element carrying a few
+capabilities. The guard: an element must be something the owner can **point
+at on the screen**. Never invent an element to tidy a list; if you can't
+point at it, the page just has a lot of capabilities, and that's honest.
+
+### Transport mapping — until the app renames its stored values
+
+The board still stores the old values. When writing asks: **Page** →
+`kind: place` (size page), **Element** → `kind: place` (size element),
+**Capability** → `kind: capability`, **Automation** → `kind: background`.
+Renaming the stored values and their display is an ask for the VibeAssist
+rebuild board, not something this skill can do.
+
+**The trigger is a property every ask can carry** — a page reached from a
+menu, a capability reached from a button, an automation set off by a
+schedule. Record it in `trigger_description`.
+
+### Machinery — unchanged, and still never an ask
 
 **Function** — a named executable unit; the register lists every surface item
 that uses it. **Data** — a named store, referenced from surface items as
@@ -190,7 +430,7 @@ shows-on-load · **when there is nothing there** · live-updating behaviour
   condition rather than a route — "landed cold with no session", "deep-linked
   mid-flow" — that is **shows-on-load**.
 - **State journeys live on the ASK that owns the thing**, not "on the data item
-  they belong to". Data is machinery and machinery is never carded, so the old
+  they belong to". Data is machinery and machinery is never an ask, so the old
   wording named the one home that cannot exist — and nothing was ever written
   because of it.
 
@@ -232,17 +472,17 @@ machinery, delete cascades, database shape, keys & services).
    their own pages, that is four levels and it is CORRECT. Do not flatten it,
    do not merge sections away, do not apply rules 3 or 4 to it. The user
    corrects their own map; you do not pre-correct reality on their behalf.
-4. **No umbrellas — the name-specificity rule.** A card earns its place by
+4. **No umbrellas — the name-specificity rule.** An ask earns its place by
    being recognizable from its name alone. "Settings" is too general; "User
    settings" and "App settings" are each their own ask. A parent whose only
    job is categorization is taxonomy, and taxonomy is forbidden — depth is
    earned by decomposition, never classification. Tags are lenses, never
-   places: tags may be categories; card names may not.
+   places: tags may be categories; ask names may not.
    **The test is whether YOU invented the category.** A grouping you made up
    to tidy a list is taxonomy. A section that exists in the app — one the
    user navigates, with its own address — is a place, and it keeps its name
    even when that name is a category word. "Legal" invented over four
-   unrelated cards is an umbrella; "Legal" read off `/legal/*`, holding the
+   unrelated asks is an umbrella; "Legal" read off `/legal/*`, holding the
    four documents that live there, is the app.
 5. **The quirk / reuse exception.** Something quirky enough — or reused
    widely (an avatar that appears across many surfaces) — earns its OWN ask
@@ -274,8 +514,13 @@ Worked examples of every rule: `references/decomposition-examples.md`.
 
 ## Branch first — which mode is this?
 
-The two modes are genuinely different approaches; decide before proposing
-anything.
+The modes are genuinely different approaches; decide before proposing
+anything. The decisive question when code exists is: **does the user want the
+map to MIRROR this app, or to REPLACE it?** Mirror → breakdown. Replace →
+rebuild. Getting this wrong wastes the whole walk — a breakdown of an app the
+user hates faithfully reproduces everything they hate. If their words leave
+it ambiguous ("break down this app" over a repo they've been complaining
+about), ask — one question, before anything else.
 
 **GREENFIELD — from an idea.** There is no code. Use knowledge and judgment
 to propose the shape: what capabilities would this product need, at the level
@@ -287,9 +532,11 @@ code is the truth. **Survey with the mapper first:** if the `vibeassist-map`
 skill is available (it ships in this same plugin), run it — or consume an
 existing `map/map.json` / `MAP.md` if a survey was already done — and decompose
 from its verified output: its pages ARE your top-level surfaces (rule 8), its
-capabilities/actions are your candidate sub-asks and shape, its Findings become
-walk-questions, and every claim arrives with file:line evidence already
-checked. Only when the mapper cannot run, read the code broadly by hand
+capabilities/actions default to SHAPE LINES on the surface that holds them
+(the cart rule — promote one to its own ask only when it passes a promotion
+test), its Findings become walk-questions, and every claim arrives with
+file:line evidence already checked. The mapper sees every click handler;
+most of them are lines, not asks. Only when the mapper cannot run, read the code broadly by hand
 (routes, tables, major components/services/jobs). Either way, decompose from
 **what it actually contains** —
 never from the structure you imagine it ought to have. Carve it **pages-first**
@@ -306,8 +553,36 @@ feature that isn't in the code yet, don't force them to finish the breakdown
 first and don't blend it into the mirror — capture it as a **gap ask, clearly
 marked proposed / not-built**, sitting beside what exists.
 
-**SINGLE-ASK SHAPING — the third entry.** The user brings ONE ask ("shape the
-export ask", "spec this card"). Skip the tree work entirely: find the ask on the
+**REBUILD — from an app the user wants to REPLACE.** There is code, but the
+code is NOT the truth — it is the evidence. The user is here because the
+implementation failed them; a great idea buried behind a horrible
+implementation will never work, and the rebuild exists to dig the idea out.
+So run the walk as GREENFIELD — decompose the WANT, at product-owner
+altitude, shallow-tree judgment and all — with the existing app serving as
+three witnesses, never as the blueprint:
+
+1. **Proof of the wants.** Survey the existing app first (the mapper, or an
+   existing map, or a broad read) so no capability the user relies on gets
+   silently forgotten. But every existing capability enters the new tree
+   through a **keep / reshape / drop** walk-question — never as an automatic
+   ask. Existing ≠ wanted.
+2. **A record of lessons.** What is wrong with the current app is the most
+   valuable input a rebuild has. Ask it outright — "what do you hate about
+   how this works today?" — per area, during the walk. The answers become
+   **must-nots and guardrails on the NEW asks**, written concretely enough
+   that a build session cannot reproduce the failure ("must not open a modal
+   on top of a modal", not "must be user-friendly").
+3. **A quarry.** Code worth salvaging is recorded as **reuse notes on the ask
+   it would serve** — machinery-level evidence (file paths, what it does, why
+   it is sound), never an ask, and never a reason to bend the tree: reuse
+   serves the want; the want never bends to fit the salvage.
+
+Rule 3a does NOT apply — a rebuild proposes, it never mirrors. Full method,
+including the survey, the hate-capture, the salvage register and where the
+new tree lands: `references/rebuild.md` — load it before running this mode.
+
+**SINGLE-ASK SHAPING — the last entry.** The user brings ONE ask ("shape the
+export ask", "spec this ask"). Skip the tree work entirely: find the ask on the
 board (or create it if it's new intake), then run the shaping pass below on
 just that ask — same walk mechanics, recommendation-first, batched, landing the
 answers into its SHAPE — want, must do, must not. Say which ask it landed on. This is the
@@ -320,31 +595,31 @@ extend and correct, never duplicate an ask that already exists.
 
 ## Enrichment — decide the STRUCTURE before you shape
 
-Breakdown often runs over a board a rough ingest already populated: cards that
-are **naked** (no code evidence), **flat** (one card standing in for several
-capabilities), or **thin**. Enrichment is breakdown applied card-by-card to
+Breakdown often runs over a board a rough ingest already populated: asks that
+are **naked** (no code evidence), **flat** (one ask standing in for several
+capabilities), or **thin**. Enrichment is breakdown applied ask-by-ask to
 fix that — and the decisive move is that **structure comes before shape**. You
-cannot shape a card until you've decided whether it should even BE one card.
-For each existing card, read the code it names, classify it, THEN act:
+cannot shape an ask until you've decided whether it should even BE one ask.
+For each existing ask, read the code it names, classify it, THEN act:
 
 - **Evidence-rich, single capability** → shape it flat from its dossier
   (routes / tables / apis / files → want / must do / must not).
 - **Naked** (no dossier) → the code is still the truth. Trace it from the
-  card's name + description to the code that implements it — its evidence may
-  live under a _sibling_ card — build the evidence, then shape. Never shape a
-  naked card from its title alone.
-- **Umbrella** → a card whose real shape splits across levels is not one ask.
+  ask's name + description to the code that implements it — its evidence may
+  live under a _sibling_ ask — build the evidence, then shape. Never shape a
+  naked ask from its title alone.
+- **Umbrella** → an ask whose real shape splits across levels is not one ask.
   Propose its **child asks** and shape each; give the parent only an umbrella
   want, no flat must-do/must-not list. (e.g. _Sprints_ → **Create / Run /
   Review**.)
-- **Latent sibling** → when the code reveals a capability the card isn't
+- **Latent sibling** → when the code reveals a capability the ask isn't
   really about, spin it off as its **own ask** beside this one rather than
   cramming it in. (e.g. the beta domain's **paid early access** is its own
   ask, sibling to invite-code beta operations.)
 
 This is the same no-umbrellas / quirk-reuse judgment (rules 4–5) applied to
-existing cards. It obeys draft-first: the split, the new sibling, and the
-shape are all PROPOSALS the user ratifies. Work in batches, card by card —
+existing asks. It obeys draft-first: the split, the new sibling, and the
+shape are all PROPOSALS the user ratifies. Work in batches, ask by ask —
 never restructure the whole board in one silent sweep.
 
 ## The walk — collaborative, recommendation-first Q&A
@@ -353,7 +628,7 @@ never restructure the whole board in one silent sweep.
    nod. Breakdown: read the code and say, plainly, what you found.
 2. **Propose the tree — top level first, breadth-first.** Decomposition is
    just-in-time: propose the TOP-LEVEL asks first (an indented outline —
-   place-name per card, one-line description each), agree those, THEN drill
+   place-name per ask, one-line description each), agree those, THEN drill
    into each on demand. Never dump one massive deep tree. Keep a batch
    readable — roughly 10–15 asks at a time; on a large repo, chunk by domain
    (the survey's major areas become the first batch of root asks, each drilled
@@ -375,18 +650,23 @@ never restructure the whole board in one silent sweep.
 ## Shape every ask — the tree is not the finish line
 
 A tree of bare titles is not a finished decomposition. After the tree is
-agreed, run a **shaping pass per ask**: capture the must-nots and detail
-that make it properly specified.
+agreed, run a **shaping pass per ask**: get the want right, then add only
+the corrections a builder needs.
 
 - For a UI ask: columns, states, behaviour, filters, sorting, design rules.
 - For any other ask: the equivalent defining detail — inputs, rules, edge
   behaviour, what "done" observably looks like.
+- For EVERY ask: ask "how plain?" (the cake rule). Where a builder would
+  plausibly add something the user doesn't want, refuse it in a must-not.
+  Where nothing tempting exists, write no must-not — the app-level fence
+  already covers the generic case.
 
 Shaping questions follow the same walk mechanics — recommendation-first,
-batched, mostly proposals the user confirms. The answers become the ask's
-**must-do**, written into its SHAPE (want / must do / must not). Shape
-ask-by-ask in batches; don't block
-the whole tree on one card's shaping.
+batched, mostly proposals the user confirms. Land each answer in the right
+line: general picture → the want; a builder might miss it → must-do; a
+builder might wrongly assume it → must-not; already inferable from the
+want → nowhere, it's done (say nothing twice). Shape ask-by-ask in batches;
+don't block the whole tree on one ask's shaping.
 
 **The cascade INHERITS — write deltas, never restatements.** An ask inherits
 its ancestors' intent down the tree, so a child holds only what it ADDS
@@ -415,21 +695,64 @@ Only after acceptance, via the MCP tools:
 - Set each ask's **Shape** with `update_ask` — `want` (what you want),
   `mustDo` (what it must always do), `mustNot` (what it must never do) — from
   the walk and shaping answers.
-- Card names are **place-names** in plain English (recognizable alone, rule
-  4); `want` is one paragraph in the USER'S language — what it is and covers,
-  never implementation layers.
+- Ask names are **place-names** in plain English (recognizable alone, rule
+  4); `want` is one or two short sentences in the USER'S plain language —
+  what it is and covers, never implementation layers, and never convoluted
+  (the language rule).
 - **Home every piece of work under the ask it belongs to.** If no ask fits,
   CREATE the ask to hold it — never a catch-all/umbrella bucket, ever.
 
 > **Read before you propose.** `list_asks(projectId)` returns the tree the user
 > actually sees, and `list_asks(projectId, parentAskId)` returns what is already
-> inside one card. Suggesting something already on the board is the most common
+> inside one ask. Suggesting something already on the board is the most common
 > way a walk wastes the user's time.
 >
 > The epics and features tools this skill used to name were retired on
-> 2026-07-31 along with the board they wrote to. There is one card type now, it
-> is an ask, and it nests. "Epic" and "feature" are not card types — "feature"
+> 2026-07-31 along with the board they wrote to. There is one ask type now, it
+> is an ask, and it nests. "Epic" and "feature" are not ask types — "feature"
 > is ordinary English and nothing more.
+
+## Materialize to a markdown file — the plugin-only path
+
+When there is no board (no MCP transport), the asks land in **one markdown file
+per project** — the free-tier front gate. Files are good at what you decide, bad
+at what happens: status, run order and blocking questions all need something
+watching. So this file is for **shaping**; real work moves to VibeAssist after a
+one-way import. The walk that fills it is exactly the walk above — clarifying
+questions, recommendation-first, draft-first, the cake rule and the language
+rule all still bind. Only the landing changes.
+
+**The format:**
+
+- **One file, not one per ask.** Heading depth IS the tree — `#` project, `##`
+  top-level ask, `###` child, and down. Document order IS sibling order.
+- **A banner at the top, always.** It is a one-way export; it goes **stale the
+  moment it is imported**; after import you work in VA, not the file. In rebuild
+  mode add the mode line too — witnesses-not-blueprint, everything unapproved.
+- **One metadata line under each heading:** *label · door · status* — plus
+  `lens: <tag>` where the ask carries one. Label is Page / Element / Capability /
+  Automation, or nothing (never guess one). Door and status are below.
+- **Shape as prose, data as a table.** The three lines — **Want** / **Must do** /
+  **Must not** — are plain sentences (a table makes people write worse ones); an
+  empty must-line is "—". A data table appears only where the ask has data.
+- **Everything lands unapproved.** Do not pre-approve; import takes each ask
+  through the gate.
+
+**The two doors, and mark every ask with one:**
+
+- **decompose** — a want you shaped. Lands **`shaping`**.
+- **map** — read from code. Lands **`delivered — not accepted`** (built, but the
+  person has not accepted it into this board).
+- An ask that does not say its door cannot be told apart from code by an
+  importer — so it is not optional. Where a mapped (built) thing meets a
+  decomposed want, **that overlap is a Finding on the ask**, never a silent
+  merge: the person decides whether the built thing is accepted, reshaped or
+  dropped. Map only the repo being built; a separate app the user is replacing
+  is salvage (reuse notes), never mapped in.
+
+**Import is one-way.** Shape offline, import once, then work in VA. That kills
+the id-matching problem and the sync problem both — the file is a starting
+state, never a living mirror.
 
 ## The graveyard — retire, never delete
 
@@ -443,7 +766,7 @@ Mechanics and what belongs there: `references/graveyard.md`.
 Three roles read this board: the **Product Owner** sees delivered-vs-agreed;
 the **Developer** sees the grain, one drill-down deep; the **PM-assistant**
 (you) TRANSLATES — show the delivered ask, not the code. This shapes every name
-and every sentence you write on a card. Full rationale and the review model:
+and every sentence you write on an ask. Full rationale and the review model:
 `references/three-role-audience.md`.
 
 ## Guardrails
@@ -452,15 +775,29 @@ and every sentence you write on a card. Full rationale and the review model:
   never changes silently.
 - **Code-grounded.** In breakdown mode, never invent structure absent from
   the code — raise it as a walk-question instead.
+- **Rebuild is greenfield with witnesses.** In rebuild mode the old app is
+  evidence — of wants, of lessons, of salvage — never truth. Never mirror it,
+  and never lose a want the user relies on without them saying drop.
 - **Surface-first.** Propose and let the user decide — the walk is the
   mechanism, the user is the gate.
 - **Recommendation-first.** Every question carries a recommended answer and
   one line of reasoning.
 - **Never delete.** Retirement is a move to the graveyard with a record —
   never a drop.
-- **No umbrellas, no catch-alls.** Name-specific cards; work homed under the
+- **No umbrellas, no catch-alls.** Name-specific asks; work homed under the
   ask it belongs to, creating the ask when none fits.
 - **Don't stop at bare titles.** An unshaped ask is unfinished work.
+- **The cake rule.** Plainest competent version by default; silence is not
+  licence. One app-level fence ("build only what the asks say"); per-ask
+  fences only where the temptation is real. Elaboration is a proposal or a
+  held ask, never a delivery.
+- **Shape lines are corrections.** The want carries the picture. A must-do
+  calls out what a builder might miss; a must-not refuses what they might
+  wrongly assume. Nothing repeats across the three. Both must lines may be
+  empty. Never pad.
+- **The language rule.** Never use convoluted language. Fewest and simplest
+  words on everything the user reads. No method vocabulary and no bard-speak
+  on asks. Run `scripts/check_language.py` on drafts before showing them.
 - **Shaping is the front gate.** A want becomes deliverable only after the walk
   shapes it and the user agrees — intake → shape → agree, never build inline.
   You may shape on the user's behalf, but land the change on a named ask (or
@@ -476,8 +813,12 @@ files). Load it before you rely on it.
 - `references/decomposition-examples.md` — Load this when: judging whether
   something is a sub-ask or shape, carving or naming feels ambiguous, or you
   want the worked examples behind the rules.
-- `references/three-role-audience.md` — Load this when: naming cards, writing
+- `references/three-role-audience.md` — Load this when: naming asks, writing
   descriptions or acceptance text, or deciding what to show to whom.
 - `references/graveyard.md` — Load this when: you meet pulled or dead work,
   research, spikes, or housekeeping during a breakdown, or the user asks to
   remove something.
+- `references/rebuild.md` — Load this when: entering REBUILD mode, or unsure
+  whether code in front of you should be mirrored (breakdown) or replaced
+  (rebuild). The full rebuild method: survey, keep/reshape/drop, hate-capture,
+  salvage register, landing the new tree.

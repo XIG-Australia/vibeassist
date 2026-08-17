@@ -38,7 +38,7 @@ removals, research, spikes, lessons.
 - In breakdown mode, code that looks pulled or dead is a **walk-question**,
   not a unilateral retirement: "X appears unused/superseded — retire it to
   the graveyard with a removal report?" (Recommended answer + one line of
-  reasoning, as always.) A live card the user no longer wants follows the
+  reasoning, as always.) A live ask the user no longer wants follows the
   same explicit door — the map records the retirement rather than losing the
   history.
 - The removal report travels WITH the retired item: what was removed, why,
