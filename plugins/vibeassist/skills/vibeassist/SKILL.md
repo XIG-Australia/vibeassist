@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (long-poll responder: watch for updates and act/surface them).
 ---
 
-<!-- vibeassist-skill-version: 0.11.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.12.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.12.0 (18 Aug 2026): verify inward (green from the tool is not the running thing — open every touched surface after a generator/scaffold/rename/move); the build note is read from code, never transcribed; send-back routing reasons. -->
 
 # VibeAssist Ask runner
 
@@ -206,6 +207,14 @@ Touched a migration → also run `bun run db:types` and commit the regenerated
 types file (types-drift only runs in CI; a stale types file is the most common
 release-blocker).
 
+**Verify inward — green from the tool is not "the running thing is right."**
+After any generator, scaffold, route-gen, rename or move, open **each touched
+surface** and confirm its real content survived — a generator can quietly stub a
+file back to boilerplate and still pass typecheck. Check the thing, not just the
+exit code. (A route generator once stubbed a real page to `Hello "/route"!` and
+the build reported done.) This is `verify from reality` pointed at your own
+hands, and it is the one thing the green checks cannot catch.
+
 e. **Self-review before reporting (opt-in — only when `config.selfReview` is
 true; a per-project POC, off by default).** Before reporting delivery, spawn ONE
 independent reviewer subagent (the Task/Agent tool) with NO authorship context:
@@ -231,6 +240,14 @@ road had `techDetails` beside its notes, and that is exactly where developer
 working leaked back onto a board that is meant to be the owner's. Write it in
 the product's words: what the thing now does for the person. If a sentence would
 only mean something to a developer, it belongs nowhere.
+
+**The build record is read from code, not written by you.** What an Ask touched
+— files, the machinery it uses, the rules it honoured — is read back from the
+code afterward, so never hand-transcribe it onto the Ask; `built` is the one
+product-words sentence and nothing else. A change you're handed flows to the
+build the same way: build it, report what it now does. Updating the Ask's
+**shape** is the front gate's job, and only when the change makes the shape's own
+words wrong — a preference the shape never stated never touches it.
 
 `outcome: "accepted"` means _you finished it_. It does **not** mark the Ask
 accepted — that verdict is the user's. `outcome: "failed"` returns the Ask to
@@ -329,6 +346,13 @@ answers → say the questions are waiting in the VA inbox, and stop.
   Node builtin imported at the top of a client-bundled file — keep server-only
   code in a `.server.ts` helper.
 - One delivery report per Ask, right after it, in the product's words.
+- Verify inward (step 4d): after any generator, scaffold, rename or move, open
+  each touched surface and confirm real content survived — green from the tool is
+  not the running thing.
+- When work comes back, the send-back's routing reason says where it failed —
+  **overstep** and **doesn't-work** are yours (the build); **missed intent** and
+  **rule breach** are the shaping/product side, not yours to silently reshape.
+  Fix your side; never edit the Ask's shape to make a send-back go away.
 - Beat while you build (step 4b). Silence is how a live build gets reclaimed.
 - Chat is intake, not a delivery chute: a request arriving in chat is captured
   as an Ask and SHAPED (walk → propose → agree) before any build — never built

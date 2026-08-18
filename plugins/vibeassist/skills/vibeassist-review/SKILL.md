@@ -3,7 +3,8 @@ name: vibeassist-review
 description: The morning review — walk what VibeAssist built overnight, judge each delivery against its ask's acceptance criteria, record earned Truth Pass verdicts, and turn send-backs into reconciled records and new asks. Use when the user says "review what got built", "morning review", "what happened overnight", "check the overnight run", "verify the deliveries", "run the truth pass", "did it actually do what we agreed", or similar. This is NOT the worker skill's "review" mode (which governs how tasks are pulled during a build) — this skill is for judging FINISHED work after the build. Posture is skeptical reader, never author.
 ---
 
-<!-- vibeassist-skill-version: 0.11.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.12.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.12.0 (18 Aug 2026): verify content was preserved on a move/rename (not just that files exist); send-back routing reasons; a send-back edits the Shape only when the change makes the Shape's own words wrong; Findings live on the return path, read from code. -->
 
 # VibeAssist morning review — the Truth Pass
 
@@ -103,11 +104,15 @@ is the point.
 - **A finding becomes an ask, not a note.** Something that is genuinely missing
   or wrong becomes a new ask under the one it came from (`create_ask` with
   `parentAskId`), proposed, for the user to accept. Anything else evaporates.
-- **Work out WHY it missed before you send it back** — was the build wrong, or
-  was the ask's own Shape wrong? A send-back whose cause is a bad Shape goes
-  back through the shaping walk (`vibeassist-decompose`, single-ask entry) and
-  the Shape gets fixed with `update_ask` first. Rebuilding to a broken Shape
-  fails twice.
+- **Work out WHY it missed before you send it back — and name where the process
+  failed**, so the pattern can be learned from: **missed intent → shaping** ·
+  **overstep → the worker** · **rule breach → the product** · **doesn't work →
+  the build**. A send-back whose cause is a bad Shape (missed intent) goes back
+  through the shaping walk (`vibeassist-decompose`, single-ask entry) and the
+  Shape gets fixed with `update_ask` first — rebuilding to a broken Shape fails
+  twice. But **edit the Shape only when the change makes its own words wrong**: a
+  build that oversteps or simply doesn't work needs no Shape edit — the Shape was
+  right, the build wasn't.
 - **If nothing you judged can be written down, say so in the summary.** A
   review whose conclusions live only in this window is one the board will
   contradict tomorrow.
@@ -131,6 +136,13 @@ is the point.
   that justifies it, and never a stronger verdict than the evidence supports.
 - Default to fail when uncertain — the builder's own rule, applied by a
   reader with no authorship bias.
+- On a move or rename, check the content was **preserved**, not just that files
+  exist at the new path — a generator or rename can leave a file present and
+  gutted. Read what's actually in the moved surface (verify inward).
+- The build record is **read from code, not transcribed** — what an ask touched
+  (files, machinery, rules) is read from the diff, never copied from the report.
+  A **Finding** is your judgment of the built thing, so it lives on the return
+  path (the review / what came back), not in the ask's static record.
 - One verdict per ask, recorded right after judging THAT ask — never batched
   at the end where a stall loses them all.
 - Recommendation-first for every decision you put to the user (2–4 options,
