@@ -261,7 +261,7 @@ The rules that kill it:
   standing in front of you. If you wouldn't say it that way, don't write it
   that way.
 
-**Check before you show.** Run `scripts/check_language.py` over every draft
+**Check before you show.** Run `node scripts/check_language.mjs` over every draft
 proposal — tree outlines, shapes, question batches — before the user sees
 it, and fix what it flags. It catches filler words, method vocabulary,
 semicolons and overlong sentences; the over-the-counter read catches the
@@ -895,7 +895,7 @@ and every sentence you write on an ask. Full rationale and the review model:
   empty. Never pad.
 - **The language rule.** Never use convoluted language. Fewest and simplest
   words on everything the user reads. No method vocabulary and no bard-speak
-  on asks. Run `scripts/check_language.py` on drafts before showing them.
+  on asks. Run `node scripts/check_language.mjs` on drafts before showing them.
 - **Shaping is the front gate.** A want becomes deliverable only after the walk
   shapes it and the user agrees — intake → shape → agree, never build inline.
   You may shape on the user's behalf, but land the change on a named ask (or
