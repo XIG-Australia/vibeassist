@@ -3,9 +3,9 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.11.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.12.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.12.0 (18 Aug 2026): the rebuild-board dogfood pass. Define-the-project-first + the three registers (Rules / Decisions / Ethos); think in cross-dependencies; the return path (the second half of the loop) + one-way-back and send-back routing; the want is a plain complete action; record a change only when the shape's own words go wrong. -->
 <!-- 0.11.0 (14 Aug 2026): added the plugin-only markdown-file transport — the free-tier path (one file, heading=tree, prose shape, two doors decompose/map, findings on overlap, one-way import). -->
-<!-- 0.10.0 delivered as a .skill; these changes are NOT yet in the plugin source (XIG-Australia/vibeassist) — that merge is still outstanding. -->
 
 # VibeAssist idea decomposition — the walk
 
@@ -74,6 +74,16 @@ intent were the same thought twice.
 customer books", then "charge exactly $20" as a must-do is noise — it
 restates what any builder already read. Full doctrine: "Must do and must
 not — corrections, not summaries", below.
+
+**The want is a plain, complete action — not a fragment, and not a smuggled
+constraint.** State what the ask does, whole and plain ("Sign in with email and
+password, or Google"), never a terse fragment ("Email and password, and nothing
+else"). Words like "only", "never", "nothing else" are **not wants** — they are
+must-nots, or already implied. Jargon stays off the want too: "Google" on the
+shape; "OAuth" is the mechanism and rides with the build note. Before/after:
+want `Email and password, and nothing else.` → `Sign in with email and password,
+or Google.`; must-not (was empty) → `Never create an account here — new users
+come in through beta approval or payment.`
 
 ### The cake rule — an ask means what it says, and no more
 
@@ -303,6 +313,35 @@ lifting the hold brings the question back so it can still be answered.
 **Decomposition's job still ends at a shaped, approved tree.** What changed is
 that the later rungs are not "computed downstream" — they are recorded as the
 work actually moves.
+
+### The return path — the second half of the loop
+
+The seven states carry work forward. The return is the other half, and it is
+**one path with one door**:
+
+- **Delivered → review → accept, or send back.** Accepting is the owner's call;
+  a send-back returns the ask to **shaping** — the same door every time.
+- **Everything returns the same way.** A defect, a change of mind, a later
+  realisation, a build handed back in review — none makes a separate status, and
+  timing or cause never forks the path. `came back` plus the history carry the
+  "shipped before" story, and the version that is **live holds until the new one
+  is accepted** — nothing goes dark mid-change.
+- **A send-back carries a routing reason** that names *where the process failed*,
+  so the pattern can be learned from: **missed intent → shaping** · **overstep →
+  the worker** · **rule breach → the product** · **doesn't work → the build**.
+  The user tags it (you may suggest); VA aggregates where it is leaking and
+  self-adjusts — deepen the walk, tighten the worker payload.
+
+### Record a change only when the shape's own words go wrong
+
+When a change comes back to an ask, update its **shape** only if the change makes
+the shape's own words untrue. The trigger is not "is it significant" — it is
+whether the record is now wrong. Renaming a thing the shape names, changing what
+it does, adding or removing a must-line → the shape now lies, so fix it. A
+preference the shape never stated — where a control sits, spacing, on-screen
+order → there is no false record to correct, so it flows to the build and never
+touches the shape. And the build note is **read from code**, so what got *built*
+records itself on the next read; the only thing hand-maintained is the want.
 
 ## Labels — Page, Element, Capability, Automation
 
@@ -622,10 +661,63 @@ existing asks. It obeys draft-first: the split, the new sibling, and the
 shape are all PROPOSALS the user ratifies. Work in batches, ask by ask —
 never restructure the whole board in one silent sweep.
 
+## Define the project first — then its rules, decisions and ethos
+
+**Greenfield and rebuild open here, before any tree** — a short, higher-level
+round that filters into everything below. (Breakdown/ingestion skips it: the
+project is read from the code, not asked.)
+
+- **The project itself** — its name, what it does in a sentence, its value
+  proposition, what it is **for** and **not for**, and its **founding beliefs**:
+  the things that shape which questions even get asked ("single user now, sharing
+  later"; "bring your own AI"; "a paid product"). Settle these before
+  decomposing — one belief here quietly answers dozens of later forks.
+
+Then three registers sit at the project root. They are **different things** and
+must not be lumped together as "rules":
+
+- **Rules** — binding constraints on *how* a thing is built (plain language,
+  styling, owner-scoped). The worker obeys them, review enforces them, they apply
+  to every ask, and the user can add to them.
+- **Decisions** — the choices of *what* it is built on (the database, the payment
+  processor, the framework, the owner column). Facts the build works from,
+  revisable, not constraints.
+- **Ethos** — VA's own operating spine. It binds **every** app VA builds, is
+  inherited and **read-only** per project, and gets published (marketing, and
+  surfaced in-app). The user adds their own rules; ethos stays VA's. So far:
+  - **No scope creep** — the plainest competent version of the want; elaboration
+    is a proposal, never a delivery (the cake rule).
+  - **Verify from reality** — never trust a self-report; check the running thing.
+  - **Never guess** — a missing answer means ask, not invent.
+  - **Think in cross-dependencies** — weigh each choice against *every* standing
+    belief and decision, not only the ask above it. A choice that fights a stated
+    plan — a per-user column when sharing is planned — gets surfaced *before* the
+    user has to catch it.
+  - **Build on what's there** — VA holds what already exists (the map, the
+    standards, yesterday's code); build on it rather than forgetting, re-asking or
+    breaking it.
+  - **The screen reflects reality** — a change the user makes shows at once in
+    every place that shows it, no manual refresh; a stale view is a broken view.
+    (Scope: the user's own actions; live-syncing another session or device is a
+    later thing.)
+
+**Rules bind the worker, not the talk.** The rules and ethos bind the assistant
+that *builds* (and any instructions VA passes it). VA itself is less bound — it
+can discuss a rule with the user and change it. The worker cannot ignore
+whichever version stands.
+
+**P·E·C·A is not a project rule.** The four labels are a shaping decision on the
+ask, kept in the ask's own model — never in a project's rule list. And a label
+never gates placement: any ask sits anywhere, root included (a root-level
+capability or automation is fine; the user arranges freely and can move it
+later).
+
 ## The walk — collaborative, recommendation-first Q&A
 
 1. **Survey.** Greenfield: restate the idea in one short paragraph and get a
-   nod. Breakdown: read the code and say, plainly, what you found.
+   nod. Breakdown: read the code and say, plainly, what you found. Greenfield and
+   rebuild: define the project first (the section just above) before proposing a
+   tree.
 2. **Propose the tree — top level first, breadth-first.** Decomposition is
    just-in-time: propose the TOP-LEVEL asks first (an indented outline —
    place-name per ask, one-line description each), agree those, THEN drill
@@ -637,7 +729,13 @@ never restructure the whole board in one silent sweep.
    question you could answer yourself from the code or the idea is a defect;
    answer it instead. Every question carries a **recommended answer + one
    line of reasoning**, with 2–4 crisp, mobile-friendly options. Batch the
-   questions (one round, not twenty single asks).
+   questions (one round, not twenty single asks). **Each option carries enough
+   context to choose it** — an option the user "can't see why they'd pick" is a
+   badly written option, not a real choice. And **before you ask or land a
+   decision, scan the standing beliefs, decisions and rules for anything the
+   choice would contradict**, and lead with the contradiction and your proposed
+   reconciliation rather than asking a question the project's own plan already
+   answers.
 4. **Apply after acceptance — draft-first, always.** The user's acceptance of
    the proposal is the gate; never mutate the board silently. The proposal
    itself is the draft — an ask is written to the board only once its
@@ -802,6 +900,18 @@ and every sentence you write on an ask. Full rationale and the review model:
   shapes it and the user agrees — intake → shape → agree, never build inline.
   You may shape on the user's behalf, but land the change on a named ask (or
   create one) and say where it landed.
+- **Define the project first.** Greenfield and rebuild open by defining the
+  project and its three registers — Rules (how), Decisions (what it's built on),
+  Ethos (VA's own, inherited, read-only). P·E·C·A is a shaping decision, never a
+  project rule, and a label never gates placement.
+- **Think in cross-dependencies.** Weigh each choice against every standing
+  belief and decision; surface a contradiction before the user has to catch it.
+- **One way back.** Delivered work returns to shaping the same way whatever the
+  cause; the live version holds until the new one is accepted; a send-back
+  carries a routing reason (missed-intent → shaping, overstep → worker, breach →
+  product, doesn't-work → build).
+- **Record a change only when the shape's words go wrong.** Else it flows to the
+  build; built reality is read from code, never hand-transcribed.
 
 ## References — load on demand
 
