@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.12.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.13.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.13.0 (18 Aug 2026): check_language ported from Python to node ESM (byte-for-byte identical); the skill now runs it with node, so drafts can be checked where there is no Python. -->
 <!-- 0.12.0 (18 Aug 2026): the rebuild-board dogfood pass. Define-the-project-first + the three registers (Rules / Decisions / Ethos); think in cross-dependencies; the return path (the second half of the loop) + one-way-back and send-back routing; the want is a plain complete action; record a change only when the shape's own words go wrong. -->
 <!-- 0.11.0 (14 Aug 2026): added the plugin-only markdown-file transport — the free-tier path (one file, heading=tree, prose shape, two doors decompose/map, findings on overlap, one-way import). -->
 
@@ -261,7 +262,7 @@ The rules that kill it:
   standing in front of you. If you wouldn't say it that way, don't write it
   that way.
 
-**Check before you show.** Run `scripts/check_language.py` over every draft
+**Check before you show.** Run `node scripts/check_language.mjs` over every draft
 proposal — tree outlines, shapes, question batches — before the user sees
 it, and fix what it flags. It catches filler words, method vocabulary,
 semicolons and overlong sentences; the over-the-counter read catches the
@@ -895,7 +896,7 @@ and every sentence you write on an ask. Full rationale and the review model:
   empty. Never pad.
 - **The language rule.** Never use convoluted language. Fewest and simplest
   words on everything the user reads. No method vocabulary and no bard-speak
-  on asks. Run `scripts/check_language.py` on drafts before showing them.
+  on asks. Run `node scripts/check_language.mjs` on drafts before showing them.
 - **Shaping is the front gate.** A want becomes deliverable only after the walk
   shapes it and the user agrees — intake → shape → agree, never build inline.
   You may shape on the user's behalf, but land the change on a named ask (or
