@@ -4,6 +4,7 @@ description: Map a codebase from the user's perspective - a sitemap of pages and
 ---
 
 <!-- vibeassist-skill-version: 0.14.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.13.0 (18 Aug 2026): the map toolchain ported from Python to node ESM (harvest, both route enumerators, gen_edges, assemble, check_evidence, emit_map_json, tree_from_map, nav_edges, index_calls and both selftests) - byte-for-byte identical to the Python, so the mapper runs where there is no Python. Skill invocations and CI now call node. -->
 
 # VibeAssist codebase map
 
@@ -31,8 +32,8 @@ Identify: router type (file-based? config-based? none?), data layer, and where s
 
 Do not decide from memory what pages exist. Extract the route list mechanically:
 
-- File-based routing (TanStack Start; Next-style trees for simple cases): run the bundled enumerator — `python scripts/routes_file_based.py --repo-root . -o map/_routes.json`. It flattens dot-nesting, honors trailing-underscore un-nesting and `[.]` literal dots, drops pure layouts, keeps redirect stubs as `audience: "redirect"` (reading the destination from the code), and applies the structural machine-only test. For SvelteKit/Remix conventions it does not know, enumerate by hand on the same rules.
-- Config-based routing: for react-router (Lovable's default), run the bundled parser — `python scripts/routes_react_router.py --repo-root . -o map/_routes.json`. It composes nested relative paths, treats `<Route index>` as the parent's path, applies the layout guard to element-less container routes, maps `<Navigate to>` to `audience: "redirect"`, flags `path="*"` as the not-found page, and resolves components (including `lazy()` imports) to source files through path aliases. For other config routers (Vue Router, Express views), parse the registration file(s) by hand on the same rules.
+- File-based routing (TanStack Start; Next-style trees for simple cases): run the bundled enumerator — `node scripts/routes_file_based.mjs --repo-root . -o map/_routes.json`. It flattens dot-nesting, honors trailing-underscore un-nesting and `[.]` literal dots, drops pure layouts, keeps redirect stubs as `audience: "redirect"` (reading the destination from the code), and applies the structural machine-only test. For SvelteKit/Remix conventions it does not know, enumerate by hand on the same rules.
+- Config-based routing: for react-router (Lovable's default), run the bundled parser — `node scripts/routes_react_router.mjs --repo-root . -o map/_routes.json`. It composes nested relative paths, treats `<Route index>` as the parent's path, applies the layout guard to element-less container routes, maps `<Navigate to>` to `audience: "redirect"`, flags `path="*"` as the not-found page, and resolves components (including `lazy()` imports) to source files through path aliases. For other config routers (Vue Router, Express views), parse the registration file(s) by hand on the same rules.
 
 **Guard: a file whose segments are ALL layout segments is not a route — it is the layout itself. Drop it.** Otherwise it reduces to the empty path, collides with the home page, and every table the layout's own imports touch gets falsely attributed to the front door.
 
@@ -80,10 +81,10 @@ Same rules as a capability anywhere else. `name` is user language. **`purpose` i
 
 Then **skip Phases 2 and 3** and go to Phase 5, which picks `_capabilities.json` up automatically.
 
-**Phase 4 still runs — in capability mode.** It used to be skipped, because `check_evidence.py` reads `map/pages/` and there are none, so it exited with an error on a perfectly good reading of a plugin. Point it at the capabilities instead:
+**Phase 4 still runs — in capability mode.** It used to be skipped, because `check_evidence.mjs` reads `map/pages/` and there are none, so it exited with an error on a perfectly good reading of a plugin. Point it at the capabilities instead:
 
 ```bash
-python scripts/check_evidence.py map/pages/ --capabilities map/_capabilities.json
+node scripts/check_evidence.mjs map/pages/ --capabilities map/_capabilities.json
 ```
 
 (It finds `_capabilities.json` beside the pages directory on its own, so the bare Phase 4 command works too.) It checks the half a machine can check: every capability has a name, and names a file that exists.
@@ -107,14 +108,14 @@ Also record programmatic redirects (post-login, post-submit).
 
 **A route with no inbound edge is a CLAIM, not an observation.** Before reporting one, confirm you checked all three places above. Routes genuinely without internal links usually have an external entry instead — see **Reached from outside** in the template.
 
-Run the bundled edge builder — `python scripts/gen_edges.py map/_routes.json --repo-root . -o map/_edges.json`. It scans ALL of `src/` for literal links (normalizing parameter syntax on both sides), attributes edges to the page when the file is a route's own file and to `«global navigation»` otherwise, records automatic redirects, and infers computed rails from template literals (the fixed prefix before the first `${`). Its "NO INBOUND" list at the end is the claim to check, not the conclusion to publish.
+Run the bundled edge builder — `node scripts/gen_edges.mjs map/_routes.json --repo-root . -o map/_edges.json`. It scans ALL of `src/` for literal links (normalizing parameter syntax on both sides), attributes edges to the page when the file is a route's own file and to `«global navigation»` otherwise, records automatic redirects, and infers computed rails from template literals (the fixed prefix before the first `${`). Its "NO INBOUND" list at the end is the claim to check, not the conclusion to publish.
 
 ### Phase 3 — Per-page deep pass (ONE page per pass, in reach order)
 
 **First, run the bundled harvester once for the whole app:**
 
 ```bash
-python scripts/harvest.py map/_routes.json --repo-root . -o map/_harvest.json
+node scripts/harvest.mjs map/_routes.json --repo-root . -o map/_harvest.json
 ```
 
 For each route it resolves the route file plus imports two levels deep — relative imports AND path aliases (read from `tsconfig.json`/`jsconfig.json` `compilerOptions.paths`, falling back to `@/` → `src/`), including `export … from` re-exports and dynamic `import(…)` — then extracts with line numbers: interactive elements, server function declarations, and every database call tagged READ / INSERT / UPDATE / DELETE. Phase 3 then writes user language *from* `_harvest.json` instead of grepping ad hoc per page — you have the line number in front of you before you write the sentence, which is what makes honest citation cheap. (The harvester is regex-based and will miss unusual patterns; anything you find by reading that it missed, cite normally.)
@@ -153,7 +154,7 @@ Save as `map/pages/<route-slug>.md`.
 Run the bundled checker:
 
 ```bash
-python scripts/check_evidence.py map/pages/
+node scripts/check_evidence.mjs map/pages/
 ```
 
 It extracts every `file:line` citation, asserts the file exists, the line range is in bounds, AND that the cited range actually contains the symbols/tables named in the Evidence line. Existence alone is not enough — a citation can point at a real file and the wrong line.
@@ -173,16 +174,16 @@ Authoring gotcha: **never backtick a file name on an Evidence line.** Backticks 
 Run the bundled assembler — never write MAP.md freehand, or the map changes shape depending on which session assembled it:
 
 ```bash
-python scripts/assemble.py map/ -o MAP.md --harvest map/_harvest.json [--machine-notes map/_machine_notes.json]
+node scripts/assemble.mjs map/ -o MAP.md --harvest map/_harvest.json [--machine-notes map/_machine_notes.json]
 ```
 
 It produces: a coverage table with counts read from the JSON (never typed); the stack summary from `_stack.md`; the `«global navigation»` set listed once instead of repeated on every page; the sitemap split public / signed-in with link edges; page files concatenated in Phase 3 order; a data appendix (per table: read by / written by) parsed from the Evidence lines; the machine-only appendix; and — when given `--harvest` — up to TEN more sections built from what the scan collected — **What runs on its own** (scheduled/background work), **Messages the app sends out**, **Record journeys** (the state machines nobody drew), **What dies when you delete** (cascades and soft delete), **Getting in and staying in** (the sign-in journey), **Free vs paid** (where the app draws the line), plus the four from before: **When things go wrong** (the app's shared error/progress machinery, written once so pages can reference it), **Findings** (dead surface, tables nothing touches, tables with no row-level security, destructive actions with no confirmation step, writes with no visible feedback), **Who's allowed to do what** (the database's own access rules, read from the migrations), and **Keys & services** (external services the app depends on, and every secret/environment variable the code expects, each with where it is first used).
 
 **Findings are computed candidates, not verdicts.** Before publishing, verify each one the same way as any claim: read the cited code. A finding that survives is among the most valuable lines in the map — the BM run caught a dead navigation button this way. If something flagged is intentional, keep the line and say it is intentional; deleting it hides the question from the next reader. The one input that needs a human sentence is the machine-notes file — a small JSON of `{route: "what fetches this"}`.
 
-Two more Phase 5 outputs, both bundled: `python scripts/emit_map_json.py map/ -o map.json` produces the structured, machine-readable version of the whole map (the contract an importer consumes — pages, capabilities, actions, tables, all with evidence), and
+Two more Phase 5 outputs, both bundled: `node scripts/emit_map_json.mjs map/ -o map.json` produces the structured, machine-readable version of the whole map (the contract an importer consumes — pages, capabilities, actions, tables, all with evidence), and
 
-**It reads `_harvest.json` too, and this matters more than it sounds.** For a long time it did not, while `assemble.py` did — so everything app-wide the scan learned (what runs on its own, what the app sends out, record journeys, delete cascades, the sign-in path, free vs paid, access rules, keys and services) reached a human reader in MAP.md and reached an importer NOT AT ALL. Half the reading stopped at the page files. It now picks `map/_harvest.json` up automatically; `--harvest` only overrides the location. **If it prints `WARNING: no harvest read`, the map you are about to hand over is pages and nothing else — fix that before shipping it**, because a file that looks complete and silently omits half the reading is worse than one that fails.
+**It reads `_harvest.json` too, and this matters more than it sounds.** For a long time it did not, while `assemble.mjs` did — so everything app-wide the scan learned (what runs on its own, what the app sends out, record journeys, delete cascades, the sign-in path, free vs paid, access rules, keys and services) reached a human reader in MAP.md and reached an importer NOT AT ALL. Half the reading stopped at the page files. It now picks `map/_harvest.json` up automatically; `--harvest` only overrides the location. **If it prints `WARNING: no harvest read`, the map you are about to hand over is pages and nothing else — fix that before shipping it**, because a file that looks complete and silently omits half the reading is worse than one that fails.
 
 Output is stamped `user-lens-map/3`. Every `/1` field is unchanged; `/2` added the app-wide `app` section, per-page `signals`, `defects`, and `capabilities[].purpose`; `/3` adds top-level `capabilities` — the surface of a repository that has no pages (Phase 1b). The number exists so a consumer that only understands an earlier version says so rather than quietly dropping what was added — which is exactly why adding fields without bumping it would be the wrong move.
 
@@ -196,7 +197,7 @@ Two more things the emitter carries that a reader of MAP.md would otherwise have
 
 `signals` carries the harvest's per-page regex hits (outbound mail, paid gates, sign-in, validation). They are **candidates, not claims** — the same discipline as Phase 3 — and are marked as such so a consumer never renders them as agreed behaviour. The prose you wrote and checked is the claim; these are leads.
 
-Also bundled: `python scripts/tree_from_map.py map/ -o tree.md` renders the sitemap as a properly nested tree (in the flat sitemap, indentation means "links to"; in the tree it means "contains" — both views are useful, never confuse them). For an app with NO router at all (vanilla HTML/JS), `scripts/nav_edges.py` and `scripts/index_calls.py` are the Phase 2/3 strategy: screens instead of routes, and data calls attributed to the function that contains them.
+Also bundled: `node scripts/tree_from_map.mjs map/ -o tree.md` renders the sitemap as a properly nested tree (in the flat sitemap, indentation means "links to"; in the tree it means "contains" — both views are useful, never confuse them). For an app with NO router at all (vanilla HTML/JS), `node scripts/nav_edges.mjs` and `node scripts/index_calls.mjs` are the Phase 2/3 strategy: screens instead of routes, and data calls attributed to the function that contains them.
 
 ## Page template (fill every field; write "None" rather than omitting)
 
@@ -249,13 +250,13 @@ Match this register exactly. "What happens" lines are written to the user as "yo
 ## Quality bars
 
 - 100% of user-facing routes have page files; machine-only routes all appear in the appendix. A user-facing route with no page file is a failure.
-- Every action has Evidence — `check_evidence.py` now fails an action that has none, so this bar is enforced rather than asserted — and it passes with zero failures. Anything you genuinely could not check is marked `⚠ UNVERIFIED`, which the checker counts and prints; report that count rather than letting it pass unmentioned.
+- Every action has Evidence — `check_evidence.mjs` now fails an action that has none, so this bar is enforced rather than asserted — and it passes with zero failures. Anything you genuinely could not check is marked `⚠ UNVERIFIED`, which the checker counts and prints; report that count rather than letting it pass unmentioned.
 - Every "no inbound link" claim was checked against page links, shared chrome, AND config arrays, with param syntax normalized.
 - Every capability has a **What it's for** line, and it says something its name does not already say. "Manage your account — lets you manage your account" is a failure; it is the sentence the owner reads on the card.
 - A non-technical reader can answer "what can I do on this page and what data does it change?" for any page without opening the code.
 - Depth is uniform: the last page mapped is as detailed as the first.
-- `emit_map_json.py` counted the **What it's for** lines above and did not warn — a run where no capability states one produces a board of cards that all read the same.
-- `emit_map_json.py` printed an app-wide line, not `WARNING: no harvest read`. A map.json without it is half a reading wearing a complete one's face.
+- `emit_map_json.mjs` counted the **What it's for** lines above and did not warn — a run where no capability states one produces a board of cards that all read the same.
+- `emit_map_json.mjs` printed an app-wide line, not `WARNING: no harvest read`. A map.json without it is half a reading wearing a complete one's face.
 - Defects are one line each, not joined, and each carries its own Evidence.
-- `emit_map_json.py` warned about no page file reaching nothing. A page whose heading does not match a route is dropped whole, and the run otherwise looks identical to one where everything landed.
-- The scripts' own selftests pass: `python3 scripts/selftest_emit_map_json.py` and `python3 scripts/selftest_check_evidence.py`. They hold the contract this map is one half of — run them after touching any script here, and especially after fixing one under the process rule in Phase 4.
+- `emit_map_json.mjs` warned about no page file reaching nothing. A page whose heading does not match a route is dropped whole, and the run otherwise looks identical to one where everything landed.
+- The scripts' own selftests pass: `node scripts/selftest_emit_map_json.mjs` and `node scripts/selftest_check_evidence.mjs`. They hold the contract this map is one half of — run them after touching any script here, and especially after fixing one under the process rule in Phase 4.
