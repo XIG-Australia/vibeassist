@@ -107,18 +107,22 @@ every few minutes. It is not decoration:
 - **it is what keeps the claim.** A claim nobody renews is offered to the next
   caller. From outside, silence and death look the same.
 
-## Questions — one at a time, and that lock is shared
+## Questions — one at a time PER JOB, not per session
 
 Anything you need the person for goes through `ask_user` on the job, then
 `get_answer`. Never a terminal prompt: a terminal question in a listening
 session is an invisible stall.
 
-**Only one question can be open across the whole session.** With lanes running
-concurrently, that lock is shared — a second job that wants to ask is refused
-until the first is answered. So: hold it, breadcrumb it ("waiting to ask you
-something"), keep `report_progress` alive so the claim survives, and ask the
-moment the open question is answered. Poll `get_answer`; `{ answered: false }`
-means the person has not got to it, not that anything failed.
+**The one-open-question rule is scoped to the job.** Each job may have one
+question open at a time; a second question on the SAME job is refused until
+that one is answered. Jobs in different lanes are independent — they are
+different asks, and each question shows on its own ask, so two jobs asking at
+once is normal and correct.
+
+So a lane never waits on another lane's question. Ask when your job needs it,
+poll `get_answer`, and keep `report_progress` going while you wait so the claim
+stays yours. `{ answered: false }` means the person has not got to it, not that
+anything failed.
 
 ## Finishing a job
 
