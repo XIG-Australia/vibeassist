@@ -5,8 +5,14 @@
 //     node check_language.mjs <file> [<file> ...]
 //     cat draft.md | node check_language.mjs
 //
-// Faithful port of check_language.py. Match its stdout and exit codes
-// byte-for-byte: exit 1 if anything is flagged, 0 if clean.
+// Two kinds of output, and the difference matters:
+//   FLAGS   — things that are wrong. Exit 1.
+//   NOTICES — things a human has to look at, because no regex can settle
+//             them. Exit code unaffected.
+//
+// It began as a byte-for-byte port of check_language.py. It is not one any
+// more: the furniture-words notice and the dash-aside / vague-deferral flags
+// came after the Python was retired.
 
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -26,12 +32,36 @@ const FILLER = [
 // Method vocabulary — words from the decomposition method that must never
 // appear on anything the user reads. They are bookkeeping, not card language.
 const METHOD_VOCAB = [
-  "leaf", "leaves", "ancestor", "cascade", "inherits", "inherited",
+  "ancestor", "cascade", "inherits", "inherited",
   "umbrella", "taxonomy", "altitude", "lens", "carve", "carved",
   "materialize", "materialise", "cake rule", "scope fence", "fine print",
   "walk-question", "shaping pass", "intent_spec", "must-not register",
   "app-level facts register",
 ];
+
+// VibeAssist's own words for its workspace. On a shape they may only ever
+// carry the APP's meaning — a gardening app's tree is a plant and its ask is
+// a question, and both are correct there. What is never allowed is VA's board
+// meaning leaking onto an app that is not a board.
+//
+// A regex cannot tell a garden tree from a board tree; they are the same
+// token. So these are a NOTICE for a human eye, never a failure — hard-banning
+// them would break every legitimate gardening, forestry or to-do app.
+const FURNITURE = ["ask", "tree", "board", "branch", "leaf", "leaves", "room", "card"];
+
+// Say where it happens, or drop the clause. A deferral that names no place is
+// the shape admitting it does not know.
+const VAGUE_DEFERRAL = [
+  "somewhere else", "happens elsewhere", "handled elsewhere", "done elsewhere",
+];
+
+// A clause hung off an em-dash at the END of a line: "… — that happens
+// somewhere else." Give it its own sentence or delete it.
+//
+// It must run to the end of the line to count. An em-dash with a finished
+// sentence after it is ordinary punctuation, not an afterthought, so the
+// clause may hold at most its own closing full stop.
+const DASH_ASIDE = /—\s*[^—.!?]*[^—.!?\s][^—.!?]*[.!?]?\s*$/;
 
 const MAX_SENTENCE_WORDS = 25;
 
@@ -97,6 +127,7 @@ function* sentences(text) {
 
 function check(name, text) {
   const flags = [];
+  const notices = [];
   const lines = pySplitlines(text);
   for (let idx = 0; idx < lines.length; idx++) {
     const i = idx + 1;
@@ -112,17 +143,22 @@ function check(name, text) {
         flags.push(`${name}:${i}: method vocabulary: '${w}' — this word is for the method, not the user. Say it plainly or drop it`);
       }
     }
-    // the entity is an ask, never a card ("credit card details" is fine)
-    const cardRe = /\bcards?\b/g;
-    let m;
-    while ((m = cardRe.exec(low)) !== null) {
-      const start = m.index;
-      const end = m.index + m[0].length;
-      const ctx = low.slice(Math.max(0, start - 12), end + 12);
-      if (!/(credit|debit|payment)\s+card|card\s+(details|number|payment)/.test(ctx)) {
-        flags.push(`${name}:${i}: 'card' — the thing is an ask. Say 'ask'`);
+    for (const w of VAGUE_DEFERRAL) {
+      if (low.includes(w)) {
+        flags.push(`${name}:${i}: vague deferral: '${w}' — say WHERE it happens, or delete the clause`);
       }
-      if (m[0].length === 0) cardRe.lastIndex++;
+    }
+    if (DASH_ASIDE.test(line.replace(/\s+$/, ""))) {
+      flags.push(`${name}:${i}: dash-aside: "${cpSlice(line.trim(), 80)}" — the clause after the em-dash is an afterthought. Give it its own sentence or drop it`);
+    }
+    // Furniture words are a NOTICE, never a flag — see FURNITURE above.
+    // "credit card details" is the app's meaning too, so it needs no notice.
+    for (const w of FURNITURE) {
+      if (!new RegExp("\\b" + reEscape(w) + "(?:s|es)?\\b").test(low)) continue;
+      if (w === "card" && /(credit|debit|payment)\s+card|card\s+(details|number|payment)/.test(low)) {
+        continue;
+      }
+      notices.push(`${name}:${i}: '${w}' is one of VibeAssist's own words — is this the APP's meaning, or ours? Ours must never appear on a shape`);
     }
     if (line.includes(";")) {
       flags.push(`${name}:${i}: semicolon — write two sentences instead`);
@@ -141,26 +177,38 @@ function check(name, text) {
       flags.push(`${name}: 'X, not Y' construction: "${cpSlice(s, 80)}..." — say what it is, drop the contrast`);
     }
   }
-  return flags;
+  return { flags, notices };
 }
 
 function main() {
   let allFlags = [];
+  let allNotices = [];
+  const take = (r) => {
+    allFlags = allFlags.concat(r.flags);
+    allNotices = allNotices.concat(r.notices);
+  };
+
   const argv = process.argv.slice(2);
   if (argv.length > 0) {
     for (const p of argv) {
       const raw = fs.readFileSync(p, "utf-8");
-      allFlags = allFlags.concat(check(p, universalNewlines(raw)));
+      take(check(p, universalNewlines(raw)));
     }
   } else {
     const raw = fs.readFileSync(0, "utf-8");
-    allFlags = allFlags.concat(check("stdin", universalNewlines(raw)));
+    take(check("stdin", universalNewlines(raw)));
   }
 
   let out = "";
   for (const f of allFlags) out += f + "\n";
   out += (allFlags.length ? `\n${allFlags.length} flag(s).` : "Clean.") + "\n";
+  if (allNotices.length) {
+    out += "\n";
+    for (const n of allNotices) out += n + "\n";
+    out += `\n${allNotices.length} notice(s) — read each one. They are not failures.\n`;
+  }
   process.stdout.write(out);
+  // Notices never fail the run. Only a human can settle them.
   process.exit(allFlags.length ? 1 : 0);
 }
 

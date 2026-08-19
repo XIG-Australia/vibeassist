@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.14.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.15.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.15.0 (20 Aug 2026): plain wording enforced on the single-ask shaping entry too (not only tree drafts); dash-asides and vague deferrals are flags; VA's furniture words (ask, tree, board, branch, leaf, room, card) may only carry the APP's meaning on a shape — a notice for a human, never a hard ban. -->
 <!-- 0.13.0 (18 Aug 2026): check_language ported from Python to node ESM (byte-for-byte identical); the skill now runs it with node, so drafts can be checked where there is no Python. -->
 <!-- 0.12.0 (18 Aug 2026): the rebuild-board dogfood pass. Define-the-project-first + the three registers (Rules / Decisions / Ethos); think in cross-dependencies; the return path (the second half of the loop) + one-way-back and send-back routing; the want is a plain complete action; record a change only when the shape's own words go wrong. -->
 <!-- 0.11.0 (14 Aug 2026): added the plugin-only markdown-file transport — the free-tier path (one file, heading=tree, prose shape, two doors decompose/map, findings on overlap, one-way import). -->
@@ -245,6 +246,7 @@ what it should have been:
 | "say plainly the diary is full for that period and show the salon phone number (this is 'nothing fits', not an error)" | "If no times are free, say so and show the phone number." |
 | "Everything else stays a leaf — its detail is shape, not structure." | Nothing. This is method talk. Never write it where the user reads. |
 | "Child of Task board. Ancestors' must-nots apply." | "The Task board rules apply here too." |
+| "Never move an ask from here. Dragging one onto another must not change what it sits inside — that happens somewhere else." | "You can't drag an ask into a different parent here. Moving asks happens on the board." |
 
 The rules that kill it:
 
@@ -257,16 +259,54 @@ The rules that kill it:
 - **If a sentence sounds wise, rewrite it.** Asks state facts. They never
   philosophize, never balance one idea against another for effect.
 - **No "X, not Y" constructions.** Say what it is. The contrast is padding.
+- **No dash-asides.** A clause hung off an em-dash at the end of a line is an
+  afterthought the writer could not place. Give it its own sentence or delete
+  it. (An em-dash in the middle of a finished sentence is fine.)
+- **No vague deferrals.** "That happens somewhere else", "handled elsewhere",
+  "done elsewhere" — name the place, or cut the clause. A deferral that names
+  nowhere is the shape admitting it does not know.
 - **No semicolons on asks.** Write two sentences.
 - **The over-the-counter test.** Say the line out loud as if the owner is
   standing in front of you. If you wouldn't say it that way, don't write it
   that way.
 
-**Check before you show.** Run `node scripts/check_language.mjs` over every draft
-proposal — tree outlines, shapes, question batches — before the user sees
-it, and fix what it flags. It catches filler words, method vocabulary,
-semicolons and overlong sentences; the over-the-counter read catches the
-rest.
+**The third disease: our furniture words carrying our meaning.** **ask, tree,
+board, branch, leaf, room, card** are VibeAssist's own words for its
+workspace. They are also ordinary English, so they turn up honestly in real
+apps: a gardening app's tree is a plant, its ask is a question a gardener
+types, its branch is part of the tree. On that app's shapes those words are
+exactly right.
+
+What is never right is **VA's board meaning leaking onto a shape**. "You
+can't move this ask to another branch" describes VibeAssist, not the app being
+built. Shape every ask in the app's OWN words, read from the app itself.
+
+Two traps worth naming:
+
+- The collision is invisible when the app is itself about asks in a tree.
+  Then our words and its words are the same tokens with no daylight between
+  them, and only meaning tells them apart. Slow down there.
+- It is not memory bleeding across sessions. The shaping helper runs in a
+  fresh sub-context with no knowledge of our work. It reaches for "ask"
+  because shaping asks is its trade.
+
+**No checker can settle this.** A garden tree and a board tree are the same
+word. So `check_language.mjs` raises these as a **notice**, never a failure —
+hard-banning them would break every legitimate gardening, forestry or to-do
+app. The notice asks one question and a human answers it: *is this the app's
+meaning, or ours?*
+
+**Check before you show.** Run `node scripts/check_language.mjs` over every
+draft proposal — tree outlines, shapes, question batches — before the user
+sees it, and fix what it flags. It catches filler words, method vocabulary,
+dash-asides, vague deferrals, semicolons and overlong sentences, and it
+raises a furniture-word notice for your eye. **Flags must be fixed. Notices
+must be read.** The over-the-counter read catches the rest.
+
+**This check is not only for tree drafts.** Every shape runs it before it
+lands on the board, including the single-ask shaping entry and a shape_ask
+job handed to a listening session. The tree road had the check and the
+per-ask road did not, which is how the bad lines above reached a real board.
 
 **Do not copy this file's voice onto the board.** This method file explains
 rules to a model, and it talks like it — it would fail its own checker. The
@@ -629,6 +669,12 @@ answers into its SHAPE — want, must do, must not. Say which ask it landed on. 
 same front gate the worker skill enforces mid-run ("chat is intake"): when a
 build session hands a voiced request over, THIS is where it gets shaped.
 
+**Run the language check before the shape lands** — `node
+scripts/check_language.mjs` over the want, the must-dos and the must-nots, fix
+every flag, read every notice. This entry is reached without any tree draft,
+so nothing else runs the check for it. It is also the entry a `shape_ask` job
+lands on, so an unchecked line here goes straight onto the user's board.
+
 In both modes, read the existing board first (the list tools named in the
 persistence note under Materialize): decompose INTO what's already there —
 extend and correct, never duplicate an ask that already exists.
@@ -896,7 +942,13 @@ and every sentence you write on an ask. Full rationale and the review model:
   empty. Never pad.
 - **The language rule.** Never use convoluted language. Fewest and simplest
   words on everything the user reads. No method vocabulary and no bard-speak
-  on asks. Run `node scripts/check_language.mjs` on drafts before showing them.
+  on asks. Run `node scripts/check_language.mjs` on EVERY shape before it
+  lands — tree drafts, the single-ask entry and `shape_ask` jobs alike. Fix
+  every flag; read every notice.
+- **Our furniture words never carry our meaning.** ask, tree, board, branch,
+  leaf, room and card may only mean what they mean in the APP being built. A
+  gardening app's tree is a plant. Never describe VibeAssist's own board
+  mechanics on an app's shaped lines.
 - **Shaping is the front gate.** A want becomes deliverable only after the walk
   shapes it and the user agrees — intake → shape → agree, never build inline.
   You may shape on the user's behalf, but land the change on a named ask (or

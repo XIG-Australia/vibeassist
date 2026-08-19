@@ -85,7 +85,11 @@ Dispatch into two concurrent lanes:
 - **`shape_ask`** — the shaping flow. Hand it to the `vibeassist-decompose`
   skill's single-ask shaping entry, in a fresh sub-agent, with the job's input
   (which names the ask) and nothing else. Proposals stay draft-first: shaping
-  puts a shape up, the person accepts it.
+  puts a shape up, the person accepts it. **The language check runs before the
+  shape lands** — `node scripts/check_language.mjs` in that skill, every flag
+  fixed, every notice read. A listening session writes onto the board with
+  nobody watching, so the check is the only thing standing between a sloppy
+  line and the person's ask.
 - **`build`** — **later.** It is not a kind yet. The build lane exists now so
   that landing it is a dispatch line, not a re-plumb.
 - **Anything else** — do not guess what it means. Finish it with

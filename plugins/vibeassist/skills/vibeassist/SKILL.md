@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping now, building later — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.14.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.15.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.15.0 (20 Aug 2026): a shape_ask job runs the language check before the shape lands. -->
 <!-- 0.14.0 (20 Aug 2026): standby rebuilt on the wait_for_work MCP tool — the va-standby.sh curl-and-token poller is retired; a fresh sub-context per job; a build lane and a quick lane, concurrent and bounded. See references/standby.md. -->
 <!-- 0.12.0 (18 Aug 2026): verify inward (green from the tool is not the running thing — open every touched surface after a generator/scaffold/rename/move); the build note is read from code, never transcribed; send-back routing reasons. -->
 
