@@ -51,7 +51,6 @@ below is the same shape for offline reference:
       "Bash(npx prettier --check *)",
       "Bash(bash ~/.claude/va-check.sh)",
       "Bash(bash ~/.claude/va-preflight.sh)",
-      "Bash(bash ~/.claude/va-standby.sh)",
       "mcp__vibeassist__*",
       "Bash(ls:*)",
       "Bash(cat:*)",

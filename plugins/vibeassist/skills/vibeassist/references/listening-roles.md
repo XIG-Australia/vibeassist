@@ -1,82 +1,39 @@
-# Listening roles — worker & standby (the smart kickoff)
+# Listening roles — the worker, and the road being replaced
 
-**Load this when:** the skill was invoked as `/vibeassist worker` or
-`/vibeassist standby` (or the run config resolves to one of those roles) —
-read it BEFORE arming the listening loop.
+**Load this when:** the skill was invoked as `/vibeassist worker` (or the run
+config resolves to that role) — read it BEFORE arming the listening loop.
+
+**Standby is not in this file any more.** `/vibeassist standby` loads
+`references/standby.md`: that loop was rebuilt on the `wait_for_work` MCP
+tool, and nothing about its transport survives here. The doctrine it kept —
+drain means drain, honest exit reasons, the sleep policy, progress breadcrumbs
+— went with it.
 
 The terminal session is a LISTENER the user starts ONCE per working session;
-everything after is pushed from VA (Start, questions, jobs). Never make
-the user type further instructions into the terminal — if you need
-information, use the `/ask` question channel, not the chat.
+everything after is pushed from VA (Start, questions, jobs). Never make the
+user type further instructions into the terminal — if you need information, use
+the question channel, not the chat.
 
-## Bootstrap — the loop script is ROLE-VARIANT
+## The loop script is retired
 
-The listening loop lives at `~/.claude/va-standby.sh` (same filename and
-invocation for BOTH roles — the user's allow rule matches the exact string
-`bash ~/.claude/va-standby.sh`, so never rename it or add arguments). The
-packaged source is this skill's `scripts/va-standby.sh` (the STANDBY variant).
-The CONTENT differs by role in exactly one place:
+The listening loop used to be `~/.claude/va-standby.sh` — a bash loop that
+`curl`ed `/api/public/claude/updates` with a stored `VIBEASSIST_TOKEN`, in two
+role variants. **That script is gone from this plugin.** The rebuilt app hands
+the assistant a held-open `wait_for_work` tool instead, so the loop is the
+assistant calling that tool and re-arming. Retired with it: the token, the URL
+env var, the `&sprints=1` variant, the allow rule for the bash loop, and the
+launcher / print-mode / reaper machinery that existed only because a headless
+session died after one turn.
 
-- **worker** variant polls with `&sprints=1`, so the server also wakes it when
-  an approved Ask is waiting (the fix for "Start pressed, worker listening,
-  nothing happened"). The parameter keeps its old spelling on purpose, so an
-  installed launcher and an older copy of this script keep waking correctly
-  without being updated first; `&work=1` is the name it should have and is
-  accepted too. What it wakes ON changed with the sprint road's removal — a
-  queued task no longer ends the hold, because nothing can consume one.
-- **standby** variant must NOT send it — a responder can't take an Ask, and
-  waking on one degrades the long-poll into a busy loop (the 2026-07-08 live
-  bug; see `references/incidents.md`).
+Do not port any of it. If you find yourself writing a poller, stop — see
+`references/standby.md` for the loop that exists.
 
-At kickoff, write `~/.claude/va-standby.sh` if it's missing or doesn't match
-YOUR role's variant: copy the packaged `scripts/va-standby.sh` for standby;
-for worker, apply the one-line change (curl URL ends
-`updates?wait=25&sprints=1`).
-
-## Run it and act on the output
-
-Run it (backgrounded) with exactly `bash ~/.claude/va-standby.sh` — the allow
-rule matches that exact string. On output:
-
-- `{"round_complete":true}` (inside the JSON) → idle heartbeat; re-arm
-  immediately, say nothing.
-
-> **KEEP GOING. ENDING YOUR TURN IS THE EXPENSIVE THING.**
->
-> A headless session runs in print mode: **one turn, then the process exits.**
-> Nothing resumes it — the daemon notices it went and starts a whole new
-> session, which pays the boot and the MCP connect again before it can hear
-> anything.
->
-> Measured on the owner's machine, 5 August: standby sessions ended after 220s,
-> 174s and 691s, each followed by ~15s of nothing and then 17–122s of connecting.
-> So every few minutes there was a window of half a minute to two and a half
-> minutes where **nobody was listening**, and a brand-new session booted and
-> re-read all of this — a few hundred cold starts a day whether or not anything
-> needed answering.
->
-> So an idle round is NOT a reason to wrap up. Re-arm and keep re-arming: dozens
-> of quiet rounds in one turn is the CORRECT shape, and it costs almost nothing
-> because the server holds each poll open and idle waiting burns no tokens. Do
-> not summarise, do not narrate the quiet rounds, do not offer to stop.
->
-> The ONLY reasons to end a turn are the ones already written down: the sleep
-> policy fires (idle grace or quiet hours), the recovery bound is spent, or the
-> user says stop. "Nothing happened for a while" is not one of them — it is the
-> normal state of a listener and the whole thing you are here to do.
-- `STANDBY ERROR …` → a CONFIG problem (missing env) — stop and tell the user
-  exactly what it printed.
-- `STANDBY TRANSIENT …` or the command was KILLED externally (stopped with no
-  output at all) → do NOT stop permanently on the first incident: transient
-  network blips and externally-killed rounds are recoverable, and a listener
-  that gives up on them is a worker that silently never wakes again. Re-arm
-  and count the incident. **Bounded:** after 3 CONSECUTIVE incidents (any
-  output or a clean round resets the count), post ONE honest `ask`
-  `kind:"notice"` saying the listening loop keeps failing (include the last
-  error text), then stop re-arming. Exception: if the failure text shows an
-  auth problem (401/unauthorized/revoked), don't retry — run
-  `bash ~/.claude/va-check.sh` and follow its verdict instead.
-- Updates JSON (`"actionable":true`) → act by role, then re-arm (below).
+**The worker's own wake road went with it.** Waking on an approved Ask was a
+field on the old `/updates` response; on the rebuilt app a worker listens
+through the same `wait_for_work` loop, and its build lane starts when a
+`build` job kind lands. Until then, everything below is the worker's DOCTRINE —
+what to do once work reaches it — not a transport you can run today. Say that
+plainly rather than looking for another way in.
 
 ## Worker role
 
@@ -115,22 +72,14 @@ worker may stop ONLY when the queue is genuinely empty OR the sleep policy fires
 "queue empty", "idle limit (N min)", or "quiet hours" — so an early exit is
 diagnosable from the board rather than looking like a silent stall.
 
-## Standby role
+## Old-road job playbooks — kept for reference, not current
 
-If the VibeAssist MCP server is connected, drain jobs (`next_ai_job` → do the
-work → `complete_ai_job`) and resume answered questions (`get_answer`) — the
-tool descriptions carry each tool's playbook (attachments handling, result
-shapes). Over plain HTTP (no MCP), surface what's waiting ("2 AI jobs queued —
-connect the MCP server to fulfil them") and keep listening.
+These are the job kinds the OLD app dispatched over `next_ai_job` /
+`complete_ai_job` / `update_ai_job_progress`. Those tools are not part of the
+rebuilt app's tool set, and neither kind is dispatched today. They are kept
+because the judgement in them is worth keeping — read them as reasoning to
+reuse when an equivalent job kind returns, never as a road to go looking for.
 
-- **Self-heal a wrong-variant script:** if a STANDBY loop wakes with
-  `actionable:true` but `queuedAiJobs` is 0 and `answeredQuestions` is empty
-  (only sprint counts are set), you are running the WORKER variant — rewrite
-  `~/.claude/va-standby.sh` to the standby variant and re-arm.
-- **Post progress breadcrumbs on longer jobs.** On any claimed job you expect
-  to take more than ~30s, call `update_ai_job_progress` with a short human
-  phrase as you go (see its tool description) — it's the single biggest trust
-  signal that the assistant is working, not hung.
 - **Job playbook — `interpret_review_sendback` (the review send-back
   assessment).** The user sent an ask's DELIVERABLE back with comments (or
   accepted it with tweak/wrong points). Your job is an **ASSESSMENT, not a
@@ -220,9 +169,10 @@ connect the MCP server to fulfil them") and keep listening.
 
 ## Sleep policy — an idle run ENDS deliberately, it never idles forever
 
-Both roles read the same `sleepPolicy`
-(`{ idleMinutes, quietHours, keepListening }`) from every `/updates` response,
-the user's setting:
+The worker reads `sleepPolicy` (`{ idleMinutes, quietHours, keepListening }`)
+from every `/updates` response, the user's setting. (Standby's version of this
+policy — and the fact that nothing on the rebuilt app hands it one — lives in
+`references/standby.md`.)
 
 - **Grace window** — after `idleMinutes` with nothing actionable (0 = sleep
   immediately on empty queue), SLEEP instead of re-arming; new work arriving

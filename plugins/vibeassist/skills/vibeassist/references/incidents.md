@@ -14,6 +14,11 @@ must NOT send `&sprints=1`; a standby that wakes with only work counts set is
 running the wrong variant and self-heals by rewriting the script.
 (`references/listening-roles.md`.)
 
+**Retired 20 Aug 2026 with the script itself.** Standby now loops on the
+`wait_for_work` MCP tool, which has no variants and no wake flags, so the
+whole class of bug is gone rather than guarded. What survives is the lesson:
+never wake a listener for work it cannot consume. (`references/standby.md`.)
+
 ## 2026-07-09 — the 70-minute invisible pause + the `gh` 127 gap
 
 A worker "paused per review mode" with a question printed only in its

@@ -3,7 +3,7 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.11.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.14.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 <!-- 0.11.0 (14 Aug 2026): added the plugin-only markdown-file transport — the free-tier path (one file, heading=tree, prose shape, two doors decompose/map, findings on overlap, one-way import). -->
 <!-- 0.10.0 delivered as a .skill; these changes are NOT yet in the plugin source (XIG-Australia/vibeassist) — that merge is still outstanding. -->
 

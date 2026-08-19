@@ -1,9 +1,10 @@
 ---
 name: vibeassist
-description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (long-poll responder: watch for updates and act/surface them).
+description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping now, building later — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.11.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.14.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.14.0 (20 Aug 2026): standby rebuilt on the wait_for_work MCP tool — the va-standby.sh curl-and-token poller is retired; a fresh sub-context per job; a build lane and a quick lane, concurrent and bounded. See references/standby.md. -->
 
 # VibeAssist Ask runner
 
@@ -62,6 +63,11 @@ Never print or log the token; never wrap it in `$(...)` (command substitution is
 never auto-approved). Prefer Read/Grep/Glob over shelling out; one tool per Bash
 line; no `$VAR` in a path argument.
 
+**Standby does not take this road at all.** The listening loop is MCP-only: no
+token, no curl, no checker. Tools missing means the session is not connected —
+point the user at VibeAssist's connect screen, never at a token
+(`references/standby.md`).
+
 ## 2 · Kickoff (once per session)
 
 1. **Tool preflight:** `bash ~/.claude/va-preflight.sh` (copy from this skill's
@@ -82,8 +88,11 @@ line; no `$VAR` in a path argument.
      mismatch → load `references/kickoff-sync.md` and follow it. Applying ANY
      settings change is offer-first in EVERY mode — the consent to build an Ask
      never covers the user's settings file.
-4. **Listening roles:** invoked as `worker` or `standby` → load
-   `references/listening-roles.md` BEFORE arming the listening loop.
+4. **Listening roles:** invoked as `standby` → load `references/standby.md`
+   BEFORE arming the loop, and skip steps 1–3 above: standby runs on the
+   `mcp__vibeassist__*` tools alone, so there is no token to check, no
+   preflight script to copy and no clone to make safe until a job actually
+   arrives. Invoked as `worker` → load `references/listening-roles.md`.
 
 ## 3 · Mode
 
@@ -96,7 +105,10 @@ yet → default **review**.
 - **review** — ONE Ask, then ask (via the question channel) before the next.
 - **run** — work the run in order; at its end, ask via a `kind:"decision"` /ask.
 - **drain** — keep taking approved Asks until there are none.
-- **worker** / **standby** — listening roles: `references/listening-roles.md`.
+- **standby** — the listening loop: `references/standby.md`. It calls
+  `wait_for_work`, hands each job to a fresh sub-context (a quick lane and a
+  build lane, concurrent and bounded), and re-arms. No poller, no token.
+- **worker** — the build listener: `references/listening-roles.md`.
 
 ### Overnight drain — the build-overnight doctrine
 
