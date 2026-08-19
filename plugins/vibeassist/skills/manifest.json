@@ -26,7 +26,7 @@
         "references/graveyard.md",
         "references/rebuild.md",
         "references/three-role-audience.md",
-        "scripts/check_language.py"
+        "scripts/check_language.mjs"
       ]
     },
     {
@@ -34,17 +34,19 @@
       "whenToUse": "Map a codebase from the user's perspective - a sitemap of pages and how they link, what each page lets a person do (in plain language), the actions available on each page, and which database tables each action reads or writes. Use this whenever the user asks to \"understand this app\", \"map this codebase\", \"document what this app does\", \"import this codebase\", \"create a sitemap from code\", or wants a functional spec of an existing application - even if they don't say \"map\" explicitly. Do NOT produce developer-architecture docs (modules, dependencies, layers) when this skill triggers; the output must be readable by a non-technical person.",
       "files": [
         "SKILL.md",
-        "scripts/assemble.py",
-        "scripts/check_evidence.py",
-        "scripts/emit_map_json.py",
-        "scripts/gen_edges.py",
-        "scripts/harvest.py",
-        "scripts/index_calls.py",
-        "scripts/nav_edges.py",
-        "scripts/routes_file_based.py",
-        "scripts/routes_react_router.py",
-        "scripts/selftest_emit_map_json.py",
-        "scripts/tree_from_map.py"
+        "scripts/_pyjson.mjs",
+        "scripts/assemble.mjs",
+        "scripts/check_evidence.mjs",
+        "scripts/emit_map_json.mjs",
+        "scripts/gen_edges.mjs",
+        "scripts/harvest.mjs",
+        "scripts/index_calls.mjs",
+        "scripts/nav_edges.mjs",
+        "scripts/routes_file_based.mjs",
+        "scripts/routes_react_router.mjs",
+        "scripts/selftest_check_evidence.mjs",
+        "scripts/selftest_emit_map_json.mjs",
+        "scripts/tree_from_map.mjs"
       ]
     },
     {
