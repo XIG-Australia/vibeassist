@@ -63,6 +63,19 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    `doneWhen` — its place in the tree (parent, children), what it `touches`,
    and the actions it names.
 
+   **The ask is already in hand — do NOT go looking for it.** It came from a
+   tool: `next_approved_ask` on this road, `get_ask({ askId })` on a `build`
+   job. That response IS the ask. **The board lives in the app, behind those
+   tools. It is not a folder in the repository.** So do not read a `plan/`
+   folder, a `board.md`, or any checked-in file to find out what to build, and
+   do not list or grep for one. If a repository you are building in holds files
+   like that, they are somebody's notes — the tool is the record, and hunting
+   them costs a lot and tells you nothing new.
+
+   Reading code, of course, is a different thing entirely: once you know WHAT to
+   build, read whatever code you need to build it. The ban is on file-hunting to
+   discover the ask, not on reading the codebase.
+
    `doneWhen` is the definition of done. Everything outside the Shape is out of
    scope, and a gap in the Shape is a question for the user, not a guess.
 

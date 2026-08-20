@@ -95,9 +95,8 @@ Dispatch into two concurrent lanes:
 - **`build`** — build the one ask the job names. It goes to the **build lane**
   (up to 2 at once, each on its own branch in its own worktree — the lane rules
   above are the rules). Hand a FRESH sub-agent the job and the ask it names, and
-  tell it to run the build playbook that already exists:
-  `references/delivery-on-asks.md`. Do not write a new build flow. What that
-  sub-agent does, in order, is **A `build` job, step by step** below.
+  send it to **A `build` job, step by step** below — that section is the whole
+  instruction, and it names the playbook to run. Do not write a new build flow.
 - **Anything else** — do not guess what it means. Finish it with
   `complete_job`'s `error` saying this skill version does not handle that kind,
   tell the user once, and keep listening. A job left claimed and silent is
@@ -130,8 +129,9 @@ request. Everything below is what the SUB-AGENT does.
    is a question (step 6), not a guess.
 
 3. **Run the playbook that exists.** `references/delivery-on-asks.md` is the
-   build flow — read it and follow it. Four of its steps arrive differently on
-   this road:
+   build flow — **read it ONCE, here, and follow it.** It is one file and it does
+   not change during a build; reading it a second time buys nothing and costs a
+   whole file. Four of its steps arrive differently on this road:
 
    | In the playbook              | On a `build` job                                 |
    | ---------------------------- | ------------------------------------------------ |
@@ -144,6 +144,12 @@ request. Everything below is what the SUB-AGENT does.
    were handed, one ask one branch, the `VibeAssist-Ask:` trailer on every
    commit, verify green before anything is pushed, and a gap in the Shape is a
    question, never a guess.
+
+   **You already have the ask, so do not go looking for it.** `get_ask` in step
+   2 is the whole of finding it. Do not read a `plan/` folder or a `board.md`
+   to work out what to build, and do not list or grep for one — the board is the
+   app, not a folder in the checkout. Reading CODE to build the thing is a
+   different matter and is exactly what you should be doing.
 
 4. **Say what you are doing.** `report_progress` when you move to a different
    part of the work, and every few minutes on a long build. It is also what keeps
