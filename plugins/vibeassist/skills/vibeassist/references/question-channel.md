@@ -1,71 +1,92 @@
-# Question channel — parking, resuming, and ending a run with questions open
+# Question channel — parking on a question, and coming back to it
 
-**Load this when:** a run is ending with parked Asks / unanswered questions, or
-you need the full park-and-resume protocol beyond the core's summary.
+**Load this when:** you need the person before you can go on, or a run is
+ending with asks parked on unanswered questions.
 
-## Parking detail
+## The one rule
 
-Park work-in-progress on the Ask's own branch as `[parked] WIP: <ask name>` — a
-real commit ending with the `VibeAssist-Ask:` trailer you were handed
-(recoverable, visible in git), never a stash — so the tree is clean and parked
-work can never leak into another Ask's commits. Record where you stopped (what's
-done, what the answer unblocks) so ANY session can resume it.
+**Asking parks the job. Parking ends your turn.**
 
-**Scope the question to the Ask** (`askId`, not `projectId`). The question then
-shows on the Ask that is stopped and your build stays open, which is what lets
-you carry on the moment it is answered. A project-level question about an Ask you
-are building blocks nothing and the answer has no way back to you.
+`ask_user` puts the job down: the app parks it, your claim is released, and you
+stop. You do not wait. There is no loop, no timer, no "check back in thirty
+seconds".
 
-**The question IS the record of why you stopped.** Do not also report the
-delivery failed — that would return the Ask to approved and hand the next worker
-the same wall to hit.
+When the person answers, the app puts the job back in the queue. Whoever is
+listening then — `wait_for_work` — is handed it and carries on. It may be a
+different session on a different day. Nothing is lost by leaving.
 
-## `config.onQuestion` (from `next_approved_ask`; default `continue`)
+**So waiting on a person costs nothing.** No claim held open, no context idling,
+no lane blocked. Ask the moment you need to. Never guess to dodge a wait.
 
-> It used to arrive on the `next-sprint` response. That endpoint went with the
-> sprint road on 8 August 2026; the per-project run config rides with the
-> approved Ask instead.
+## What NOT to do
 
-- **wait** (or you have no other safe work) — poll for the answer:
+- **Do not poll `get_answer`.** `{ answered: false }` means the question is
+  still on their screen. It is not a failure and it is not something to sit on.
+  Read `get_answer` when you are HANDED a job that already has an answer, and
+  only then.
+- **Do not send `report_progress` while waiting.** A parked job has no claim to
+  keep alive, so the call is refused. `report_progress` is for work that is
+  genuinely running.
+- **Do not report the job failed.** The question already says why you stopped.
+  Reporting failure on top of it hands the next helper the same wall.
+- **Do not ask in the terminal.** In a listening session nobody is watching the
+  terminal, so a terminal question is an invisible stall.
 
-  ```bash
-  curl -s -H "Authorization: Bearer $VIBEASSIST_TOKEN" \
-    "$VIBEASSIST_URL/api/public/claude/ask?questionId=<id>"
-  ```
+## Ask well, because you only get one
 
-  Returns
-  `{"ok":true,"status":"pending|answered|dismissed","answer":...,"answeredOptionId":...}`.
-  Poll every ~15–30s.
+One question at a time per job. A second question on the SAME job is refused
+until the first is answered. Different jobs are independent — each question
+shows on its own ask — so two jobs asking at once is normal.
 
-- **continue** (park-on-block) — take the next SAFE Ask: nothing that builds on
-  the parked one. Because you are served leaves and never a parent while a
-  needed child is unfinished, the tree mostly keeps you out of this — but an
-  Ask that plainly depends on the parked one is itself blocked, so park it too
-  or ask; never build on missing foundations. **Answered blockers outrank fresh
-  work:** between Asks, re-check the blocked question(s) — when an answer has
-  arrived, resume that parked Ask (continue from its `[parked]` commit) BEFORE
-  starting anything new.
+- **Scope it to the job you hold.** The question shows on the ask that stopped,
+  which is what lets the answer bring that job back.
+- **Ask the one thing that unblocks you**, not a list, and not a thing you can
+  decide yourself.
+- **Their words, not a program's.** They read it on their ask.
+- **Options have to carry enough to choose.** What each one does and what it
+  costs — never just a name.
 
-## On the answer
+## Coming back to a parked job
 
-`answered` → use `answer` / `answeredOptionId` to proceed (continue from the
-`[parked]` commit, finish, report as normal). `dismissed` → the user declined to
-answer; proceed on your best judgment and say so in `built`.
+You are handed a job with a question already answered on it. That is a resume,
+not a fresh start.
 
-## Ending a run with questions still unanswered
+1. Read the ask, so you know what was wanted.
+2. Read what they said — `get_answer` for the answer, `get_conversation` where
+   the job carries a whole thread.
+3. Carry on from there. Do not redo what the ask already records as done.
 
-A parked Ask stays parked with its question open — it is neither reported
-`failed` nor silently dropped, because the question already says why it stopped
-and reporting failure on top of it would return the Ask to the pool for someone
-else to re-discover the same blocker.
+If the person declined to answer, use your best judgment and say plainly, in
+what you write back, that you chose it yourself.
 
-`git revert` its `[parked]` commits before opening any pull request for other
-work, so a PR only ever ships completed work (note the reverted SHAs in the run
-summary, so the parked work is recoverable on resume). The run summary MUST lead
-with them: "N Ask(s) awaiting your answers".
+## The BUILD case — parking code, not just a question
 
-## Never hang forever
+Everything above is the **shaping** case: nothing is on disk, the app parks the
+job server-side, and there is no commit to make.
 
-If nothing is answered after a reasonable wait and you've run out of safe work,
-stop and tell the user their question(s) are waiting in the VibeAssist inbox —
-they'll be picked up on the next `/vibeassist` run.
+A **build** is different, because there is half-finished work in a tree. Note
+first: **`build` is not a live job kind yet.** This is the shape it lands in,
+recorded now so it is not re-invented later.
+
+When a build has to stop on a question:
+
+- **Commit the work-in-progress on the ask's own branch** as
+  `[parked] WIP: <ask name>` — a real commit ending with the
+  `VibeAssist-Ask:` trailer you were handed, never a stash. It is recoverable,
+  it is visible in git, the tree is clean, and parked work can never leak into
+  another ask's commits.
+- **Write down where you stopped**: what is done, and what the answer unblocks.
+  Any session may be the one that resumes it.
+- **Then ask, and stop.** Same rule — the ask parks the job and ends the turn.
+- **On resume**, continue from the `[parked]` commit.
+- **Before opening a pull request for other work**, `git revert` the `[parked]`
+  commits, so a PR only ever ships finished work. Note the reverted SHAs where
+  you record the parked state, so the work is recoverable.
+
+## Ending a run with questions open
+
+A parked ask stays parked. It is not reported failed and it is not dropped —
+the question is already the record of why it stopped.
+
+Lead the run summary with them: "N ask(s) waiting on your answers". Then stop.
+There is nothing to watch.

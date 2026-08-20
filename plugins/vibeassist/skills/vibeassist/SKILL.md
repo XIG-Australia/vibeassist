@@ -3,7 +3,9 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping now, building later — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.14.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.16.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.16.0 (20 Aug 2026): asking a question PARKS the job and ends the turn — no polling get_answer, no report_progress to hold a claim; the answer re-queues the job and a fresh helper resumes it. See references/standby.md and references/question-channel.md. -->
+<!-- 0.15.0 (20 Aug 2026): a shape_ask job runs the language check before the shape lands. -->
 <!-- 0.14.0 (20 Aug 2026): standby rebuilt on the wait_for_work MCP tool — the va-standby.sh curl-and-token poller is retired; a fresh sub-context per job; a build lane and a quick lane, concurrent and bounded. See references/standby.md. -->
 <!-- 0.12.0 (18 Aug 2026): verify inward (green from the tool is not the running thing — open every touched surface after a generator/scaffold/rename/move); the build note is read from code, never transcribed; send-back routing reasons. -->
 
@@ -333,16 +335,17 @@ you could answer yourself from the Shape is a defect — answer it, don't ask it
 Fall back to a terminal question ONLY if `/ask` is genuinely unavailable, and
 say so.
 
-Then park cleanly: commit WIP as `[parked] WIP: <ask name>` (a real commit
-ending with the ask trailer, never a stash) and follow `config.onQuestion` —
-**wait** → poll `GET /api/public/claude/ask?questionId=<id>` every ~15–30s;
-**continue** (default) → take another SAFE Ask only (nothing that builds on
+Then park cleanly and STOP on that Ask: commit WIP as `[parked] WIP: <ask
+name>` (a real commit ending with the ask trailer, never a stash). **Asking
+parks the work and ends your turn on it** — do not poll for the answer, and
+never keep a claim alive while you wait; the answer brings the work back to
+whoever is listening then. Take another SAFE Ask only (nothing that builds on
 parked work); answered blockers outrank fresh work. `dismissed` → proceed on
-best judgment. Between the question and the answer, the question IS the record
-of why you stopped — do NOT also report the delivery failed, which would hand
-the Ask to the next worker to hit the same wall. Full resume protocol →
-`references/question-channel.md`. Never hang forever: out of safe work with no
-answers → say the questions are waiting in the VA inbox, and stop.
+best judgment. The question IS the record of why you stopped — do NOT also
+report the delivery failed, which would hand the Ask to the next worker to hit
+the same wall. Full park-and-resume protocol →
+`references/question-channel.md`. Out of safe work → say the questions are
+waiting in the VA inbox, and stop.
 
 ## 6 · Guardrails (always binding — history in `references/incidents.md`)
 
