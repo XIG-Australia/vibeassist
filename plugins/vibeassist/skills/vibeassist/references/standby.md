@@ -57,8 +57,10 @@ Nothing else travels — not the last job, not the loop's history.
 - The listener keeps only what it needs to stay a listener: the loop, what is
   in flight in each lane, and the job ids.
 - **One level of nesting.** A job's sub-agent does not spawn its own.
-- When the sub-agent returns, take its outcome, complete the job, and free the
-  lane. Its material is discarded with it.
+- When the sub-agent returns, take its outcome, make sure the job is finished,
+  and free the lane. Its material is discarded with it. (A build finishes itself
+  — `report_delivery` on the success path, `complete_job` with an error on the
+  failure one — so do not finish it a second time.)
 
 ## Two lanes, bounded — quick work never queues behind a build
 
@@ -90,8 +92,12 @@ Dispatch into two concurrent lanes:
   fixed, every notice read. A listening session writes onto the board with
   nobody watching, so the check is the only thing standing between a sloppy
   line and the person's ask.
-- **`build`** — **later.** It is not a kind yet. The build lane exists now so
-  that landing it is a dispatch line, not a re-plumb.
+- **`build`** — build the one ask the job names. It goes to the **build lane**
+  (up to 2 at once, each on its own branch in its own worktree — the lane rules
+  above are the rules). Hand a FRESH sub-agent the job and the ask it names, and
+  tell it to run the build playbook that already exists:
+  `references/delivery-on-asks.md`. Do not write a new build flow. What that
+  sub-agent does, in order, is **A `build` job, step by step** below.
 - **Anything else** — do not guess what it means. Finish it with
   `complete_job`'s `error` saying this skill version does not handle that kind,
   tell the user once, and keep listening. A job left claimed and silent is
@@ -99,6 +105,81 @@ Dispatch into two concurrent lanes:
 
 If the loop needs something the tools do not give, that is a change to the app
 — a new or updated MCP tool — never a workaround here.
+
+## A `build` job, step by step
+
+**The listener never builds it itself.** It hands the job to a sub-agent and
+**re-arms at once** — a build that runs for an hour must never hold up a shaping
+request. Everything below is what the SUB-AGENT does.
+
+1. **Read the job.** It names the ask. That is the whole scope: build that one
+   ask, nothing beside it.
+
+2. **Run the playbook that exists.** `references/delivery-on-asks.md` is the
+   build flow — read it and follow it. Three of its steps arrive differently on
+   this road:
+
+   | In the playbook              | On a `build` job                                 |
+   | ---------------------------- | ------------------------------------------------ |
+   | Step 1 `next_approved_ask`   | **Skip it.** The job already handed you the ask. |
+   | Step 3 `report_ask_progress` | `report_progress({ jobId, note })`               |
+   | Step 6 `report_ask_delivery` | `report_delivery(...)` — it also FINISHES the job |
+
+   Everything else in that file binds exactly as written: build only the ask you
+   were handed, one ask one branch, the `VibeAssist-Ask:` trailer on every
+   commit, verify green before anything is pushed, and a gap in the Shape is a
+   question, never a guess.
+
+3. **Say what you are doing.** `report_progress` when you move to a different
+   part of the work, and every few minutes on a long build. It is also what keeps
+   the job yours.
+
+4. **Report the delivery — and that is the END of the job.**
+   `report_delivery({ jobId, does, check, flags })` — three parts, and the first
+   two are owed:
+   - **does** — what it now does, in the person's own words about their own
+     product. Never files, never how it was built.
+   - **check** — how to look at it: the branch, and what to open once they are on
+     it.
+   - **flags** — anything now left to them, a database change still to run being
+     the usual one. Usually empty, and empty is a real answer.
+
+   **This call reports AND finishes in one.** It moves the ask to `delivered`
+   and closes the job. A build that skips it is a build nobody can see.
+
+   **Do NOT call `complete_job` after it.** The job is already finished, and a
+   second finish comes back an error — "a finished job cannot be finished again".
+   On a build that worked, `report_delivery` is the last call you make.
+
+5. **A build you genuinely cannot do → `complete_job({ jobId, error })`** with
+   one honest sentence saying what stopped you, written for the person, not for a
+   developer. No delivery report on this path — never report a delivery you did
+   not make. Needing a DECISION is not a failure: that is `ask_user`, which
+   parks the job, and the job comes back when they answer.
+
+**One finish per build, never two.** It worked → `report_delivery`, and stop.
+It could not be done → `complete_job` with an error, and stop. Never both.
+
+### Where it builds — the folder the listener is in
+
+**First cut: the sub-agent builds in the folder the listener is running in (its
+cwd).** No routing, no lookup, no going to find another checkout.
+
+The build job carries a **`folder` field from the app. Do not read it yet.** It
+is the hook for the next increment — routing a build to a root repository plus a
+subfolder — and that increment is **deferred, not part of this one.** When it
+lands, this step is where it goes. Until then: ignore the field, and never invent
+routing from it.
+
+### Out of scope in this slice — do NOT wire these in
+
+- **The Truth Pass.** A build does not judge its own work. That verdict is the
+  person's, in the morning review.
+- **The merge.** Nothing here merges anything, anywhere.
+
+**In this slice a build lands its branch and reports delivered. That is the whole
+end of it.** If you find yourself reaching for a merge, stop — it is not missing,
+it is deliberately not here.
 
 ## Say what you are doing — only while work is RUNNING
 
@@ -168,6 +249,11 @@ quiet is the listener's version of a stall.
 **A parked job is not in hand.** It asked a question, the app holds it, and
 nobody is claiming it. Do not complete it, do not report on it, do not count it
 against a lane. It comes back on its own when the person answers.
+
+**A build that worked is finished by `report_delivery`, not by `complete_job`.**
+That one call reports and finishes together, so calling `complete_job` after it
+is a second finish and comes back an error. `complete_job` still owns the
+failure path on a build — see § A `build` job, step by step.
 
 ## Drain means drain, for a listener
 

@@ -30,10 +30,12 @@ Do not port any of it. If you find yourself writing a poller, stop — see
 
 **The worker's own wake road went with it.** Waking on an approved Ask was a
 field on the old `/updates` response; on the rebuilt app a worker listens
-through the same `wait_for_work` loop, and its build lane starts when a
-`build` job kind lands. Until then, everything below is the worker's DOCTRINE —
-what to do once work reaches it — not a transport you can run today. Say that
-plainly rather than looking for another way in.
+through the same `wait_for_work` loop. **`build` is a live job kind now** —
+standby's build lane dispatches it, and how it runs is written up in
+`references/standby.md` (§ A `build` job, step by step). So the road below is
+DOCTRINE — what to do once work reaches you — while the transport that actually
+delivers a build today is standby's loop. Read them together; do not go looking
+for a third way in.
 
 ## Worker role
 
