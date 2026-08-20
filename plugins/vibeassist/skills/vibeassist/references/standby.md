@@ -100,7 +100,7 @@ Dispatch into two concurrent lanes:
 If the loop needs something the tools do not give, that is a change to the app
 — a new or updated MCP tool — never a workaround here.
 
-## Say what you are doing
+## Say what you are doing — only while work is RUNNING
 
 On any job you expect to run longer than about thirty seconds, call
 `report_progress` with one short line in the person's own words, and again
@@ -111,22 +111,49 @@ every few minutes. It is not decoration:
 - **it is what keeps the claim.** A claim nobody renews is offered to the next
   caller. From outside, silence and death look the same.
 
-## Questions — one at a time PER JOB, not per session
+**Report on work that is actually running.** A build building, a check
+checking, a file being written. Something is happening and the note says what.
 
-Anything you need the person for goes through `ask_user` on the job, then
-`get_answer`. Never a terminal prompt: a terminal question in a listening
-session is an invisible stall.
+**It is refused on a parked job.** A job that asked a question has been put
+down and the claim is already gone, so there is nothing left to keep alive and
+the call comes back an error. **Never use `report_progress` to hold a job
+while you wait on a person.** Waiting is not running.
 
-**The one-open-question rule is scoped to the job.** Each job may have one
-question open at a time; a second question on the SAME job is refused until
-that one is answered. Jobs in different lanes are independent — they are
-different asks, and each question shows on its own ask, so two jobs asking at
-once is normal and correct.
+## Questions — asking PARKS the job and ENDS your turn
 
-So a lane never waits on another lane's question. Ask when your job needs it,
-poll `get_answer`, and keep `report_progress` going while you wait so the claim
-stays yours. `{ answered: false }` means the person has not got to it, not that
-anything failed.
+Anything you need the person for goes through `ask_user` on the job. Never a
+terminal prompt: a terminal question in a listening session is an invisible
+stall.
+
+**`ask_user` puts the job down.** The app parks the job and releases your
+claim on it. Your turn on that job is over. So:
+
+- **Do not poll `get_answer` in a loop.** There is nothing to sit and wait
+  for.
+- **Do not send `report_progress` to hold the claim.** There is no claim
+  left, and the call is refused.
+- End the sub-agent with "asked, parked", free the lane, and keep listening.
+
+**The answer brings the job back.** When the person answers, the app re-queues
+the job. `wait_for_work` hands it out again, and a FRESH sub-agent picks it
+up — maybe in a minute, maybe tomorrow, maybe in a different session. That is
+the design, not a fault.
+
+**Resuming a parked job.** A job you are handed may arrive with a question
+already answered on it. Read the ask, then read what the person said —
+`get_answer` for the answer, `get_conversation` where the job carries a
+whole thread — and carry on from there. Do not redo what the ask already
+records as done.
+
+**One open question PER JOB.** A job may have one question open at a time; a
+second question on the SAME job is refused until that one is answered. Jobs are
+independent — they are different asks, and each question shows on its own ask,
+so two jobs asking at once is normal and correct. Ask the one thing that
+unblocks you, not a list.
+
+**Waiting on a person now costs nothing.** No lane is held. No claim is
+renewed. No context sits idle. A parked job is free, so ask the moment you need
+to — never guess to avoid the wait.
 
 ## Finishing a job
 
@@ -137,6 +164,10 @@ it with `error`, one plain sentence saying what stopped you.
 
 **Never end a turn with a job in flight or in hand.** A claimed job that goes
 quiet is the listener's version of a stall.
+
+**A parked job is not in hand.** It asked a question, the app holds it, and
+nobody is claiming it. Do not complete it, do not report on it, do not count it
+against a lane. It comes back on its own when the person answers.
 
 ## Drain means drain, for a listener
 
