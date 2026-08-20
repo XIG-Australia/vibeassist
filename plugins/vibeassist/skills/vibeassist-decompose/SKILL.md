@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), and build notes (write one ask's technical direction for the builder — usually nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.19.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.19.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.19.1 (20 Aug 2026): build notes are written as light Markdown — backticks around field names, identifiers, table/column names, paths and commands; fenced blocks for multi-line code; prose stays prose. Legibility only, never licence to write more. -->
 <!-- 0.19.0 (20 Aug 2026): a fifth entry — build notes: one ask's technical direction for the builder, the residual after the standing Rules and after what the code shows. Light, builder-facing, and usually empty. The owner's language check does not run on them and still runs on every shape. -->
 <!-- 0.15.0 (20 Aug 2026): plain wording enforced on the single-ask shaping entry too (not only tree drafts); dash-asides and vague deferrals are flags; VA's furniture words (ask, tree, board, branch, leaf, room, card) may only carry the APP's meaning on a shape — a notice for a human, never a hard ban. -->
 <!-- 0.13.0 (18 Aug 2026): check_language ported from Python to node ESM (byte-for-byte identical); the skill now runs it with node, so drafts can be checked where there is no Python. -->
@@ -904,6 +905,29 @@ honest empty field is worth more than a paragraph of filler.
   invisible gets overridden by the next person who thinks they know better.
 - **A gap in the SHAPE is not a note.** If the ask itself is unclear, that is a
   question for the owner, not something to settle quietly in a builder's field.
+
+### Write them as light Markdown — the tab formats them
+
+Notes are read in the app, which renders Markdown. Use it so a builder can scan
+them:
+
+- **Backticks around anything that is a name, not a word.** Field names,
+  identifiers, table and column names, file paths, commands: `build_notes`,
+  `asks.status`, `src/lib/session.ts`, `bun run verify`. A path in bare prose
+  reads as a typo; in backticks it reads as a path.
+- **A fenced code block for anything over one line** — a command sequence, a
+  snippet, a shape to match. One-liners are fine inline.
+- **Prose stays prose.** Sentences in sentences, not bullets of fragments. A
+  short list is fine when the content is genuinely a list.
+
+**Light Markdown means light.** No headings, no tables, no nested structure. If
+notes need a heading to navigate, they are too long — go back to the residual
+rule and cut.
+
+**Formatting is not permission to write more.** Markdown makes short notes
+easier to read; it never makes long notes acceptable. Everything above still
+binds: subtract the Rules, subtract the code, and empty is still the common
+answer.
 
 ### The language check does NOT run on build notes
 
