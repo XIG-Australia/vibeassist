@@ -115,13 +115,28 @@ request. Everything below is what the SUB-AGENT does.
 1. **Read the job.** It names the ask. That is the whole scope: build that one
    ask, nothing beside it.
 
-2. **Run the playbook that exists.** `references/delivery-on-asks.md` is the
-   build flow — read it and follow it. Three of its steps arrive differently on
+2. **Get the shape from the tool.** `get_ask({ askId })` with the ask id the job
+   gave you. That call is where the want, the must-do and the must-not come
+   from, and it is the ONLY place you read them.
+
+   - **Do not call `list_asks`.** It returns the whole board, it does not carry
+     the words on any shape line, and hauling a whole board into a build context
+     is bloat for nothing.
+   - **Never read the shape off the running app's page.** Not the screen, not
+     the browser, not scraping. What is on a page is a rendering; the tool is
+     the record.
+
+   No shape, no build. If the want is empty or the shape has a hole in it, that
+   is a question (step 6), not a guess.
+
+3. **Run the playbook that exists.** `references/delivery-on-asks.md` is the
+   build flow — read it and follow it. Four of its steps arrive differently on
    this road:
 
    | In the playbook              | On a `build` job                                 |
    | ---------------------------- | ------------------------------------------------ |
    | Step 1 `next_approved_ask`   | **Skip it.** The job already handed you the ask. |
+   | Step 2 "read what you were handed" | `get_ask({ askId })` — that call, nothing else |
    | Step 3 `report_ask_progress` | `report_progress({ jobId, note })`               |
    | Step 6 `report_ask_delivery` | `report_delivery(...)` — it also FINISHES the job |
 
@@ -130,11 +145,11 @@ request. Everything below is what the SUB-AGENT does.
    commit, verify green before anything is pushed, and a gap in the Shape is a
    question, never a guess.
 
-3. **Say what you are doing.** `report_progress` when you move to a different
+4. **Say what you are doing.** `report_progress` when you move to a different
    part of the work, and every few minutes on a long build. It is also what keeps
    the job yours.
 
-4. **Report the delivery — and that is the END of the job.**
+5. **Report the delivery — and that is the END of the job.**
    `report_delivery({ jobId, does, check, flags })` — three parts, and the first
    two are owed:
    - **does** — what it now does, in the person's own words about their own
@@ -151,7 +166,7 @@ request. Everything below is what the SUB-AGENT does.
    second finish comes back an error — "a finished job cannot be finished again".
    On a build that worked, `report_delivery` is the last call you make.
 
-5. **A build you genuinely cannot do → `complete_job({ jobId, error })`** with
+6. **A build you genuinely cannot do → `complete_job({ jobId, error })`** with
    one honest sentence saying what stopped you, written for the person, not for a
    developer. No delivery report on this path — never report a delivery you did
    not make. Needing a DECISION is not a failure: that is `ask_user`, which
@@ -159,6 +174,29 @@ request. Everything below is what the SUB-AGENT does.
 
 **One finish per build, never two.** It worked → `report_delivery`, and stop.
 It could not be done → `complete_job` with an error, and stop. Never both.
+
+### `report_delivery` missing → say so out loud, never quietly substitute
+
+A session that connected before a change on the app side can be holding a stale
+list of tools. If `report_delivery` is **not among this session's tools** when
+you go to report a build:
+
+- **Do NOT fall back to `complete_job` with a result.** That is the trap. The
+  job would close looking successful while the ask stays stuck on `building` —
+  the delivery never lands, and nobody can see that it did not. A silent strand
+  is worse than a loud failure.
+- **Finish it as a failure instead**, with those words:
+
+  ```
+  complete_job({ jobId, error:
+    "can't report the delivery — report_delivery missing; restart the listener." })
+  ```
+
+- **Then tell the user once** in the terminal: the tool list is stale and
+  restarting the listener picks up the new one. Keep listening.
+
+The work itself is not lost — the branch is pushed and the commits are there.
+What is missing is the report, and this makes that visible rather than silent.
 
 ### Where it builds — the folder the listener is in
 
