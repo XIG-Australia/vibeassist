@@ -92,6 +92,23 @@ Dispatch into two concurrent lanes:
   fixed, every notice read. A listening session writes onto the board with
   nobody watching, so the check is the only thing standing between a sloppy
   line and the person's ask.
+- **`write_build_notes`** — write the build notes for the ask the job names.
+  Same dispatch shape as `shape_ask`: hand it to the `vibeassist-decompose`
+  skill's **build-notes** entry, in a fresh sub-agent, carrying the `askId` and
+  nothing else. It goes in the **quick** lane. The notes are LIGHT — only the
+  ask-specific technical direction a worker could not get from the standing
+  Rules or from reading the code — and **writing none is a real answer.** Do not
+  let a sub-agent invent direction to fill the field. The doctrine is in that
+  skill; do not restate it here.
+
+  It reports back with **`report_build_notes({ askId, notes })`**, which writes
+  the notes and **finishes the job in one call** — the same split as `build` and
+  `report_delivery`: the job kind and the tool it reports through are named
+  differently on purpose. So **do not call `complete_job` after it**; that is a
+  second finish and comes back an error. Two things differ from
+  `report_delivery`: **empty `notes` is a valid SUCCESS here**, not a failure —
+  nothing ask-specific to say, call it empty and the job finishes clean — and it
+  **does not move the ask's status.** The ask stays `approved`.
 - **`build`** — build the one ask the job names. It goes to the **build lane**
   (up to 2 at once, each on its own branch in its own worktree — the lane rules
   above are the rules). Hand a FRESH sub-agent the job and the ask it names, and
