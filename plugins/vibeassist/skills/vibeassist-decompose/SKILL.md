@@ -1,9 +1,10 @@
 ---
 name: vibeassist-decompose
-description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Four entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), and single-ask shaping (skip the tree, shape the one ask). Proposals are draft-first — the user accepts before the board changes.
+description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), and build notes (write one ask's technical direction for the builder — usually nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.18.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.19.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.19.0 (20 Aug 2026): a fifth entry — build notes: one ask's technical direction for the builder, the residual after the standing Rules and after what the code shows. Light, builder-facing, and usually empty. The owner's language check does not run on them and still runs on every shape. -->
 <!-- 0.15.0 (20 Aug 2026): plain wording enforced on the single-ask shaping entry too (not only tree drafts); dash-asides and vague deferrals are flags; VA's furniture words (ask, tree, board, branch, leaf, room, card) may only carry the APP's meaning on a shape — a notice for a human, never a hard ban. -->
 <!-- 0.13.0 (18 Aug 2026): check_language ported from Python to node ESM (byte-for-byte identical); the skill now runs it with node, so drafts can be checked where there is no Python. -->
 <!-- 0.12.0 (18 Aug 2026): the rebuild-board dogfood pass. Define-the-project-first + the three registers (Rules / Decisions / Ethos); think in cross-dependencies; the return path (the second half of the loop) + one-way-back and send-back routing; the want is a plain complete action; record a change only when the shape's own words go wrong. -->
@@ -675,6 +676,13 @@ every flag, read every notice. This entry is reached without any tree draft,
 so nothing else runs the check for it. It is also the entry a `shape_ask` job
 lands on, so an unchecked line here goes straight onto the user's board.
 
+**BUILD NOTES — the fifth entry, and the only one that writes to a builder.**
+The user brings ONE ask and wants its technical direction written down, or a
+`write_build_notes` job lands carrying an `askId`. Read that ask's shape, read
+the code it touches, and write the notes. Then report them with
+**`report_build_notes({ askId, notes })`**. Full method below, under
+**Build notes**.
+
 In both modes, read the existing board first (the list tools named in the
 persistence note under Materialize): decompose INTO what's already there —
 extend and correct, never duplicate an ask that already exists.
@@ -829,6 +837,84 @@ underneath its parent, never a copy:
 
 Never copy a parent's want or must-nots onto a child; the tree already
 carries them down, and a restatement is a lie waiting to drift out of sync.
+
+## Build notes — the residual, and usually nothing
+
+Build notes are the ask-specific technical direction a worker needs and cannot
+get anywhere else. They are **written for the builder**, not for the owner, and
+they sit on the ask as `build_notes`.
+
+### They are a RESIDUAL — work out what is left, do not write an essay
+
+Notes are what remains after two things have already told the worker what to do.
+Subtract both, then write only what survives:
+
+1. **Subtract the standing Rules.** The project's Rules are inherited by every
+   ask. **Never repeat one per ask.** A rule restated on twenty asks is twenty
+   copies to keep in step, and the first one that drifts is a lie on somebody's
+   board.
+2. **Subtract what the code already shows.** The worker reads the codebase. It
+   can see the pattern, the file layout, the existing helper and how the last
+   three of these were done. **Writing that down again is dead weight** — it
+   costs a read and adds nothing.
+
+What is left is the residual: the non-obvious call, the thing a competent
+builder reading the same code would get wrong. That, and only that, is a build
+note.
+
+### Reporting them — one call, and it is the end of the job
+
+**`report_build_notes({ askId, notes })`.** It writes the notes onto the ask AND
+finishes the `write_build_notes` job in one call, so there is no half-done state
+where the job closed but the notes never landed.
+
+- **Do not call `complete_job` after it.** The job is already finished, and a
+  second finish comes back an error. On a notes pass that worked,
+  `report_build_notes` is the last call you make.
+- **It does not change the ask's status.** The ask stays `approved`. Writing
+  notes is not progress on the build and must never look like it.
+- **A pass you genuinely cannot do** — the ask does not exist, the code is
+  unreadable — finishes with `complete_job` and an honest sentence instead.
+  Never both.
+
+### Empty is a REAL answer, and it is the common one
+
+A non-technical ask has no notes. An ask fully covered by the Rules and by what
+the code plainly shows has no notes. **Write none, and say so.**
+
+**Empty is a SUCCESS, not a failure.** This is where build notes differ from a
+delivery report: `report_delivery` refuses to say nothing, because an ask marked
+delivered with nothing to show is a lie. Notes carry no such claim, so calling
+`report_build_notes` with empty `notes` finishes the job clean and correctly.
+Reach for it without hesitating.
+
+**Never invent direction to fill the space.** A note written because the field
+looked empty is scope creep with a technical accent: it puts a decision on the
+builder that nobody made, in a place that reads as though somebody did. An
+honest empty field is worth more than a paragraph of filler.
+
+### How to write one
+
+- **Plain technical direction, builder to builder.** "Reuse the existing session
+  helper rather than adding a second one" is a note. "Users will love how fast
+  this feels" is owner prose and does not belong here.
+- **Short.** A few lines. If it is running long, check you have not started
+  restating the Rules or narrating the code.
+- **Say the WHY when the why is the point.** A direction whose reason is
+  invisible gets overridden by the next person who thinks they know better.
+- **A gap in the SHAPE is not a note.** If the ask itself is unclear, that is a
+  question for the owner, not something to settle quietly in a builder's field.
+
+### The language check does NOT run on build notes
+
+`scripts/check_language.mjs` guards what the OWNER reads — the want, the
+must-dos, the must-nots. Build notes are the one place technical words are
+correct, so running the owner's plain-wording check over them would flag the
+very words that make them useful.
+
+**The check still runs on every shape, exactly as before.** Writing notes never
+relaxes it, and notes are never a back door for putting technical language onto
+a shape.
 
 ## Materialize on the board
 
