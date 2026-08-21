@@ -113,7 +113,9 @@ function relTo(repo, p) {
   return path.relative(repo, p).split(path.sep).join('/')
 }
 function hasNodeModules(absPath) {
-  return absPath.split('/').includes('node_modules')
+  // Split on the OS separator too: glob() builds these with path.join, so on
+  // Windows they carry backslashes and a '/'-only split never sees the segment.
+  return absPath.split(path.sep).join('/').split('/').includes('node_modules')
 }
 function baseName(p) {
   return path.basename(p)
@@ -198,15 +200,35 @@ export const IMPORT_SPECS = [
   /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g,
 ]
 
+// Strip JSONC comments without ever looking inside a string. A path alias like
+// "#/*": ["./src/*"] carries /* and // as data, so a naive block-comment regex
+// would eat from there to the next */ and destroy the JSON.
+function stripJsonc(raw) {
+  let out = '', inStr = false, quote = '', esc = false
+  for (let i = 0; i < raw.length; i++) {
+    const ch = raw[i], next = raw[i + 1]
+    if (inStr) {
+      out += ch
+      if (esc) esc = false
+      else if (ch === '\\') esc = true
+      else if (ch === quote) inStr = false
+      continue
+    }
+    if (ch === '"' || ch === "'") { inStr = true; quote = ch; out += ch; continue }
+    if (ch === '/' && next === '/') { while (i < raw.length && raw[i] !== '\n') i++; out += '\n'; continue }
+    if (ch === '/' && next === '*') { i += 2; while (i < raw.length && !(raw[i] === '*' && raw[i + 1] === '/')) i++; i++; continue }
+    out += ch
+  }
+  return out.replace(/,\s*([}\]])/g, '$1')
+}
+
 export function load_aliases(repo) {
   const aliases = []
   for (const name of ['tsconfig.json', 'jsconfig.json']) {
     const cfg = path.join(repo, name)
     if (!isFile(cfg)) continue
     let raw = readTextReplace(cfg)
-    raw = raw.replace(/\/\/[^\n]*/g, '')
-    raw = raw.replace(/\/\*[\s\S]*?\*\//g, '')
-    raw = raw.replace(/,\s*([}\]])/g, '$1')
+    raw = stripJsonc(raw)
     let data
     try { data = JSON.parse(raw) } catch { continue }
     const opts = Object.prototype.hasOwnProperty.call(data, 'compilerOptions') ? data.compilerOptions : {}
@@ -265,9 +287,7 @@ export const MONGO_READ_OPS = new Set(['find', 'findOne', 'findById', 'aggregate
 
 export function read_json_tolerant(p) {
   let raw = readTextReplace(p)
-  raw = raw.replace(/\/\/[^\n]*/g, '')
-  raw = raw.replace(/\/\*[\s\S]*?\*\//g, '')
-  raw = raw.replace(/,\s*([}\]])/g, '$1')
+  raw = stripJsonc(raw)
   try { return JSON.parse(raw) } catch { return {} }
 }
 
@@ -353,8 +373,12 @@ export function read_schema_tables(repo, layers, prisma_schemas) {
 export const EXTS = ['.tsx', '.ts', '.jsx', '.js', '/index.tsx', '/index.ts', '/index.jsx', '/index.js']
 
 function repoContains(repo, c) {
-  if (c === repo) return true
-  return c.startsWith(repo.endsWith('/') ? repo : repo + '/')
+  // Compare on one separator. On Windows the candidate carries backslashes but
+  // repo + '/' does not, so a raw startsWith reads every file as outside.
+  const norm = (s) => s.split(path.sep).join('/')
+  const r = norm(repo), cc = norm(c)
+  if (cc === r) return true
+  return cc.startsWith(r.endsWith('/') ? r : r + '/')
 }
 
 export function resolve_import(base, spec, repo, aliases) {

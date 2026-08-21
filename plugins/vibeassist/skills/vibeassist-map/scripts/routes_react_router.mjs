@@ -64,7 +64,9 @@ function baseName(p) {
 }
 // f.parts membership test for 'node_modules' on an absolute posix path.
 function partsHasNodeModules(absPath) {
-  return absPath.split('/').includes('node_modules')
+  // Split on the OS separator too: glob() builds these with path.join, so on
+  // Windows they carry backslashes and a '/'-only split never sees the segment.
+  return absPath.split(path.sep).join('/').split('/').includes('node_modules')
 }
 
 // --- pathlib-compatible glob (repo.glob("src/**/*.[tj]sx")) -----------------
