@@ -221,24 +221,27 @@ you go to report a build:
 The work itself is not lost — the branch is pushed and the commits are there.
 What is missing is the report, and this makes that visible rather than silent.
 
-### Where it builds — its own worktree, never the served folder
+### Where it builds — its own worktree, beside the served checkout
 
-**The sub-agent builds in a git worktree it makes for the ask, in its own
-folder, off the latest main line.** The listener's own folder is where it finds
-the repository, not where it builds:
+**The sub-agent builds in a git worktree it makes for the ask, as a sibling of
+the served checkout inside the project folder, off the latest main line.** The
+listener's own folder is where it finds the repository, not where it builds:
 
 ```bash
 git fetch origin main
-git worktree add -b <branch> <BUILD_DIR>/va-<shortId> origin/main
+git worktree add -b <branch> ../<checkout>-<shortId> origin/main
 ```
 
-`<BUILD_DIR>/va-<shortId>` sits **outside the folder the dev app serves** — a
-sibling working folder such as `C:\dev\va-<shortId>`. Every edit, test,
-typecheck, build and commit happens there. **Never run a build in the served
-folder, and never leave the served folder sitting on a build branch** — the
-person's running app would show them half-built work and lose whatever they had
-open. The served folder stays on `main`. Once the PR merges the worktree may be
-removed (`git worktree remove <path>`).
+The worktree sits in the **same parent as the folder the app runs from**, named
+`<checkout>-<shortId>`: app served from `<project>/app` → build in
+`<project>/app-<shortId>`; plugin from `<project>/plugin` →
+`<project>/plugin-<shortId>`. Every edit, test, typecheck, build and commit
+happens there. **Never run a build in the served folder, never leave the served
+folder sitting on a build branch, and never put the worktree in a global scratch
+location outside the project** — the person's running app would show them
+half-built work and lose whatever they had open, and a worktree parked outside
+the project drifts away from the checkout it belongs to. The served folder stays
+on `main`. Remove the worktree once merged (`git worktree remove <path>`).
 
 Still no routing and no lookup: the repository is the one the listener is
 running against. The build job carries a **`folder` field from the app. Do not

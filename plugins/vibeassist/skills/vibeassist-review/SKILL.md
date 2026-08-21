@@ -3,7 +3,7 @@ name: vibeassist-review
 description: The morning review — walk what VibeAssist built overnight, judge each delivery against its ask's acceptance criteria, record earned Truth Pass verdicts, and turn send-backs into reconciled records and new asks. Use when the user says "review what got built", "morning review", "what happened overnight", "check the overnight run", "verify the deliveries", "run the truth pass", "did it actually do what we agreed", or similar. This is NOT the worker skill's "review" mode (which governs how tasks are pulled during a build) — this skill is for judging FINISHED work after the build. Posture is skeptical reader, never author.
 ---
 
-<!-- vibeassist-skill-version: 0.20.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.20.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
 <!-- 0.15.0 (20 Aug 2026): a VibeAssist word used in VA's sense on a shape is a send-back — no checker can catch it, so the review read is the gate. -->
 <!-- 0.12.0 (18 Aug 2026): verify content was preserved on a move/rename (not just that files exist); send-back routing reasons; a send-back edits the Shape only when the change makes the Shape's own words wrong; Findings live on the return path, read from code. -->
 
