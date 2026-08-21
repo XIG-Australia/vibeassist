@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping and building — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.19.2 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.20.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.20.0 (21 Aug 2026): a build makes its own worktree, in its own folder OUTSIDE the folder the dev app serves (C:\dev\va-<shortId>), off the latest main line, and does every edit, test and commit there. Never build in the served folder; never leave the served folder sitting on a build branch. This replaces standby's "builds in the listener's cwd" first cut — see references/standby.md and references/delivery-on-asks.md. -->
 <!-- 0.19.0 (20 Aug 2026): `write_build_notes` is a live job kind — standby dispatches it to the decompose skill's build-notes entry in a fresh sub-agent, which reports through report_build_notes (that call writes the notes and finishes the job; empty notes is a valid success and the ask stays approved). See references/standby.md. -->
 <!-- 0.18.1 (20 Aug 2026): the build path never hunts files for the ask — the board is the app behind get_ask, not a plan/ folder or a board.md; and the playbook is read ONCE per build. Reading code to build the thing is unaffected. -->
 <!-- 0.18.0 (20 Aug 2026): a build reads its shape with get_ask on the job's ask id — never list_asks, never the running app's page; and a missing report_delivery fails the job out loud ("restart the listener") rather than falling back to complete_job and stranding the ask on building. See references/standby.md. -->
@@ -86,7 +87,8 @@ point the user at VibeAssist's connect screen, never at a token
 2. **Repo-safety preflight** (before touching any clone):
    `node scripts/preflight.cjs` in the project repo. Verdict SAFE → proceed.
    NOT SAFE (you're on `main`, or another worker holds this checkout) → stop;
-   switch to a branch/worktree or yield.
+   make your own worktree for the Ask (step 4a) or yield. Never switch this
+   checkout onto a build branch to get past it.
 3. **Preferences sync:** fetch once —
    `curl -s -H "Authorization: Bearer $VIBEASSIST_TOKEN" "$VIBEASSIST_URL/api/public/claude/preferences"`.
    - **Skill freshness:** if the response's `currentSkillVersion` is newer than
@@ -170,9 +172,25 @@ matching clones → ask which is canonical, never guess. Then `git fetch origin`
 and `git status` — far behind or unexpectedly dirty → surface it rather than
 building on a stale base.
 
-a. **Build** in a worktree off latest main
-(`git worktree add -b <ask.branch> <clone>-<askShortId> origin/main`) — NEVER on
-a branch in the canonical clone. **Build to satisfy the Ask's `mustDo` — that IS
+a. **Build in your own worktree.** Before building an approved Ask, create a git
+worktree for the Ask's `branch`, in its own folder, based on the latest main
+line:
+
+```bash
+git fetch origin main
+git worktree add -b <ask.branch> <BUILD_DIR>/va-<askShortId> origin/main
+```
+
+That folder lives **outside the folder the dev app serves** — a sibling working
+folder such as `C:\dev\va-<askShortId>`, never inside the served checkout and
+never the served checkout itself. Do ALL build work there: edit, test,
+typecheck, build, commit. **Never check out a build branch in, and never build
+inside, the served folder** — a served folder swapped onto a build branch shows
+the user half-built work in their running app and loses whatever they were
+looking at. The served folder stays pinned to `main`. Once the Ask's PR is
+merged the worktree may be removed (`git worktree remove <path>`).
+
+**Build to satisfy the Ask's `mustDo` — that IS
 the definition of done**, and read it before writing any code. Anything NOT in
 the Shape is out of scope: a proposal on the board, never a silent diff change.
 A gap in the Shape is a question for the user, not a guess — an Ask with an
@@ -358,6 +376,10 @@ waiting in the VA inbox, and stop.
   opened" and report the URL.
 - The canonical clone stays pinned to `main` — build ONLY in worktrees;
   machine-command guidance you emit is pull-first.
+- **Build in your own worktree, outside the served folder** (step 4a). Never run
+  a build in the folder the dev app serves, and never leave that folder sitting
+  on a build branch. One worktree per Ask, in its own folder
+  (`C:\dev\va-<askShortId>`), off latest main.
 - Open early PRs as DRAFTS while still pushing; mark "Ready for review" exactly
   once, as your final act — no finished Ask leaves a draft PR.
 - `bun run verify` fully green before ANY PR (step 4d) — docs and markdown
