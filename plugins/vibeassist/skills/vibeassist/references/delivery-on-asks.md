@@ -98,26 +98,28 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    steps, and do not report your working. Track your own work however you like;
    none of it belongs on his board.
 
-3. **Build it in your own worktree**, on the `branch` you were given
-   (`ask/<short-id>-<slug>`), cut from the latest `main`. One ask, one branch,
-   one pull request.
+3. **Build it in your own worktree, beside the served checkout**, on the `branch`
+   you were given (`ask/<short-id>-<slug>`), cut from the latest `main`. One ask,
+   one branch, one pull request.
 
-   Before you touch a file, make the worktree — its own folder, outside the
-   folder the dev app serves:
+   Before you touch a file, make the worktree — a **sibling of the served
+   checkout, inside the project folder**, the same parent as the folder the app
+   runs from, named `<checkout>-<shortId>`:
 
    ```bash
    git fetch origin main
-   git worktree add -b <branch> <BUILD_DIR>/va-<shortId> origin/main
+   git worktree add -b <branch> ../<checkout>-<shortId> origin/main
    ```
 
-   `<BUILD_DIR>/va-<shortId>` is a sibling working folder such as
-   `C:\dev\va-<shortId>` — never inside the served checkout, never the served
-   checkout itself. Edit, test, typecheck, build and commit there and nowhere
-   else. **Never run a build in the served folder, and never leave the served
-   folder sitting on a build branch**: the person's running app would show them
-   half-built work and lose what they were looking at. The served folder stays
-   on `main`. After the PR merges, the worktree may be removed
-   (`git worktree remove <path>`).
+   App served from `<project>/app` → build in `<project>/app-<shortId>`. Plugin
+   served from `<project>/plugin` → `<project>/plugin-<shortId>`. Edit, test,
+   typecheck, build and commit there and nowhere else. **Never run a build in the
+   served folder, never leave the served folder sitting on a build branch, and
+   never put the worktree in a global scratch location outside the project**: the
+   person's running app would show them half-built work and lose what they were
+   looking at, and a worktree parked outside the project drifts away from the
+   checkout it belongs to. The served folder stays on `main`. Remove the worktree
+   once merged (`git worktree remove <path>`).
 
    **Say what you are doing while you do it.** `report_ask_progress({ askId,
    doing })` — one short phrase in the product's words ("wiring the sign-in form
@@ -207,8 +209,9 @@ should be there at all. That confusion is what this replaced.
 ## Everything else still binds
 
 The guardrails in `SKILL.md` § 6 are unchanged and apply here exactly as they
-do to a sprint: never push to `main`; build in your own worktree, in its own
-folder outside the served folder, never the canonical clone and never the folder
-the dev app serves; `bun run verify` green before any PR; every deliberate stop goes through
+do to a sprint: never push to `main`; build in your own worktree beside the
+served checkout, inside the project folder — never the canonical clone, never
+the folder the dev app serves, never a global scratch location outside the
+project; `bun run verify` green before any PR; every deliberate stop goes through
 the VA inbox with `ask`, never only your terminal; recommendation-first
 questions; confirm before anything destructive.

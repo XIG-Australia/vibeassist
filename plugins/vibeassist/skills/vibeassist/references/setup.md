@@ -32,7 +32,7 @@ below is the same shape for offline reference:
   "permissions": {
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
-      "<the folder that CONTAINS your clones / sprint worktrees, e.g. C:/dev>"
+      "<the PROJECT folder that contains the served checkout and its sibling build worktrees>"
     ],
     "allow": [
       "Bash(curl:*)",
@@ -93,10 +93,11 @@ below is the same shape for offline reference:
   **Command approvals**.
 - `defaultMode: "acceptEdits"` auto-approves file edits, but ONLY inside the
   session's working directory + `additionalDirectories`. A worker builds in a
-  per-sprint **worktree** whose path isn't the launch cwd, so without
+  per-ask **worktree** whose path isn't the launch cwd, so without
   `additionalDirectories` every file create/edit there prompts. Point it at the
-  folder that CONTAINS the clones/worktrees (e.g. `C:/dev`) so edits in any
-  worktree auto-approve — the `deny` list still blocks `.env`, and Bash stays
+  **project folder** — the parent that holds the served checkout and its sibling
+  build worktrees (`<project>/<checkout>` and `<project>/<checkout>-<shortId>`)
+  — so edits in any worktree auto-approve. The `deny` list still blocks `.env`, and Bash stays
   gated by the `allow`/`deny` rules, not by edit scope. NB the VA **Command
   approvals** toggles grant allow-RULES only; they do NOT set `defaultMode` or
   `additionalDirectories`, so a toggle-only setup still prompts on edits until
