@@ -1,9 +1,10 @@
 ---
 name: vibeassist-decompose
-description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), and build notes (write one ask's technical direction for the builder — usually nothing). Proposals are draft-first — the user accepts before the board changes.
+description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Six entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), build notes (write one ask's technical direction for the builder — usually nothing), and shape review (the before-build read a check_shape job lands on: judge one ask's shape against its parent and siblings, then pass it or hand back findings). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.20.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.21.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.21.0 (22 Aug 2026): a sixth entry — shape review: the before-build read a `check_shape` job lands on. Reads one ask's shape plus the parent and siblings the job carries, checks clarity, the interaction surface, contradictions with any must line above or beside it, plain must-nots, scope-vs-principle and patterns that belong in the Rules; reports with `report_shape_review`. It writes nothing, so the language check does not run on it. -->
 <!-- 0.19.1 (20 Aug 2026): build notes are written as light Markdown — backticks around field names, identifiers, table/column names, paths and commands; fenced blocks for multi-line code; prose stays prose. Legibility only, never licence to write more. -->
 <!-- 0.19.0 (20 Aug 2026): a fifth entry — build notes: one ask's technical direction for the builder, the residual after the standing Rules and after what the code shows. Light, builder-facing, and usually empty. The owner's language check does not run on them and still runs on every shape. -->
 <!-- 0.15.0 (20 Aug 2026): plain wording enforced on the single-ask shaping entry too (not only tree drafts); dash-asides and vague deferrals are flags; VA's furniture words (ask, tree, board, branch, leaf, room, card) may only carry the APP's meaning on a shape — a notice for a human, never a hard ban. -->
@@ -684,6 +685,13 @@ the code it touches, and write the notes. Then report them with
 **`report_build_notes({ askId, notes })`**. Full method below, under
 **Build notes**.
 
+**SHAPE REVIEW — the sixth entry, and the only one that judges instead of
+writing.** A `check_shape` job lands carrying an `askId`, a `trigger`
+(`approve` or `change`), and the ask above plus the asks beside it. Read the
+shape, check it, and report with **`report_shape_review`** — pass it, or hand
+back findings that are each a question WITH the answer you recommend. It edits
+nothing. Full method below, under **Shape review**.
+
 In both modes, read the existing board first (the list tools named in the
 persistence note under Materialize): decompose INTO what's already there —
 extend and correct, never duplicate an ask that already exists.
@@ -939,6 +947,117 @@ very words that make them useful.
 **The check still runs on every shape, exactly as before.** Writing notes never
 relaxes it, and notes are never a back door for putting technical language onto
 a shape.
+
+## Shape review — the before-build read
+
+**This is the sixth entry, and it is a READ, never a write.** A `check_shape`
+job lands here. Nothing on the board is approved, queued or built until this
+pass says so, and the pass reports through **`report_shape_review`**.
+
+It is not the morning review. That one (`vibeassist-review`) judges FINISHED
+work against what was agreed. **This one judges the SHAPE, before a line of
+code exists** — same word, different moment, and never confuse the two.
+
+### The two moments — one read
+
+The job's **`trigger`** says which moment this is, and the read is the same
+either way:
+
+- **`approve`** — the owner has approved a shape. Pass it and the ask becomes
+  `approved` and its build notes are written.
+- **`change`** — the owner wants the thing they already have to be different.
+  Pass it and the ask is approved and queued with a build behind it, in one
+  move.
+
+### What you read — and nothing else
+
+1. **`get_ask({ askId })`** — the want, the must-dos, the must-nots, and
+   **`changeAsked`** when there is one: the change in the owner's own words.
+2. **The job's own input** — it carries the **ask above** and the **asks
+   beside**. `get_ask` cannot give you those, and they are load-bearing.
+
+**Do not call `list_asks`.** It hauls a whole board in and carries the words on
+no shape line. **Do not read the running app's page** — a page is a rendering,
+the tool is the record. Reading CODE is a different matter: reach for it when a
+finding turns on what already exists.
+
+### What you check
+
+Read it the way a sharp collaborator would, and check at least these.
+
+1. **Is the shape clear and complete?** For anything a person triggers, is the
+   **interaction surface** named — what the control is, and where it lives? "The
+   owner can export the board" without a control or a home for it is a hole, not
+   a shape.
+2. **Does it CONTRADICT a must-do or a must-not** — on this ask, on the ask
+   above it, or on any ask beside it? **This one is load-bearing.** It is the
+   only thing standing between a change and a parent it silently reverts.
+3. **Do the must-nots read as plain prohibitions?** "Never save card details" is
+   one. An inverted double-negative — "must not fail to avoid storing" — is a
+   sentence nobody can build from.
+4. **Is a closed list of examples actually the SCOPE**, or a principle meant to
+   be generalised? Three named cases either mean *only these three* or *this
+   kind of thing*, and a builder that guesses wrong builds the wrong size.
+5. **Is there a pattern here that should be a project RULE** rather than a line
+   on one ask? A constraint restated on ask after ask belongs in the Rules
+   register — one copy that binds every ask (see **Define the project first**).
+6. **What would a careful build ADD that the owner didn't think to say?** Not
+   scope creep — the ordinary thing a competent builder needs settled and the
+   owner never thought of.
+
+**On a `change`, sort it by what it NEEDS as well:**
+
+- **A relabel** — a different name, or a different one of the four labels — is a
+  **metadata edit, not a build**, and must never queue as one. Say so with
+  **`relabel: true`**.
+- **A gap that belongs upstairs** — what needs settling is really the parent's —
+  is **`atParent: true`**, and the findings say what needs settling up there.
+
+### Let the depth scale
+
+**The review always runs. Manufacturing friction is not the job.** A complete,
+simple shape you can answer in one read is a **pass** — pass it and move on. A
+tangled one earns as many findings as it needs. Depth follows the shape, never
+a quota.
+
+### The output rules — the app enforces every one
+
+- **Every finding is a QUESTION and a RECOMMENDED ANSWER — both halves.** The
+  app drops anything with only one, so a half-written finding is a finding that
+  never existed.
+- **Never hand back a bare open question.** It gives the shape back with the
+  same work still on it, and the owner is now waiting on you instead.
+- **A pass carries NO findings.** Passed and a list of doubts is a contradiction.
+- **Findings are read by the OWNER.** Their words, their product — same plain
+  wording every shape line owes them.
+
+**A worked pair.** Not: "How does export work?" That is bare, and it is theirs
+to answer twice. Instead: *"Where does the Export button live — on the board
+toolbar, or in the board's own menu? I'd put it in the board menu beside
+Import, so the toolbar stays for things used every day."* A question, an
+answer, and one nod finishes it.
+
+### Reporting it — one call, and it is the end of the job
+
+**`report_shape_review({ jobId, passed, findings, atParent, relabel })`** —
+`jobId` and `passed` are owed; the rest ride when they apply. It reports AND
+finishes the job in one call.
+
+- **Passed** → `{ jobId, passed: true }`. Nothing else.
+- **Not passed** → `{ jobId, passed: false, findings: [ { question, recommend } ] }`.
+  The ask stays at `shaping` with the findings on it, waiting on the owner.
+- **Do not call `complete_job` after it.** The job is already finished, and a
+  second finish comes back an error. On a review that ran,
+  `report_shape_review` is the last call you make.
+- **A review you genuinely cannot do** — the ask is not there, the job carries
+  no shape — finishes with `complete_job({ jobId, error })` and one honest
+  sentence instead. Never both.
+
+### This entry writes nothing, so the language check does not run
+
+`scripts/check_language.mjs` guards lines going ONTO a shape. A review puts no
+line on a shape — it hands back questions. **Never edit the shape from here**,
+not even an obvious tidy: the owner answers, and the shaping entry writes.
 
 ## Materialize on the board
 

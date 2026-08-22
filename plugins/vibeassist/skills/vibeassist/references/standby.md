@@ -109,6 +109,29 @@ Dispatch into two concurrent lanes:
   `report_delivery`: **empty `notes` is a valid SUCCESS here**, not a failure —
   nothing ask-specific to say, call it empty and the job finishes clean — and it
   **does not move the ask's status.** The ask stays `approved`.
+- **`check_shape`** — the shaping review: the read that decides whether a shape
+  can go ahead. **Nothing is approved, queued or built until it reports.** Same
+  dispatch shape as `shape_ask`: hand it to the `vibeassist-decompose` skill's
+  **shape-review** entry, in a fresh sub-agent, carrying **the job's input** —
+  which names the ask, carries the `trigger` (`approve` or `change`), and
+  carries the **ask above plus the asks beside it** — and nothing else. That
+  parent-and-siblings material only arrives on the job; `get_ask` cannot give
+  it, so passing anything less makes the review blind to the one thing it is
+  there to catch. It goes in the **quick** lane.
+
+  It reports through **`report_shape_review({ jobId, passed, findings, atParent,
+  relabel })`** — `jobId` and `passed` are owed, the rest ride when they apply —
+  and that call **reports and finishes the job in one**, the same split as
+  `build`/`report_delivery` and `write_build_notes`/`report_build_notes`. So
+  **do not call `complete_job` after it.** Two things to hold on to: **a fail is
+  a real, clean outcome**, not an error — the ask stays at `shaping` with the
+  findings on it, waiting on the owner — and **every finding owes a question AND
+  a recommended answer**, because the app drops any that carries only one. The
+  doctrine is in that skill; do not restate it here.
+
+  **The language check does not run on this job.** A review writes nothing onto
+  a shape, and `check_language.mjs` guards lines that land on one. It still runs
+  on every `shape_ask`, exactly as before.
 - **`build`** — build the one ask the job names. It goes to the **build lane**
   (up to 2 at once, each on its own branch in its own worktree — the lane rules
   above are the rules). Hand a FRESH sub-agent the job and the ask it names, and
@@ -333,6 +356,12 @@ against a lane. It comes back on its own when the person answers.
 That one call reports and finishes together, so calling `complete_job` after it
 is a second finish and comes back an error. `complete_job` still owns the
 failure path on a build — see § A `build` job, step by step.
+
+**Three job kinds finish through their own reporting call, not `complete_job`:**
+`build` → `report_delivery`, `write_build_notes` → `report_build_notes`,
+`check_shape` → `report_shape_review`. Each reports and finishes in one, so a
+`complete_job` after any of them is a second finish and comes back an error.
+`complete_job` still owns the failure path on all three.
 
 ## Drain means drain, for a listener
 
