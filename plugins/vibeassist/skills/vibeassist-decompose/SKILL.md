@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Six entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), build notes (write one ask's technical direction for the builder — usually nothing), and shape review (the before-build read a check_shape job lands on: judge one ask's shape against its parent and siblings, then pass it or hand back findings). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.21.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.22.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.22.0 (22 Aug 2026): the shape review passes on "good enough to build". Only a blocker holds an ask back — an unclear want, a contradiction above or beside it, missing critical information, an unsafe must-not — and everything else rides along with the pass as a finding marked `blocking: false`. Every finding carries a recommended change worded to go straight onto the shape line. -->
 <!-- 0.21.0 (22 Aug 2026): a sixth entry — shape review: the before-build read a `check_shape` job lands on. Reads one ask's shape plus the parent and siblings the job carries, checks clarity, the interaction surface, contradictions with any must line above or beside it, plain must-nots, scope-vs-principle and patterns that belong in the Rules; reports with `report_shape_review`. It writes nothing, so the language check does not run on it. -->
 <!-- 0.19.1 (20 Aug 2026): build notes are written as light Markdown — backticks around field names, identifiers, table/column names, paths and commands; fenced blocks for multi-line code; prose stays prose. Legibility only, never licence to write more. -->
 <!-- 0.19.0 (20 Aug 2026): a fifth entry — build notes: one ask's technical direction for the builder, the residual after the standing Rules and after what the code shows. Light, builder-facing, and usually empty. The owner's language check does not run on them and still runs on every shape. -->
@@ -688,9 +689,11 @@ the code it touches, and write the notes. Then report them with
 **SHAPE REVIEW — the sixth entry, and the only one that judges instead of
 writing.** A `check_shape` job lands carrying an `askId`, a `trigger`
 (`approve` or `change`), and the ask above plus the asks beside it. Read the
-shape, check it, and report with **`report_shape_review`** — pass it, or hand
-back findings that are each a question WITH the answer you recommend. It edits
-nothing. Full method below, under **Shape review**.
+shape, check it, and report with **`report_shape_review`**. **The bar is good
+enough to build:** pass it unless something BLOCKS a build, and send everything
+else along with the pass as a non-blocking suggestion. Every finding is a
+question WITH the change you recommend. It edits nothing. Full method below,
+under **Shape review**.
 
 In both modes, read the existing board first (the list tools named in the
 persistence note under Materialize): decompose INTO what's already there —
@@ -981,9 +984,37 @@ no shape line. **Do not read the running app's page** — a page is a rendering,
 the tool is the record. Reading CODE is a different matter: reach for it when a
 finding turns on what already exists.
 
+### The bar: good enough to build
+
+**Pass = a competent builder could build this shape without coming back to ask
+you.** Not perfect, not everything you would have written — buildable.
+
+**Only a BLOCKER holds the ask back.** There are four of them, and nothing else
+is one:
+
+- **An unclear want** — two honest builders would build two different things.
+- **A contradiction** with a must-do or a must-not on this ask, on the ask above
+  it, or on any ask beside it.
+- **Missing critical information** — something the build has to know and nobody
+  said. For anything a person triggers, that includes what the control is and
+  where it lives.
+- **An unsafe must-not** — a prohibition that is not written as one, so a
+  builder can read it as a preference and ignore it.
+
+**Everything else is ADVICE.** A better name, a nicer default, an empty state
+worth having, a closed list that might have meant a principle, a line that
+belongs in the project Rules — all of it is worth saying, and none of it is
+worth stopping a build for. **Send it as a finding marked `blocking: false` and
+it rides along WITH the pass**, on an ask that is already moving.
+
+**Why this matters.** A review that holds the ask on every finding never passes
+a shape that was fine, and the owner presses Approve on the same shape again and
+again. Friction you manufacture costs them the thing they are trying to do.
+
 ### What you check
 
-Read it the way a sharp collaborator would, and check at least these.
+Read it the way a sharp collaborator would, and check at least these. The first
+four can block; **5 and 6 are advice and never block.**
 
 1. **Is the shape clear and complete?** For anything a person triggers, is the
    **interaction surface** named — what the control is, and where it lives? "The
@@ -998,12 +1029,17 @@ Read it the way a sharp collaborator would, and check at least these.
 4. **Is a closed list of examples actually the SCOPE**, or a principle meant to
    be generalised? Three named cases either mean *only these three* or *this
    kind of thing*, and a builder that guesses wrong builds the wrong size.
+   **Blocking only when the two readings build genuinely different things.**
+   Where the list is a sane build on its own, recommend the wording and let it
+   ride along with the pass.
 5. **Is there a pattern here that should be a project RULE** rather than a line
    on one ask? A constraint restated on ask after ask belongs in the Rules
    register — one copy that binds every ask (see **Define the project first**).
+   **Advice: never blocking.**
 6. **What would a careful build ADD that the owner didn't think to say?** Not
    scope creep — the ordinary thing a competent builder needs settled and the
-   owner never thought of.
+   owner never thought of. **Advice, unless the build genuinely cannot go ahead
+   without it** — then it is missing critical information, and it blocks.
 
 **On a `change`, sort it by what it NEEDS as well:**
 
@@ -1018,24 +1054,40 @@ Read it the way a sharp collaborator would, and check at least these.
 **The review always runs. Manufacturing friction is not the job.** A complete,
 simple shape you can answer in one read is a **pass** — pass it and move on. A
 tangled one earns as many findings as it needs. Depth follows the shape, never
-a quota.
+a quota. **And depth is not the same as holding back:** a pass with four
+suggestions on it is a deep read that let the work through.
 
 ### The output rules — the app enforces every one
 
-- **Every finding is a QUESTION and a RECOMMENDED ANSWER — both halves.** The
+- **Every finding is a QUESTION and a RECOMMENDED CHANGE — both halves.** The
   app drops anything with only one, so a half-written finding is a finding that
   never existed.
+- **The recommendation is worded to go STRAIGHT ONTO the shape line** — the
+  words the owner can put there, not a description of the words they should go
+  and write. "Say where the control lives" is a description. *"Add to the want:
+  'from the Export item in the board menu'"* is a change.
+- **Every finding says whether it blocks.** `blocking: true` for one of the four
+  blockers, `blocking: false` for everything else. Say it on every one rather
+  than leave it to be guessed at.
 - **Never hand back a bare open question.** It gives the shape back with the
   same work still on it, and the owner is now waiting on you instead.
-- **A pass carries NO findings.** Passed and a list of doubts is a contradiction.
+- **A pass MAY carry findings — non-blocking ones.** That is how advice reaches
+  the owner without stopping the build. What a pass may never carry is a
+  blocker: one blocker and it is not a pass.
 - **Findings are read by the OWNER.** Their words, their product — same plain
   wording every shape line owes them.
 
-**A worked pair.** Not: "How does export work?" That is bare, and it is theirs
-to answer twice. Instead: *"Where does the Export button live — on the board
-toolbar, or in the board's own menu? I'd put it in the board menu beside
-Import, so the toolbar stays for things used every day."* A question, an
-answer, and one nod finishes it.
+**A worked pair — a blocker.** Not: "How does export work?" That is bare, and it
+is theirs to answer twice. Instead: *"Where does the Export button live — on the
+board toolbar, or in the board's own menu? Add to the want: 'from the Export
+item in the board menu, beside Import.'"* A question, the line to write, and one
+nod finishes it.
+
+**A worked pair — a suggestion.** *"The list names three file kinds. Do you mean
+only those three? If you mean any of that kind, change the must-do to 'Exports
+any file the board can read, including CSV, JSON and Markdown.'"* — sent with
+`blocking: false`, so the build starts today and the owner answers when they
+get to it.
 
 ### Reporting it — one call, and it is the end of the job
 
@@ -1043,9 +1095,16 @@ answer, and one nod finishes it.
 `jobId` and `passed` are owed; the rest ride when they apply. It reports AND
 finishes the job in one call.
 
-- **Passed** → `{ jobId, passed: true }`. Nothing else.
-- **Not passed** → `{ jobId, passed: false, findings: [ { question, recommend } ] }`.
-  The ask stays at `shaping` with the findings on it, waiting on the owner.
+- **Passed, nothing to say** → `{ jobId, passed: true }`. Nothing else.
+- **Passed, with advice** → `{ jobId, passed: true, findings: [ { question,
+  recommend, blocking: false } ] }`. The ask is approved — and on a change,
+  queued — and the suggestions are written on it to take or leave.
+- **Not passed** → `{ jobId, passed: false, findings: [ { question, recommend,
+  blocking } ] }`, **with at least one `blocking: true`**. The ask stays at
+  `shaping` with the findings on it, waiting on the owner. **The blockers
+  decide, not the verdict you claim:** `passed: false` with nothing blocking is
+  read as a pass carrying suggestions, and `passed: true` with a blocker on it
+  is held back.
 - **Do not call `complete_job` after it.** The job is already finished, and a
   second finish comes back an error. On a review that ran,
   `report_shape_review` is the last call you make.

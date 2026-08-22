@@ -123,11 +123,13 @@ Dispatch into two concurrent lanes:
   relabel })`** — `jobId` and `passed` are owed, the rest ride when they apply —
   and that call **reports and finishes the job in one**, the same split as
   `build`/`report_delivery` and `write_build_notes`/`report_build_notes`. So
-  **do not call `complete_job` after it.** Two things to hold on to: **a fail is
-  a real, clean outcome**, not an error — the ask stays at `shaping` with the
-  findings on it, waiting on the owner — and **every finding owes a question AND
-  a recommended answer**, because the app drops any that carries only one. The
-  doctrine is in that skill; do not restate it here.
+  **do not call `complete_job` after it.** Three things to hold on to. **A fail
+  is a real, clean outcome**, not an error — the ask stays at `shaping` with the
+  findings on it, waiting on the owner. **Every finding owes a question AND a
+  recommended change**, because the app drops any that carries only one. And
+  **the bar is good enough to build** — only a blocker holds the ask back, and
+  a finding marked `blocking: false` rides along with a pass. The doctrine is in
+  that skill; do not restate it here.
 
   **The language check does not run on this job.** A review writes nothing onto
   a shape, and `check_language.mjs` guards lines that land on one. It still runs
