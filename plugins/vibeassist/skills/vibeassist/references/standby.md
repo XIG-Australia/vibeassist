@@ -134,6 +134,31 @@ Dispatch into two concurrent lanes:
   **The language check does not run on this job.** A review writes nothing onto
   a shape, and `check_language.mjs` guards lines that land on one. It still runs
   on every `shape_ask`, exactly as before.
+- **`rewrite_finding`** — write one shape line again, so it carries what a
+  finding still wants. It goes in the **quick** lane, in a fresh sub-agent,
+  carrying **the job's input** and nothing else. There is no skill entry to hand
+  it to: **the job carries its own instructions** — what the finding still
+  wants, the wording it recommended, how the line read when the finding was
+  written, and how it reads now. Read those and do what they say.
+
+  **Write the wording again on top of NOW.** The line has moved on since the
+  finding was written, and everything it says now stays said. You are ADDING
+  what the finding still wants to the line as it stands — never choosing between
+  the two, never restoring the old line, never dropping a word the owner has put
+  there since.
+
+  It reports through **`report_line_rewrite`**, which **reports and finishes the
+  job in one call** — the same split as `build`/`report_delivery`,
+  `write_build_notes`/`report_build_notes` and
+  `check_shape`/`report_shape_review`. So **do not call `complete_job` after
+  it.** Two things to hold on to. **Empty wording is refused** — unlike build
+  notes, there is no valid empty answer here, so a rewrite with nothing in it is
+  not a way to finish. And **nothing you send is written on the ask**: it goes
+  on the FINDING, for the owner to read, edit or accept. The shape changes when
+  they say so, not when you report.
+
+  **A rewrite you genuinely cannot do** finishes with `complete_job`'s `error`
+  and one honest sentence — the same giving-up path as any other kind.
 - **`build`** — build the one ask the job names. It goes to the **build lane**
   (up to 2 at once, each on its own branch in its own worktree — the lane rules
   above are the rules). Hand a FRESH sub-agent the job and the ask it names, and
@@ -359,11 +384,12 @@ That one call reports and finishes together, so calling `complete_job` after it
 is a second finish and comes back an error. `complete_job` still owns the
 failure path on a build — see § A `build` job, step by step.
 
-**Three job kinds finish through their own reporting call, not `complete_job`:**
+**Four job kinds finish through their own reporting call, not `complete_job`:**
 `build` → `report_delivery`, `write_build_notes` → `report_build_notes`,
-`check_shape` → `report_shape_review`. Each reports and finishes in one, so a
-`complete_job` after any of them is a second finish and comes back an error.
-`complete_job` still owns the failure path on all three.
+`check_shape` → `report_shape_review`, `rewrite_finding` →
+`report_line_rewrite`. Each reports and finishes in one, so a `complete_job`
+after any of them is a second finish and comes back an error. `complete_job`
+still owns the failure path on all four.
 
 ## Drain means drain, for a listener
 
