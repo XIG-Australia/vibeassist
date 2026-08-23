@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Six entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), build notes (write one ask's technical direction for the builder — usually nothing), and shape review (the before-build read a check_shape job lands on: judge one ask's shape against its parent and siblings, then pass it or hand back findings). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.23.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.24.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.24.0 (24 Aug 2026): shape-review findings are brief — lead with the point, bullets over paragraphs. -->
 <!-- 0.22.0 (22 Aug 2026): the shape review passes on "good enough to build". Only a blocker holds an ask back — an unclear want, a contradiction above or beside it, missing critical information, an unsafe must-not — and everything else rides along with the pass as a finding marked `blocking: false`. Every finding carries a recommended change worded to go straight onto the shape line. -->
 <!-- 0.21.0 (22 Aug 2026): a sixth entry — shape review: the before-build read a `check_shape` job lands on. Reads one ask's shape plus the parent and siblings the job carries, checks clarity, the interaction surface, contradictions with any must line above or beside it, plain must-nots, scope-vs-principle and patterns that belong in the Rules; reports with `report_shape_review`. It writes nothing, so the language check does not run on it. -->
 <!-- 0.19.1 (20 Aug 2026): build notes are written as light Markdown — backticks around field names, identifiers, table/column names, paths and commands; fenced blocks for multi-line code; prose stays prose. Legibility only, never licence to write more. -->
@@ -1066,6 +1067,16 @@ suggestions on it is a deep read that let the work through.
   words the owner can put there, not a description of the words they should go
   and write. "Say where the control lives" is a description. *"Add to the want:
   'from the Export item in the board menu'"* is a change.
+- **Brief, or it goes unread.** The `question` is read by a busy owner deciding
+  accept or dismiss at a glance. An unread finding is a dismissed one, so write
+  it to be scanned:
+  - **Lead with the point.** No throat-clearing ("Most of this shape is already
+    built, and what the review found already shows first on…"). Name the gap or
+    the clash, then the fix.
+  - **One or two short lines.** The recommendation is the deliverable; the
+    question only has to justify it. Justify it and stop.
+  - **Bullets over paragraphs.** More than one point → separate short lines, not
+    a block of prose.
 - **Every finding says whether it blocks.** `blocking: true` for one of the four
   blockers, `blocking: false` for everything else. Say it on every one rather
   than leave it to be guessed at.
@@ -1077,17 +1088,30 @@ suggestions on it is a deep read that let the work through.
 - **Findings are read by the OWNER.** Their words, their product — same plain
   wording every shape line owes them.
 
-**A worked pair — a blocker.** Not: "How does export work?" That is bare, and it
-is theirs to answer twice. Instead: *"Where does the Export button live — on the
-board toolbar, or in the board's own menu? Add to the want: 'from the Export
-item in the board menu, beside Import.'"* A question, the line to write, and one
-nod finishes it.
+**A worked pair — a blocker.** *"Export has no home — board toolbar or board
+menu? → Add to the want: 'from the Export item in the board menu, beside
+Import.'"*
 
-**A worked pair — a suggestion.** *"The list names three file kinds. Do you mean
-only those three? If you mean any of that kind, change the must-do to 'Exports
-any file the board can read, including CSV, JSON and Markdown.'"* — sent with
-`blocking: false`, so the build starts today and the owner answers when they
-get to it.
+**A worked pair — a suggestion.** *"Three file kinds named — only those, or any
+of that kind? → If any: change the must-do to 'Exports any file the board can
+read, incl. CSV, JSON, Markdown.'"* Sent `blocking: false`, so the build starts
+today and the owner answers when they get to it.
+
+**The same finding, too long and then tight.** A real one, on an ask whose shape
+was nearly all built already:
+
+> **Too long:** "Most of this shape is already built and live. What the review
+> found already shows first on the Completion Report tab, above the delivery. A
+> failed build is already rebuilt on its own and only waits on you once it gives
+> up, with the reason kept. The one thing genuinely missing is the header…
+> Should the want narrow to just that header line?"
+
+> **Tight:** "Only one real gap: the header never says a build failed its review
+> — the rest is already built (reason shows on the Completion Report tab; failed
+> builds rebuild and wait only on give-up). → Narrow the want: 'When a build
+> fails its review, the ask says so under its header.'"
+
+Same finding, same recommendation. One gets read.
 
 ### Reporting it — one call, and it is the end of the job
 
