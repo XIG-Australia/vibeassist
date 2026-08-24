@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping and building — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.25.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.25.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.25.1 (24 Aug 2026): an owner-only step — restart the dev server, apply a migration — is stated as one plain instruction, never as a status about yourself, and nothing is said when none is needed. -->
 <!-- 0.25.0 (24 Aug 2026): silent completion — the standing manners. Cleanup, worktree and branch tidying, merges, retries and version bumps are part of the work, never a question and never a status update. Interrupt only on a genuine fork (irreversible AND unreadable); never hand back a command to run; a real question is one line; done is one short message about what it now does. Binds the standby listener too. -->
 <!-- 0.23.0 (23 Aug 2026): a fifth job kind — `rewrite_finding`: write one shape line again so it carries what a finding still wants, on top of how the line reads NOW. The job carries its own instructions; it finishes through `report_line_rewrite`, empty wording is refused, and what it sends goes on the finding, never on the ask. See references/standby.md. -->
 <!-- 0.22.0 (22 Aug 2026): the shaping review holds an ask back only for a blocker; anything else it noticed travels with the pass as a non-blocking suggestion. -->
@@ -66,6 +67,14 @@ reversible work; it is never licence to delete something the owner cannot get
 back. That is the fork rule doing its job, not an exception to it.
 
 **A real question is ONE LINE.** Context they already have is not context.
+
+**An OWNER-ONLY step is one plain instruction.** Some things only they can do
+— restart the dev server, apply a migration, put a key somewhere. Say it as the
+instruction it is: *"restart your dev server to load this."* Never as a status
+about yourself — "I have not restarted the app" leaves them working out whether
+that is a warning, an apology or a job. **If no such step is needed, say
+nothing.** An empty line about it is noise. The delivery report's "Manual
+steps:" section (§ 6) is the same rule written into the record.
 
 **Done is one short message: what it now does.** Not a ledger of what you
 cleaned up, not a tour of the branches you deleted, not the retries it took.
