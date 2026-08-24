@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping and building — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.26.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.27.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.27.0 (24 Aug 2026): where a project’s code lives comes from the app — `list_projects` returns `repo: { kind, where }` — and the local register (`~/.claude/vibeassist-repos.json`, `scripts/va-repos.example.json`) is retired. A project with `repo: null` is one plain question pointing at Project settings → “Where the code lives”, and the listener writes no config of its own. -->
 <!-- 0.26.0 (24 Aug 2026): one listener serves every repo. The repository is resolved per job from the job’s `projectId` through a register at `~/.claude/vibeassist-repos.json` (stub: `scripts/va-repos.example.json`), the worktree is made under that checkout with `git -C`, and a project with no entry is one plain question, never a guess. -->
 <!-- 0.25.1 (24 Aug 2026): an owner-only step — restart the dev server, apply a migration — is stated as one plain instruction, never as a status about yourself, and nothing is said when none is needed. -->
 <!-- 0.25.0 (24 Aug 2026): silent completion — the standing manners. Cleanup, worktree and branch tidying, merges, retries and version bumps are part of the work, never a question and never a status update. Interrupt only on a genuine fork (irreversible AND unreadable); never hand back a command to run; a real question is one line; done is one short message about what it now does. Binds the standby listener too. -->
@@ -436,9 +437,10 @@ waiting in the VA inbox, and stop.
   worktree per Ask, a sibling of the served checkout inside the project folder
   (`<project>/<checkout>-<shortId>`), off latest main. **Which checkout is
   decided by the JOB's project, not by where you were started** — a listener
-  serves every repo, one register (`~/.claude/vibeassist-repos.json`) says
-  where each one lives, and an unknown project is one plain question, never a
-  guess. See `references/standby.md` § One listener, every repo. Never run a build in the
+  serves every repo, and `list_projects` says where each one lives
+  (`repo.where`). A project with no repo set is one plain question — the owner
+  sets it in the app, Project settings → "Where the code lives" — never a guess.
+  See `references/standby.md` § One listener, every repo. Never run a build in the
   folder the dev app serves, never leave that folder sitting on a build branch,
   and never put the worktree in a global scratch location outside the project.
 - Open early PRs as DRAFTS while still pushing; mark "Ready for review" exactly
