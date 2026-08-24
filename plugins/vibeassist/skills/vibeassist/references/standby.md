@@ -9,6 +9,11 @@ again, until the user stops it. The user starts it once and never types into
 the terminal again — anything you need from them goes through `ask_user` on
 the job, never a terminal prompt.
 
+**The standing manners bind here too** — SKILL.md § 0 · Silent completion. A
+listener is the quietest role there is: between a job arriving and its reporting
+call, the owner hears nothing. Tidying up after a build is part of the build,
+never an `ask_user`, and never a line of narration.
+
 ## The loop is a TOOL CALL, not a script
 
 `wait_for_work` is one of the `mcp__vibeassist__*` tools this session already

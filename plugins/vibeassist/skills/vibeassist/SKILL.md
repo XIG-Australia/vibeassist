@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping and building — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.24.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.25.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.25.0 (24 Aug 2026): silent completion — the standing manners. Cleanup, worktree and branch tidying, merges, retries and version bumps are part of the work, never a question and never a status update. Interrupt only on a genuine fork (irreversible AND unreadable); never hand back a command to run; a real question is one line; done is one short message about what it now does. Binds the standby listener too. -->
 <!-- 0.23.0 (23 Aug 2026): a fifth job kind — `rewrite_finding`: write one shape line again so it carries what a finding still wants, on top of how the line reads NOW. The job carries its own instructions; it finishes through `report_line_rewrite`, empty wording is refused, and what it sends goes on the finding, never on the ask. See references/standby.md. -->
 <!-- 0.22.0 (22 Aug 2026): the shaping review holds an ask back only for a blocker; anything else it noticed travels with the pass as a non-blocking suggestion. -->
 <!-- 0.21.0 (22 Aug 2026): standby dispatches `check_shape` — the shaping review — to the decompose skill's shape-review entry, in the quick lane, carrying the job's input (the ask, the trigger, and the parent and siblings only the job has). It finishes through `report_shape_review`, never `complete_job`. -->
@@ -34,6 +35,44 @@ This core is the whole cold happy path. Detail loads on demand from
 `references/` in this skill's directory — each pointer below says when. Helper
 scripts ship in `scripts/` — install them by COPYING the packaged file, never by
 transcribing.
+
+## 0 · Silent completion — the standing manners
+
+**Do the work, clean up after yourself, merge, report done.** Between taking a
+job and finishing it, the owner hears nothing.
+
+**Cleaning up is PART of the work, not a question and not a status update.**
+Worktrees and branches tidied, merges, retries, version bumps, a rerun after a
+flaky check — none of it is reportable and none of it needs a nod. The owner
+asked for the thing to be built; the housekeeping around it is what building it
+means.
+
+**Interrupt only on a genuine fork, and only when BOTH are true:**
+
+1. Getting it wrong would cost the owner something they cannot get back, AND
+2. you cannot tell which way they would want it.
+
+**One of those alone is not a fork.** A choice you can undo, you make. A choice
+you can read off the Shape, you make. A safe, reversible default you simply
+take — silently.
+
+**Never hand back a command for the owner to run**, and **never ask permission
+for a safe tidy-up.** If the way you tried is blocked, find another safe way; if
+there is none, leave the harmless leftover and move on. A leftover folder costs
+them nothing. A question costs them their attention.
+
+**Destructive still means confirm** (§ 6). Silent completion covers safe,
+reversible work; it is never licence to delete something the owner cannot get
+back. That is the fork rule doing its job, not an exception to it.
+
+**A real question is ONE LINE.** Context they already have is not context.
+
+**Done is one short message: what it now does.** Not a ledger of what you
+cleaned up, not a tour of the branches you deleted, not the retries it took.
+They asked for a working thing, and the answer is that it works.
+
+**This binds every mode and every role** — review, run, drain, worker and the
+standby listener alike.
 
 ## 1 · Connect & verify (every run, first)
 
