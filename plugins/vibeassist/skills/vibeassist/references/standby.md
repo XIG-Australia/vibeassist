@@ -177,6 +177,75 @@ Dispatch into two concurrent lanes:
 If the loop needs something the tools do not give, that is a change to the app
 — a new or updated MCP tool — never a workaround here.
 
+## One listener, every repo — resolve the repo from the JOB
+
+**A listener is not tied to a repository.** It serves every project on the
+board, and the repository is decided **per job**, never by where the listener
+was started. One listening session is the whole arrangement; never ask the owner
+to run a second one for a second repo.
+
+**Every job carries `projectId`.** That is the anchor — project names are not
+unique, ids are.
+
+### The repo register
+
+A small file on the owner's machine says where each project lives:
+**`~/.claude/vibeassist-repos.json`**. The packaged stub is
+`scripts/va-repos.example.json` — copy it there and fill in the paths.
+
+```json
+{
+  "projects": {
+    "<projectId from list_projects>": {
+      "name": "My app",
+      "checkout": "C:/path/to/app"
+    }
+  }
+}
+```
+
+`checkout` is the folder the app is served from — the one pinned to `main` —
+never a worktree. **The register is read fresh at the start of each job**, so a
+path added mid-session is picked up on the next one without a restart.
+
+### Resolving it, per job
+
+1. **Read the register.** Look up the job's `projectId`.
+2. **Found → that `checkout` is the repository for this job**, and every git
+   command runs against it: `git -C <checkout> …`, or from inside the worktree
+   made under it. **Never rely on the working directory** — the listener's own
+   folder is where the register is read from, and nothing more.
+3. **Not found → ASK ONCE, one line**, and let the question park the job:
+
+   ```
+   ask_user({ jobId, question:
+     "Which folder on this machine is <project name>? e.g. C:/path/to/app" })
+   ```
+
+   **Never guess**, never fall back to the folder the listener started in, and
+   never try one repo to see if it looks right. When the answer comes back,
+   **write it into the register** before carrying on — asked once, ever.
+
+4. **A job that touches no code needs no repo.** `shape_ask`, `check_shape`,
+   `write_build_notes` and `rewrite_finding` work through the board's own
+   tools. Resolve the repository for a `build`, and for anything else that has
+   to READ or WRITE the code.
+
+### One job's changes never land in another repo
+
+The worktree is made **under the resolved checkout**, the same way builds
+already do it (see § Where it builds):
+
+```bash
+git -C <checkout> fetch origin main
+git -C <checkout> worktree add -b <branch> ../<checkout-name>-<shortId> origin/main
+```
+
+Two jobs for two projects are two worktrees under two different repositories,
+running at the same time and never touching each other. **Before the first edit,
+confirm the worktree is under the checkout you resolved** — a worktree in the
+wrong repository is the one failure this whole section exists to prevent.
+
 ## A `build` job, step by step
 
 **The listener never builds it itself.** It hands the job to a sub-agent and
@@ -280,11 +349,12 @@ What is missing is the report, and this makes that visible rather than silent.
 
 **The sub-agent builds in a git worktree it makes for the ask, as a sibling of
 the served checkout inside the project folder, off the latest main line.** The
-listener's own folder is where it finds the repository, not where it builds:
+served checkout is **the one the job's project resolved to** (§ One listener,
+every repo) — never the folder the listener happens to be running in:
 
 ```bash
-git fetch origin main
-git worktree add -b <branch> ../<checkout>-<shortId> origin/main
+git -C <checkout> fetch origin main
+git -C <checkout> worktree add -b <branch> ../<checkout-name>-<shortId> origin/main
 ```
 
 The worktree sits in the **same parent as the folder the app runs from**, named
@@ -298,12 +368,12 @@ half-built work and lose whatever they had open, and a worktree parked outside
 the project drifts away from the checkout it belongs to. The served folder stays
 on `main`. Remove the worktree once merged (`git worktree remove <path>`).
 
-Still no routing and no lookup: the repository is the one the listener is
-running against. The build job carries a **`folder` field from the app. Do not
-read it yet.** It is the hook for the next increment — routing a build to a root
-repository plus a subfolder — and that increment is **deferred, not part of this
-one.** When it lands, this step is where it goes. Until then: ignore the field,
-and never invent routing from it.
+**The repository comes from the job's project**, resolved through the register
+before any of this runs. The build job also carries a **`folder` field from the
+app. Do not read it yet.** It is the hook for the increment after this one —
+routing a build to a subfolder WITHIN a resolved repository — and that increment
+is **deferred.** Until it lands: ignore the field, and never invent routing from
+it.
 
 ### Out of scope in this slice — do NOT wire these in
 
