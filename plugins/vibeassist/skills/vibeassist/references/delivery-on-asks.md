@@ -63,6 +63,21 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    `doneWhen` — its place in the tree (parent, children), what it `touches`,
    and the actions it names.
 
+   **And you get the PLAN — `build_notes` — so read it and BUILD TO IT.**
+   `get_ask` returns it beside the shape. It is not a hint and it is not
+   background: it is what the owner APPROVED — "here's what I'll build" — written
+   before the conversation closed, and the build is what makes it true. **The
+   three shape lines alone are not your brief.** Where the plan says how the ask
+   will be met, that is the way to meet it.
+
+   - **An empty plan is a real answer**, not a missing one. It means nothing had
+     to be interpreted. Build to the shape and carry on.
+   - **A plan that says it could not plan** — it names what the shape leaves
+     unclear — is the owner's signal, not yours to solve. Do not guess past it:
+     ask on the ask, the same as any other gap.
+   - **The plan never outranks a must-not**, on this ask or above it. If the two
+     genuinely fight, that is a question, not a choice you make quietly.
+
    **The ask is already in hand — do NOT go looking for it.** It came from a
    tool: `next_approved_ask` on this road, `get_ask({ askId })` on a `build`
    job. That response IS the ask. **The board lives in the app, behind those
@@ -91,12 +106,13 @@ not one a machine proposed. Do not build or ask for a grouping mechanism.
    you stop, the question IS the record of why. Do not also report the delivery
    failed; that would hand the ask to the next worker to hit the same wall.
 
-   **You are NOT handed a technical brief, and that is deliberate.** Working out
-   how to build it is your job. Simon: _"I care how it was built only as far as
-   what goes into an ask, but the developer task-level work, I don't want
-   recorded."_ So do not file tasks, do not create sub-asks to track your own
-   steps, and do not report your working. Track your own work however you like;
-   none of it belongs on his board.
+   **The plan is not a technical brief, and that is deliberate.** It is
+   plan-level — what will be built, in words the owner could approve — never a
+   list of the steps to take. Below that line, working out HOW is your job.
+   Simon: _"I care how it was built only as far as what goes into an ask, but the
+   developer task-level work, I don't want recorded."_ So do not file tasks, do
+   not create sub-asks to track your own steps, and do not report your working.
+   Track your own work however you like; none of it belongs on his board.
 
 3. **Build it in your own worktree, beside the served checkout**, on the `branch`
    you were given (`ask/<short-id>-<slug>`), cut from the latest `main`. One ask,
