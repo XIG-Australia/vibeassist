@@ -89,24 +89,39 @@ Dispatch into two concurrent lanes:
 
 ## The job kinds that exist now
 
-- **`shape_ask`** — the shaping flow. Hand it to the `vibeassist-decompose`
-  skill's single-ask shaping entry, in a fresh sub-agent, with the job's input
-  (which names the ask) and nothing else. Proposals stay draft-first: shaping
-  puts a shape up, the person accepts it. **The language check runs before the
-  shape lands** — `node scripts/check_language.mjs` in that skill, every flag
-  fixed, every notice read. A listening session writes onto the board with
-  nobody watching, so the check is the only thing standing between a sloppy
-  line and the person's ask.
-- **`write_build_notes`** — write the build notes for the ask the job names.
-  Same dispatch shape as `shape_ask`: hand it to the `vibeassist-decompose`
-  skill's **build-notes** entry, in a fresh sub-agent, carrying the `askId` and
-  nothing else. It goes in the **quick** lane. The notes are LIGHT — only the
-  ask-specific technical direction a worker could not get from the standing
-  Rules or from reading the code — and **writing none is a real answer.** Do not
-  let a sub-agent invent direction to fill the field. The doctrine is in that
-  skill; do not restate it here.
+- **`shape_ask`** — the shaping conversation, and it is the WHOLE of it. Hand it
+  to the `vibeassist-decompose` skill's **shaping conversation** entry, in a
+  fresh sub-agent, with the job's input (which names the ask) and nothing else.
+  Proposals stay draft-first: shaping puts a shape up, the person accepts it.
 
-  It reports back with **`report_build_notes({ askId, notes })`**, which writes
+  **Form and Confirm are one conversation.** The same sub-agent helps the person
+  say what they want AND checks it read them right — same channel, same voice,
+  and the person cannot tell which movement is happening. **One question at a
+  time**, through `ask_user`; the channel refuses a second on the same job
+  anyway. **There is no verdict at the end** — no pass, no fail, no list handed
+  back. A genuine blocker goes out as one more question with the options that
+  settle it. The doctrine is in that skill; do not restate it here.
+
+  **It ends with the read-back.** When the shape is understood, the sub-agent
+  asks "anything else to add?" and on the go writes how it will build the ask —
+  which lands as the build notes.
+
+  **The language check runs before the shape lands** — `node
+  scripts/check_language.mjs` in that skill, every flag fixed, every notice
+  read. A listening session writes onto the board with nobody watching, so the
+  check is the only thing standing between a sloppy line and the person's ask.
+- **`write_build_notes`** — the read-back, with no conversation in front of it:
+  how the ask will be built, for the ask the job names. Same dispatch shape as
+  `shape_ask`: hand it to the `vibeassist-decompose` skill's **read-back** entry,
+  in a fresh sub-agent, carrying the `askId` and nothing else. It goes in the
+  **quick** lane. It is LIGHT and it **scales with how much had to be
+  interpreted** — near-empty when the shape was clear, and only the ask-specific
+  direction a worker could not get from the standing Rules or from reading the
+  code. **Writing none is a real answer.** Do not let a sub-agent invent
+  direction to fill the field. The doctrine is in that skill; do not restate it
+  here.
+
+  It reports back with **`report_build_notes({ jobId, notes })`**, which writes
   the notes and **finishes the job in one call** — the same split as `build` and
   `report_delivery`: the job kind and the tool it reports through are named
   differently on purpose. So **do not call `complete_job` after it**; that is a
@@ -114,31 +129,23 @@ Dispatch into two concurrent lanes:
   `report_delivery`: **empty `notes` is a valid SUCCESS here**, not a failure —
   nothing ask-specific to say, call it empty and the job finishes clean — and it
   **does not move the ask's status.** The ask stays `approved`.
-- **`check_shape`** — the shaping review: the read that decides whether a shape
-  can go ahead. **Nothing is approved, queued or built until it reports.** Same
-  dispatch shape as `shape_ask`: hand it to the `vibeassist-decompose` skill's
-  **shape-review** entry, in a fresh sub-agent, carrying **the job's input** —
-  which names the ask, carries the `trigger` (`approve` or `change`), and
-  carries the **ask above plus the asks beside it** — and nothing else. That
-  parent-and-siblings material only arrives on the job; `get_ask` cannot give
-  it, so passing anything less makes the review blind to the one thing it is
-  there to catch. It goes in the **quick** lane.
+- **`check_shape`** — **retired.** It was a separate review that judged a shape
+  and handed back findings. Confirm now happens inside the shaping conversation,
+  so there is nothing left for a second pass to do, and there is no shape-review
+  entry to hand it to.
 
-  It reports through **`report_shape_review({ jobId, passed, findings, atParent,
-  relabel })`** — `jobId` and `passed` are owed, the rest ride when they apply —
-  and that call **reports and finishes the job in one**, the same split as
-  `build`/`report_delivery` and `write_build_notes`/`report_build_notes`. So
-  **do not call `complete_job` after it.** Three things to hold on to. **A fail
-  is a real, clean outcome**, not an error — the ask stays at `shaping` with the
-  findings on it, waiting on the owner. **Every finding owes a question AND a
-  recommended change**, because the app drops any that carries only one. And
-  **the bar is good enough to build** — only a blocker holds the ask back, and
-  a finding marked `blocking: false` rides along with a pass. The doctrine is in
-  that skill; do not restate it here.
+  **If one still lands, do not run it as a review.** Hand it to the
+  `vibeassist-decompose` skill's **shaping conversation** entry, in a fresh
+  sub-agent, carrying the job's input — the ask, the `trigger`, and the ask above
+  plus the asks beside it — and run it as the Confirm movement: questions through
+  `ask_user`, one at a time. Finish it with **`report_shape_review({ jobId })`**
+  and no findings. **Never send a `passed: false`, and never hand back a list.**
+  It goes in the **quick** lane, and that one call reports and finishes the job,
+  so no `complete_job` after it.
 
-  **The language check does not run on this job.** A review writes nothing onto
-  a shape, and `check_language.mjs` guards lines that land on one. It still runs
-  on every `shape_ask`, exactly as before.
+  **The language check runs on it, because the conversation writes.** It is a
+  `shape_ask` wearing an old name, and every line it lands on a shape is checked
+  the same way.
 - **`rewrite_finding`** — write one shape line again, so it carries what a
   finding still wants. It goes in the **quick** lane, in a fresh sub-agent,
   carrying **the job's input** and nothing else. There is no skill entry to hand
