@@ -1,12 +1,13 @@
 ---
 name: vibeassist-decompose
-description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Six entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), single-ask shaping (skip the tree, shape the one ask), build notes (write one ask's technical direction for the builder — usually nothing), and shape review (the before-build read a check_shape job lands on: judge one ask's shape against its parent and siblings, then pass it or hand back findings). Proposals are draft-first — the user accepts before the board changes.
+description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the read-back (how the ask will be built, handed back at the end of that conversation — it lands as the build notes and is usually near-empty). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.27.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
-<!-- 0.24.0 (24 Aug 2026): shape-review findings are brief — lead with the point, bullets over paragraphs. -->
-<!-- 0.22.0 (22 Aug 2026): the shape review passes on "good enough to build". Only a blocker holds an ask back — an unclear want, a contradiction above or beside it, missing critical information, an unsafe must-not — and everything else rides along with the pass as a finding marked `blocking: false`. Every finding carries a recommended change worded to go straight onto the shape line. -->
-<!-- 0.21.0 (22 Aug 2026): a sixth entry — shape review: the before-build read a `check_shape` job lands on. Reads one ask's shape plus the parent and siblings the job carries, checks clarity, the interaction surface, contradictions with any must line above or beside it, plain must-nots, scope-vs-principle and patterns that belong in the Rules; reports with `report_shape_review`. It writes nothing, so the language check does not run on it. -->
+<!-- vibeassist-skill-version: 0.28.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.28.0 (24 Aug 2026): shaping is ONE conversation. Form and Confirm are two movements of the same talk — same channel, same voice, one question at a time — and the owner cannot tell which is happening. A Confirm question puts the AI's reading up ("I'm taking this as X — right?") with options and a recommendation; a genuine blocker is asked the same way ("this fights X — which wins?"), never handed back as a verdict. The separate shape-review entry is RETIRED: no pass/fail, no gate, no wall of findings. When it understands, it says "anything else to add?" and on the go writes the READ-BACK — how it will build the ask — which lands as the build notes and scales with how much it had to interpret. A stray `check_shape` job is run as the Confirm movement. `report_build_notes` takes `jobId`, not `askId`. -->
+<!-- 0.24.0 (24 Aug 2026): superseded by 0.28.0 — shape-review findings are brief. -->
+<!-- 0.22.0 (22 Aug 2026): superseded by 0.28.0 — the shape review passed on "good enough to build". -->
+<!-- 0.21.0 (22 Aug 2026): superseded by 0.28.0 — added the shape-review entry a `check_shape` job landed on. -->
 <!-- 0.19.1 (20 Aug 2026): build notes are written as light Markdown — backticks around field names, identifiers, table/column names, paths and commands; fenced blocks for multi-line code; prose stays prose. Legibility only, never licence to write more. -->
 <!-- 0.19.0 (20 Aug 2026): a fifth entry — build notes: one ask's technical direction for the builder, the residual after the standing Rules and after what the code shows. Light, builder-facing, and usually empty. The owner's language check does not run on them and still runs on every shape. -->
 <!-- 0.15.0 (20 Aug 2026): plain wording enforced on the single-ask shaping entry too (not only tree drafts); dash-asides and vague deferrals are flags; VA's furniture words (ask, tree, board, branch, leaf, room, card) may only carry the APP's meaning on a shape — a notice for a human, never a hard ban. -->
@@ -666,13 +667,18 @@ Rule 3a does NOT apply — a rebuild proposes, it never mirrors. Full method,
 including the survey, the hate-capture, the salvage register and where the
 new tree lands: `references/rebuild.md` — load it before running this mode.
 
-**SINGLE-ASK SHAPING — the last entry.** The user brings ONE ask ("shape the
-export ask", "spec this ask"). Skip the tree work entirely: find the ask on the
-board (or create it if it's new intake), then run the shaping pass below on
-just that ask — same walk mechanics, recommendation-first, batched, landing the
-answers into its SHAPE — want, must do, must not. Say which ask it landed on. This is the
-same front gate the worker skill enforces mid-run ("chat is intake"): when a
-build session hands a voiced request over, THIS is where it gets shaped.
+**THE SHAPING CONVERSATION — one ask, and it is ONE conversation.** The user
+brings ONE ask ("shape the export ask", "spec this ask"), or a `shape_ask` job
+lands naming one. Skip the tree work entirely: find the ask on the board (or
+create it if it's new intake), then talk it through — **Form and Confirm as one
+continuous conversation**, one question at a time, landing the answers into its
+SHAPE (want, must do, must not). Say which ask it landed on. This is the same
+front gate the worker skill enforces mid-run ("chat is intake"): when a build
+session hands a voiced request over, THIS is where it gets shaped.
+
+**There is no verdict, no gate and no list of findings** — anything you noticed
+leaves as one more question, a blocker included. Full method below, under **The
+shaping conversation**.
 
 **Run the language check before the shape lands** — `node
 scripts/check_language.mjs` over the want, the must-dos and the must-nots, fix
@@ -680,21 +686,17 @@ every flag, read every notice. This entry is reached without any tree draft,
 so nothing else runs the check for it. It is also the entry a `shape_ask` job
 lands on, so an unchecked line here goes straight onto the user's board.
 
-**BUILD NOTES — the fifth entry, and the only one that writes to a builder.**
-The user brings ONE ask and wants its technical direction written down, or a
-`write_build_notes` job lands carrying an `askId`. Read that ask's shape, read
-the code it touches, and write the notes. Then report them with
-**`report_build_notes({ askId, notes })`**. Full method below, under
-**Build notes**.
+**THE READ-BACK — the end of that conversation, and the only thing that writes
+to a builder.** When the shape is understood, you say "anything else to add?"
+and on the owner's go you write **how you will build the ask** — near-empty when
+the shape was clear, richer where you had to interpret. It lands on the ask as
+`build_notes` and reports through **`report_build_notes({ jobId, notes })`**. A
+standalone `write_build_notes` job is the same read-back with no conversation in
+front of it. Full method below, under **The read-back**.
 
-**SHAPE REVIEW — the sixth entry, and the only one that judges instead of
-writing.** A `check_shape` job lands carrying an `askId`, a `trigger`
-(`approve` or `change`), and the ask above plus the asks beside it. Read the
-shape, check it, and report with **`report_shape_review`**. **The bar is good
-enough to build:** pass it unless something BLOCKS a build, and send everything
-else along with the pass as a non-blocking suggestion. Every finding is a
-question WITH the change you recommend. It edits nothing. Full method below,
-under **Shape review**.
+**`check_shape` — retired.** There is no separate shape-review entry any more.
+If such a job still lands, run it as the Confirm movement of the shaping
+conversation; the handling is under **The shaping conversation**.
 
 In both modes, read the existing board first (the list tools named in the
 persistence note under Materialize): decompose INTO what's already there —
@@ -809,9 +811,11 @@ later).
    itself is the draft — an ask is written to the board only once its
    proposal is accepted; nothing is created speculatively.
 5. **Channel.** In a live conversation, ask right here in chat. Detached or
-   asynchronous (the user may be away), use the `ask` tool
-   (`kind:"decision"`, options + `recommendedOptionId` + `reasoning`) so the
-   question lands in the VA inbox and can be answered from a phone.
+   asynchronous (the user may be away), use **`ask_user({ jobId, question })`**
+   so the question lands on the ask they are looking at and can be answered from
+   a phone. That channel takes **one question at a time** — it refuses a second
+   on the same job until the first is answered — so a batch is a live-chat thing
+   only.
 
 ## Shape every ask — the tree is not the finish line
 
@@ -827,12 +831,18 @@ the corrections a builder needs.
   Where nothing tempting exists, write no must-not — the app-level fence
   already covers the generic case.
 
-Shaping questions follow the same walk mechanics — recommendation-first,
-batched, mostly proposals the user confirms. Land each answer in the right
-line: general picture → the want; a builder might miss it → must-do; a
-builder might wrongly assume it → must-not; already inferable from the
-want → nowhere, it's done (say nothing twice). Shape ask-by-ask in batches;
-don't block the whole tree on one ask's shaping.
+Shaping questions are recommendation-first, mostly proposals the user confirms.
+Land each answer in the right line: general picture → the want; a builder might
+miss it → must-do; a builder might wrongly assume it → must-not; already
+inferable from the want → nowhere, it's done (say nothing twice). Shape
+ask-by-ask; don't block the whole tree on one ask's shaping.
+
+**How many questions at once depends on where you are.** In a live tree walk,
+with the user in front of you, a batch is fine — it is one screen of a
+conversation they are already in. **On ONE ask — the shaping conversation, and
+every `shape_ask` job — it is one question at a time**, and the channel refuses
+a second anyway. That doctrine is below, under **The shaping conversation**;
+follow it whenever the ask, not the tree, is what you are shaping.
 
 **The cascade INHERITS — write deltas, never restatements.** An ask inherits
 its ancestors' intent down the tree, so a child holds only what it ADDS
@@ -851,53 +861,151 @@ underneath its parent, never a copy:
 Never copy a parent's want or must-nots onto a child; the tree already
 carries them down, and a restatement is a lie waiting to drift out of sync.
 
-## Build notes — the residual, and usually nothing
+## The shaping conversation — Form and Confirm as one
 
-Build notes are the ask-specific technical direction a worker needs and cannot
-get anywhere else. They are **written for the builder**, not for the owner, and
-they sit on the ask as `build_notes`.
+Shaping is **ONE conversation**. It has two movements, and the owner can never
+tell which one is happening:
 
-### They are a RESIDUAL — work out what is left, do not write an essay
+- **Form** — help the owner say what they want. What it is, what it must do,
+  what it must never do.
+- **Confirm** — check that you read it right. _"I'm taking this as X — right?"_
 
-Notes are what remains after two things have already told the worker what to do.
-Subtract both, then write only what survives:
+They are not two passes, not two jobs, and not two voices. You move between them
+freely, mid-conversation, and both go out through the same channel in the same
+manner: **one question at a time, options, a recommendation, short.**
 
-1. **Subtract the standing Rules.** The project's Rules are inherited by every
-   ask. **Never repeat one per ask.** A rule restated on twenty asks is twenty
-   copies to keep in step, and the first one that drifts is a lie on somebody's
-   board.
-2. **Subtract what the code already shows.** The worker reads the codebase. It
-   can see the pattern, the file layout, the existing helper and how the last
-   three of these were done. **Writing that down again is dead weight** — it
-   costs a read and adds nothing.
+There is no verdict at the end of this. **You are not a gate.** You confirm you
+understood; the owner decides.
 
-What is left is the residual: the non-obvious call, the thing a competent
-builder reading the same code would get wrong. That, and only that, is a build
-note.
+### One question at a time — always
 
-### Reporting them — one call, and it is the end of the job
+`ask_user` carries every question, Form and Confirm alike. Asking parks the job
+and ends your turn; when the owner answers, the job comes back to whoever is
+listening then. A second question on the same job is refused until the first is
+answered, so **there is no way to batch and no reason to want one.** Full
+mechanics: `references/question-channel.md` in the `vibeassist` skill.
 
-**`report_build_notes({ askId, notes })`.** It writes the notes onto the ask AND
-finishes the `write_build_notes` job in one call, so there is no half-done state
-where the job closed but the notes never landed.
+In a LIVE terminal conversation — the user typed "shape this ask" and is sitting
+there — ask in chat instead. Still one at a time. The channel changes; the
+manner does not.
 
-- **Do not call `complete_job` after it.** The job is already finished, and a
-  second finish comes back an error. On a notes pass that worked,
-  `report_build_notes` is the last call you make.
-- **It does not change the ask's status.** The ask stays `approved`. Writing
-  notes is not progress on the build and must never look like it.
-- **A pass you genuinely cannot do** — the ask does not exist, the code is
-  unreadable — finishes with `complete_job` and an honest sentence instead.
-  Never both.
+### What a Confirm question looks like
+
+It puts your reading up and asks the owner to agree with it or correct it:
+
+> _"I'm taking 'archive' as hide it from the board, still there if you go
+> looking — right?"_ → **hide it (recommended)** / delete it for good
+
+> _"When you said the team can see it, did you mean everyone, or only the people
+> on that project?"_ → **only that project (recommended)** / everyone
+
+Same furniture as a Form question — 2–4 options, one recommended, each option
+carrying enough to pick it. **Never a bare "is this right?"** with nothing to
+press.
+
+### A blocker is a Confirm question too — never a verdict
+
+Sometimes the ask genuinely cannot be built as it stands: it fights the ask
+above it or one beside it, or a want reads two ways that build two different
+things. **That is still a question**, asked the same way:
+
+> _"This says exports run nightly, but the ask above says nothing leaves the app
+> without a click. Which wins?"_ → **the ask above — a click starts it
+> (recommended)** / this one — nightly, and loosen the parent
+
+- **Never hand back a pass or a fail.** A blocker is something to settle
+  together, not a judgment to deliver.
+- **Never leave the owner unable to answer.** Every blocker arrives with the
+  options that resolve it. A blocker they cannot answer is a wall, and the
+  conversation dies there.
+- **Loop, do not stop.** They answer, the shape moves, the conversation carries
+  on from there.
+
+### Never a wall of findings
+
+Whatever you noticed leaves as questions — one at a time, most important first.
+Six things dumped on an owner at once is the thing this replaced. Sort what you
+noticed into three piles:
+
+- **Worth settling with them** → a Confirm question.
+- **You can settle it yourself** → settle it, and say so in the read-back.
+- **A nice-to-have neither of you needs to discuss** → let it go.
+
+### Keep it short, or nobody shapes anything
+
+A wordy shaping is a chore, and a chore does not get done.
+
+- **One line per question.** Options are a few words each — never a sentence
+  standing in for a label.
+- **No preamble.** Ask the thing.
+- **Ask only what you cannot work out.** A question you could answer from the
+  ask, from the ask above it, or from the code is a defect — answer it.
+- **Stop when you can build it.** The bar is _a competent builder could build
+  this without coming back to ask_. Not perfect, and not everything you would
+  have written yourself.
+
+### Signal done, then read back
+
+When you understand it well enough to build it, say so and wait for the go:
+
+> _"That's everything I need. Anything else to add?"_
+
+On their go, write the **read-back** — the next section. That is the end of the
+conversation.
+
+### The language check runs before any line lands
+
+`node scripts/check_language.mjs` over the want, the must-dos and the must-nots,
+every flag fixed, every notice read. A listening session writes onto the board
+with nobody watching, so the check is the only thing between a sloppy line and
+the owner's ask.
+
+### Legacy — a `check_shape` job
+
+`check_shape` was the old separate review, and its own entry is retired. If one
+still lands, **do not run it as a review.** Run it as the Confirm movement of
+this conversation: questions through `ask_user`, one at a time, and finish it
+with `report_shape_review({ jobId })` carrying no findings. Never send a
+`passed: false`, and never hand back a list.
+
+## The read-back — how you will build it, and it IS the build notes
+
+The read-back is the last thing in the conversation: **how you will build the
+ask, in your own words, handed back to the owner.** It lands on the ask as
+`build_notes` and it reports through `report_build_notes`.
+
+It is the final check. Everything you interpreted shows up here, where the owner
+can see it and correct it before a line of code exists.
+
+### It scales with INTERPRETATION, not with effort
+
+Write what you had to work out. Nothing else.
+
+- **The shape was clear** → the read-back is near-empty, or empty. That is a
+  common answer and a good one.
+- **You had to interpret** → say what you took it to mean, and what that makes
+  the build do.
+
+Two things never go in, however much you know about them:
+
+1. **The standing Rules.** Every ask inherits them. A rule restated on twenty
+   asks is twenty copies to keep in step, and the first one that drifts is a lie
+   on somebody's board.
+2. **What the code already shows.** The builder reads the codebase. It sees the
+   pattern, the file layout, the existing helper, and how the last three of
+   these were done. Writing that down again costs a read and adds nothing.
+
+What survives both is the residual: the non-obvious call, the reading a
+competent builder would get wrong. That, and only that, is the read-back.
 
 ### Empty is a REAL answer, and it is the common one
 
-A non-technical ask has no notes. An ask fully covered by the Rules and by what
-the code plainly shows has no notes. **Write none, and say so.**
+A non-technical ask has no read-back. A shape so plain you interpreted nothing
+has no read-back. **Write none, and say so.**
 
-**Empty is a SUCCESS, not a failure.** This is where build notes differ from a
-delivery report: `report_delivery` refuses to say nothing, because an ask marked
-delivered with nothing to show is a lie. Notes carry no such claim, so calling
+**Empty is a SUCCESS, not a failure.** This is where it differs from a delivery
+report: `report_delivery` refuses to say nothing, because an ask marked
+delivered with nothing to show is a lie. A read-back carries no such claim, so
 `report_build_notes` with empty `notes` finishes the job clean and correctly.
 Reach for it without hesitating.
 
@@ -908,20 +1016,20 @@ honest empty field is worth more than a paragraph of filler.
 
 ### How to write one
 
-- **Plain technical direction, builder to builder.** "Reuse the existing session
-  helper rather than adding a second one" is a note. "Users will love how fast
-  this feels" is owner prose and does not belong here.
-- **Short.** A few lines. If it is running long, check you have not started
-  restating the Rules or narrating the code.
+- **Plain direction, builder to builder.** "Reuse the existing session helper
+  rather than adding a second one" is a note. "Users will love how fast this
+  feels" is owner prose and does not belong here.
+- **Short.** A few lines. If it runs long, check you have not started restating
+  the Rules or narrating the code.
 - **Say the WHY when the why is the point.** A direction whose reason is
   invisible gets overridden by the next person who thinks they know better.
 - **A gap in the SHAPE is not a note.** If the ask itself is unclear, that is a
-  question for the owner, not something to settle quietly in a builder's field.
+  Confirm question — go back and ask it. Never settle it quietly in a builder's
+  field.
 
-### Write them as light Markdown — the tab formats them
+### Write it as light Markdown — the tab formats it
 
-Notes are read in the app, which renders Markdown. Use it so a builder can scan
-them:
+It is read in the app, which renders Markdown. Use it so a builder can scan:
 
 - **Backticks around anything that is a name, not a word.** Field names,
   identifiers, table and column names, file paths, commands: `build_notes`,
@@ -933,214 +1041,38 @@ them:
   short list is fine when the content is genuinely a list.
 
 **Light Markdown means light.** No headings, no tables, no nested structure. If
-notes need a heading to navigate, they are too long — go back to the residual
-rule and cut.
-
-**Formatting is not permission to write more.** Markdown makes short notes
-easier to read; it never makes long notes acceptable. Everything above still
-binds: subtract the Rules, subtract the code, and empty is still the common
-answer.
-
-### The language check does NOT run on build notes
-
-`scripts/check_language.mjs` guards what the OWNER reads — the want, the
-must-dos, the must-nots. Build notes are the one place technical words are
-correct, so running the owner's plain-wording check over them would flag the
-very words that make them useful.
-
-**The check still runs on every shape, exactly as before.** Writing notes never
-relaxes it, and notes are never a back door for putting technical language onto
-a shape.
-
-## Shape review — the before-build read
-
-**This is the sixth entry, and it is a READ, never a write.** A `check_shape`
-job lands here. Nothing on the board is approved, queued or built until this
-pass says so, and the pass reports through **`report_shape_review`**.
-
-It is not the morning review. That one (`vibeassist-review`) judges FINISHED
-work against what was agreed. **This one judges the SHAPE, before a line of
-code exists** — same word, different moment, and never confuse the two.
-
-### The two moments — one read
-
-The job's **`trigger`** says which moment this is, and the read is the same
-either way:
-
-- **`approve`** — the owner has approved a shape. Pass it and the ask becomes
-  `approved` and its build notes are written.
-- **`change`** — the owner wants the thing they already have to be different.
-  Pass it and the ask is approved and queued with a build behind it, in one
-  move.
-
-### What you read — and nothing else
-
-1. **`get_ask({ askId })`** — the want, the must-dos, the must-nots, and
-   **`changeAsked`** when there is one: the change in the owner's own words.
-2. **The job's own input** — it carries the **ask above** and the **asks
-   beside**. `get_ask` cannot give you those, and they are load-bearing.
-
-**Do not call `list_asks`.** It hauls a whole board in and carries the words on
-no shape line. **Do not read the running app's page** — a page is a rendering,
-the tool is the record. Reading CODE is a different matter: reach for it when a
-finding turns on what already exists.
-
-### The bar: good enough to build
-
-**Pass = a competent builder could build this shape without coming back to ask
-you.** Not perfect, not everything you would have written — buildable.
-
-**Only a BLOCKER holds the ask back.** There are four of them, and nothing else
-is one:
-
-- **An unclear want** — two honest builders would build two different things.
-- **A contradiction** with a must-do or a must-not on this ask, on the ask above
-  it, or on any ask beside it.
-- **Missing critical information** — something the build has to know and nobody
-  said. For anything a person triggers, that includes what the control is and
-  where it lives.
-- **An unsafe must-not** — a prohibition that is not written as one, so a
-  builder can read it as a preference and ignore it.
-
-**Everything else is ADVICE.** A better name, a nicer default, an empty state
-worth having, a closed list that might have meant a principle, a line that
-belongs in the project Rules — all of it is worth saying, and none of it is
-worth stopping a build for. **Send it as a finding marked `blocking: false` and
-it rides along WITH the pass**, on an ask that is already moving.
-
-**Why this matters.** A review that holds the ask on every finding never passes
-a shape that was fine, and the owner presses Approve on the same shape again and
-again. Friction you manufacture costs them the thing they are trying to do.
-
-### What you check
-
-Read it the way a sharp collaborator would, and check at least these. The first
-four can block; **5 and 6 are advice and never block.**
-
-1. **Is the shape clear and complete?** For anything a person triggers, is the
-   **interaction surface** named — what the control is, and where it lives? "The
-   owner can export the board" without a control or a home for it is a hole, not
-   a shape.
-2. **Does it CONTRADICT a must-do or a must-not** — on this ask, on the ask
-   above it, or on any ask beside it? **This one is load-bearing.** It is the
-   only thing standing between a change and a parent it silently reverts.
-3. **Do the must-nots read as plain prohibitions?** "Never save card details" is
-   one. An inverted double-negative — "must not fail to avoid storing" — is a
-   sentence nobody can build from.
-4. **Is a closed list of examples actually the SCOPE**, or a principle meant to
-   be generalised? Three named cases either mean *only these three* or *this
-   kind of thing*, and a builder that guesses wrong builds the wrong size.
-   **Blocking only when the two readings build genuinely different things.**
-   Where the list is a sane build on its own, recommend the wording and let it
-   ride along with the pass.
-5. **Is there a pattern here that should be a project RULE** rather than a line
-   on one ask? A constraint restated on ask after ask belongs in the Rules
-   register — one copy that binds every ask (see **Define the project first**).
-   **Advice: never blocking.**
-6. **What would a careful build ADD that the owner didn't think to say?** Not
-   scope creep — the ordinary thing a competent builder needs settled and the
-   owner never thought of. **Advice, unless the build genuinely cannot go ahead
-   without it** — then it is missing critical information, and it blocks.
-
-**On a `change`, sort it by what it NEEDS as well:**
-
-- **A relabel** — a different name, or a different one of the four labels — is a
-  **metadata edit, not a build**, and must never queue as one. Say so with
-  **`relabel: true`**.
-- **A gap that belongs upstairs** — what needs settling is really the parent's —
-  is **`atParent: true`**, and the findings say what needs settling up there.
-
-### Let the depth scale
-
-**The review always runs. Manufacturing friction is not the job.** A complete,
-simple shape you can answer in one read is a **pass** — pass it and move on. A
-tangled one earns as many findings as it needs. Depth follows the shape, never
-a quota. **And depth is not the same as holding back:** a pass with four
-suggestions on it is a deep read that let the work through.
-
-### The output rules — the app enforces every one
-
-- **Every finding is a QUESTION and a RECOMMENDED CHANGE — both halves.** The
-  app drops anything with only one, so a half-written finding is a finding that
-  never existed.
-- **The recommendation is worded to go STRAIGHT ONTO the shape line** — the
-  words the owner can put there, not a description of the words they should go
-  and write. "Say where the control lives" is a description. *"Add to the want:
-  'from the Export item in the board menu'"* is a change.
-- **Brief, or it goes unread.** The `question` is read by a busy owner deciding
-  accept or dismiss at a glance. An unread finding is a dismissed one, so write
-  it to be scanned:
-  - **Lead with the point.** No throat-clearing ("Most of this shape is already
-    built, and what the review found already shows first on…"). Name the gap or
-    the clash, then the fix.
-  - **One or two short lines.** The recommendation is the deliverable; the
-    question only has to justify it. Justify it and stop.
-  - **Bullets over paragraphs.** More than one point → separate short lines, not
-    a block of prose.
-- **Every finding says whether it blocks.** `blocking: true` for one of the four
-  blockers, `blocking: false` for everything else. Say it on every one rather
-  than leave it to be guessed at.
-- **Never hand back a bare open question.** It gives the shape back with the
-  same work still on it, and the owner is now waiting on you instead.
-- **A pass MAY carry findings — non-blocking ones.** That is how advice reaches
-  the owner without stopping the build. What a pass may never carry is a
-  blocker: one blocker and it is not a pass.
-- **Findings are read by the OWNER.** Their words, their product — same plain
-  wording every shape line owes them.
-
-**A worked pair — a blocker.** *"Export has no home — board toolbar or board
-menu? → Add to the want: 'from the Export item in the board menu, beside
-Import.'"*
-
-**A worked pair — a suggestion.** *"Three file kinds named — only those, or any
-of that kind? → If any: change the must-do to 'Exports any file the board can
-read, incl. CSV, JSON, Markdown.'"* Sent `blocking: false`, so the build starts
-today and the owner answers when they get to it.
-
-**The same finding, too long and then tight.** A real one, on an ask whose shape
-was nearly all built already:
-
-> **Too long:** "Most of this shape is already built and live. What the review
-> found already shows first on the Completion Report tab, above the delivery. A
-> failed build is already rebuilt on its own and only waits on you once it gives
-> up, with the reason kept. The one thing genuinely missing is the header…
-> Should the want narrow to just that header line?"
-
-> **Tight:** "Only one real gap: the header never says a build failed its review
-> — the rest is already built (reason shows on the Completion Report tab; failed
-> builds rebuild and wait only on give-up). → Narrow the want: 'When a build
-> fails its review, the ask says so under its header.'"
-
-Same finding, same recommendation. One gets read.
+it needs a heading to navigate, it is too long — go back to the residual rule
+and cut. **Formatting is not permission to write more.**
 
 ### Reporting it — one call, and it is the end of the job
 
-**`report_shape_review({ jobId, passed, findings, atParent, relabel })`** —
-`jobId` and `passed` are owed; the rest ride when they apply. It reports AND
-finishes the job in one call.
+**`report_build_notes({ jobId, notes })`.** It writes the notes onto the ask AND
+finishes the job in one call, so there is no half-done state where the job
+closed but the notes never landed.
 
-- **Passed, nothing to say** → `{ jobId, passed: true }`. Nothing else.
-- **Passed, with advice** → `{ jobId, passed: true, findings: [ { question,
-  recommend, blocking: false } ] }`. The ask is approved — and on a change,
-  queued — and the suggestions are written on it to take or leave.
-- **Not passed** → `{ jobId, passed: false, findings: [ { question, recommend,
-  blocking } ] }`, **with at least one `blocking: true`**. The ask stays at
-  `shaping` with the findings on it, waiting on the owner. **The blockers
-  decide, not the verdict you claim:** `passed: false` with nothing blocking is
-  read as a pass carrying suggestions, and `passed: true` with a blocker on it
-  is held back.
 - **Do not call `complete_job` after it.** The job is already finished, and a
-  second finish comes back an error. On a review that ran,
-  `report_shape_review` is the last call you make.
-- **A review you genuinely cannot do** — the ask is not there, the job carries
-  no shape — finishes with `complete_job({ jobId, error })` and one honest
-  sentence instead. Never both.
+  second finish comes back an error. On a pass that worked,
+  `report_build_notes` is the last call you make.
+- **It does not change the ask's status.** Writing a read-back is not progress
+  on the build and must never look like it.
+- **A read-back you genuinely cannot do** — the ask is not there, the code is
+  unreadable — finishes with `complete_job` and one honest sentence instead.
+  Never both.
 
-### This entry writes nothing, so the language check does not run
+A standalone **`write_build_notes`** job is the same read-back with no
+conversation in front of it: read the ask's shape, read the code it touches,
+write what you had to interpret, and report it the same way.
 
-`scripts/check_language.mjs` guards lines going ONTO a shape. A review puts no
-line on a shape — it hands back questions. **Never edit the shape from here**,
-not even an obvious tidy: the owner answers, and the shaping entry writes.
+### The language check does NOT run on the read-back
+
+`scripts/check_language.mjs` guards what the OWNER reads on a shape line — the
+want, the must-dos, the must-nots. The read-back is the one place technical
+words are correct, so running the owner's plain-wording check over it would flag
+the very words that make it useful.
+
+**The check still runs on every shape, exactly as before.** A read-back never
+relaxes it, and it is never a back door for putting technical language onto a
+shape.
 
 ## Materialize on the board
 
@@ -1265,6 +1197,14 @@ and every sentence you write on an ask. Full rationale and the review model:
   shapes it and the user agrees — intake → shape → agree, never build inline.
   You may shape on the user's behalf, but land the change on a named ask (or
   create one) and say where it landed.
+- **Shaping one ask is ONE conversation.** Form and Confirm are two movements of
+  the same talk, in the same voice, and the owner cannot tell which is
+  happening. One question at a time. Never a verdict, never a gate, never a wall
+  of findings — a blocker is a question with the options that settle it, and the
+  conversation loops until it is settled.
+- **End with the read-back.** When you can build it, say "anything else to
+  add?", and on the owner's go hand back how you will build the ask. Near-empty
+  when the shape was clear; richer only where you had to interpret.
 - **Define the project first.** Greenfield and rebuild open by defining the
   project and its three registers — Rules (how), Decisions (what it's built on),
   Ethos (VA's own, inherited, read-only). P·E·C·A is a shaping decision, never a
