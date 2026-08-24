@@ -102,24 +102,34 @@ Dispatch into two concurrent lanes:
   back. A genuine blocker goes out as one more question with the options that
   settle it. The doctrine is in that skill; do not restate it here.
 
-  **It ends with the read-back.** When the shape is understood, the sub-agent
-  asks "anything else to add?" and on the go writes how it will build the ask —
-  which lands as the build notes.
+  **It ends at the go, and writes NO plan.** When the shape is understood, the
+  sub-agent asks "anything else to add?", lands the shape on the owner's go, and
+  stops. The app fires a `write_build_notes` job off the back of it and THAT
+  writes the plan. **A `shape_ask` must never call `report_build_notes`** — two
+  writers on one field is two plans that drift apart.
 
   **The language check runs before the shape lands** — `node
   scripts/check_language.mjs` in that skill, every flag fixed, every notice
   read. A listening session writes onto the board with nobody watching, so the
   check is the only thing standing between a sloppy line and the person's ask.
-- **`write_build_notes`** — the read-back, with no conversation in front of it:
-  how the ask will be built, for the ask the job names. Same dispatch shape as
-  `shape_ask`: hand it to the `vibeassist-decompose` skill's **read-back** entry,
+- **`write_build_notes`** — **the plan**, and the ONLY pass that writes it. The
+  app fires it when the owner ends the shaping conversation. Same dispatch shape
+  as `shape_ask`: hand it to the `vibeassist-decompose` skill's **plan** entry,
   in a fresh sub-agent, carrying the `askId` and nothing else. It goes in the
-  **quick** lane. It is LIGHT and it **scales with how much had to be
-  interpreted** — near-empty when the shape was clear, and only the ask-specific
-  direction a worker could not get from the standing Rules or from reading the
-  code. **Writing none is a real answer.** Do not let a sub-agent invent
-  direction to fill the field. The doctrine is in that skill; do not restate it
-  here.
+  **quick** lane.
+
+  **The plan is one artifact with two readers**: the owner approves it, the
+  builder builds to it. So it is written **owner-readable and plan-level** —
+  "here's what I'll build" — with technical names only where the decision or the
+  build genuinely turns on one. It is **sized to the change**: a one-line change
+  gets a one-line plan, and **writing none is a real answer.** Do not let a
+  sub-agent invent direction to fill the field.
+
+  **This pass asks the owner NOTHING.** No `ask_user`, no parking on a question —
+  shaping is where the owner is talked to. If the shape is too thin to plan, the
+  sub-agent says what is unclear IN the plan and finishes done; the owner reads
+  it and takes the ask Back to shaping. The doctrine is in that skill; do not
+  restate it here.
 
   It reports back with **`report_build_notes({ jobId, notes })`**, which writes
   the notes and **finishes the job in one call** — the same split as `build` and
@@ -232,10 +242,14 @@ this side stores it, and nothing on this side writes it.
    the folder the listener started in, and never try a repo to see if it looks
    right.
 
-4. **A job that touches no code needs no repo.** `shape_ask`, `check_shape`,
-   `write_build_notes` and `rewrite_finding` work through the board's own
-   tools. Resolve the checkout for a `build`, and for anything else that has to
-   READ or WRITE the code.
+4. **A job that touches no code needs no repo.** `shape_ask`, `check_shape` and
+   `rewrite_finding` work through the board's own tools. Resolve the checkout
+   for a `build`, and for anything else that has to READ or WRITE the code.
+
+   **`write_build_notes` needs the checkout — it READS code.** The plan is
+   written from the agreed shape and from what the code shows, so resolve the
+   repo for it the same as for a build. It never writes to the tree: no
+   worktree, no branch, no commit.
 
 ### One job's changes never land in another repo
 

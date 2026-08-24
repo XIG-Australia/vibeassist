@@ -1,15 +1,16 @@
 ---
 name: vibeassist-decompose
-description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the read-back (how the ask will be built, handed back at the end of that conversation — it lands as the build notes and is usually near-empty). Proposals are draft-first — the user accepts before the board changes.
+description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.28.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
-<!-- 0.28.0 (24 Aug 2026): shaping is ONE conversation. Form and Confirm are two movements of the same talk — same channel, same voice, one question at a time — and the owner cannot tell which is happening. A Confirm question puts the AI's reading up ("I'm taking this as X — right?") with options and a recommendation; a genuine blocker is asked the same way ("this fights X — which wins?"), never handed back as a verdict. The separate shape-review entry is RETIRED: no pass/fail, no gate, no wall of findings. When it understands, it says "anything else to add?" and on the go writes the READ-BACK — how it will build the ask — which lands as the build notes and scales with how much it had to interpret. A stray `check_shape` job is run as the Confirm movement. `report_build_notes` takes `jobId`, not `askId`. -->
+<!-- vibeassist-skill-version: 0.29.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.29.0 (25 Aug 2026): the read-back is THE PLAN — one artifact with two readers. The owner approves it and the builder builds to it, so it is written owner-readable and plan-level ("here's what I'll build"), with technical names only where the decision or the build genuinely turns on one. The old "technical direction for the builder, not for the owner" framing (0.19.0) is superseded. It is sized to the CHANGE — a one-line change gets a one-line plan — and empty stays a real answer. ONE WRITER: the `write_build_notes` pass the app fires when the conversation ends; a `shape_ask` never writes `build_notes` too. THE PLAN PASS ASKS NOTHING — no `ask_user`, no parking; a shape too thin to plan says what is unclear IN the plan and stops, and the owner takes it Back to shaping. The build reads the plan from `get_ask` and builds to it, not to the three shape lines alone. -->
+<!-- 0.28.0 (24 Aug 2026): shaping is ONE conversation. Form and Confirm are two movements of the same talk — same channel, same voice, one question at a time — and the owner cannot tell which is happening. A Confirm question puts the AI's reading up ("I'm taking this as X — right?") with options and a recommendation; a genuine blocker is asked the same way ("this fights X — which wins?"), never handed back as a verdict. The separate shape-review entry is RETIRED: no pass/fail, no gate, no wall of findings. When it understands, it says "anything else to add?" and the owner's go ends it. (It also wrote the read-back; 0.29.0 moved that to the `write_build_notes` pass.) A stray `check_shape` job is run as the Confirm movement. `report_build_notes` takes `jobId`, not `askId`. -->
 <!-- 0.24.0 (24 Aug 2026): superseded by 0.28.0 — shape-review findings are brief. -->
 <!-- 0.22.0 (22 Aug 2026): superseded by 0.28.0 — the shape review passed on "good enough to build". -->
 <!-- 0.21.0 (22 Aug 2026): superseded by 0.28.0 — added the shape-review entry a `check_shape` job landed on. -->
 <!-- 0.19.1 (20 Aug 2026): build notes are written as light Markdown — backticks around field names, identifiers, table/column names, paths and commands; fenced blocks for multi-line code; prose stays prose. Legibility only, never licence to write more. -->
-<!-- 0.19.0 (20 Aug 2026): a fifth entry — build notes: one ask's technical direction for the builder, the residual after the standing Rules and after what the code shows. Light, builder-facing, and usually empty. The owner's language check does not run on them and still runs on every shape. -->
+<!-- 0.19.0 (20 Aug 2026): superseded by 0.29.0 — build notes arrived as builder-facing technical direction, explicitly not for the owner. They are now the plan the owner approves. What survives: the residual rule (subtract the Rules, subtract what the code shows), usually empty, and the language check not running on them. -->
 <!-- 0.15.0 (20 Aug 2026): plain wording enforced on the single-ask shaping entry too (not only tree drafts); dash-asides and vague deferrals are flags; VA's furniture words (ask, tree, board, branch, leaf, room, card) may only carry the APP's meaning on a shape — a notice for a human, never a hard ban. -->
 <!-- 0.13.0 (18 Aug 2026): check_language ported from Python to node ESM (byte-for-byte identical); the skill now runs it with node, so drafts can be checked where there is no Python. -->
 <!-- 0.12.0 (18 Aug 2026): the rebuild-board dogfood pass. Define-the-project-first + the three registers (Rules / Decisions / Ethos); think in cross-dependencies; the return path (the second half of the loop) + one-way-back and send-back routing; the want is a plain complete action; record a change only when the shape's own words go wrong. -->
@@ -686,13 +687,13 @@ every flag, read every notice. This entry is reached without any tree draft,
 so nothing else runs the check for it. It is also the entry a `shape_ask` job
 lands on, so an unchecked line here goes straight onto the user's board.
 
-**THE READ-BACK — the end of that conversation, and the only thing that writes
-to a builder.** When the shape is understood, you say "anything else to add?"
-and on the owner's go you write **how you will build the ask** — near-empty when
-the shape was clear, richer where you had to interpret. It lands on the ask as
-`build_notes` and reports through **`report_build_notes({ jobId, notes })`**. A
-standalone `write_build_notes` job is the same read-back with no conversation in
-front of it. Full method below, under **The read-back**.
+**THE PLAN — the read-back, and it is `build_notes`.** A `write_build_notes` job
+lands, fired when the owner ends the shaping conversation. Write **what you will
+build** — owner-readable, plan-level, sized to the change and near-empty when the
+shape was clear. **The owner approves this text and the builder builds to it: one
+artifact, two readers.** It reports through **`report_build_notes({ jobId, notes
+})`**. **This pass asks the owner nothing** — if the shape is too thin to plan,
+say so in the plan and stop. Full method below, under **The plan**.
 
 **`check_shape` — retired.** There is no separate shape-review entry any more.
 If such a job still lands, run it as the Confirm movement of the shaping
@@ -928,7 +929,7 @@ Six things dumped on an owner at once is the thing this replaced. Sort what you
 noticed into three piles:
 
 - **Worth settling with them** → a Confirm question.
-- **You can settle it yourself** → settle it, and say so in the read-back.
+- **You can settle it yourself** → settle it, and it shows in the plan later.
 - **A nice-to-have neither of you needs to discuss** → let it go.
 
 ### Keep it short, or nobody shapes anything
@@ -944,14 +945,20 @@ A wordy shaping is a chore, and a chore does not get done.
   this without coming back to ask_. Not perfect, and not everything you would
   have written yourself.
 
-### Signal done, then read back
+### Signal done, and stop there
 
 When you understand it well enough to build it, say so and wait for the go:
 
 > _"That's everything I need. Anything else to add?"_
 
-On their go, write the **read-back** — the next section. That is the end of the
-conversation.
+**Their go ENDS your job.** Land the shape, finish, and stop. The app fires a
+`write_build_notes` job off the back of it, and THAT pass writes the plan —
+the next section. **You do not write it here.**
+
+**One writer, one plan.** The plan lives in one field and is written by one
+pass. A `shape_ask` job that also writes `build_notes` gives the ask two plans
+that drift apart, and the owner approves whichever one the screen happened to
+show. **Never call `report_build_notes` from a shaping conversation.**
 
 ### The language check runs before any line lands
 
@@ -968,25 +975,63 @@ this conversation: questions through `ask_user`, one at a time, and finish it
 with `report_shape_review({ jobId })` carrying no findings. Never send a
 `passed: false`, and never hand back a list.
 
-## The read-back — how you will build it, and it IS the build notes
+## The plan — the read-back, and it IS `build_notes`
 
-The read-back is the last thing in the conversation: **how you will build the
-ask, in your own words, handed back to the owner.** It lands on the ask as
-`build_notes` and it reports through `report_build_notes`.
+**The plan is ONE artifact with two readers.** The owner reads it and approves
+it; the builder reads it and builds to it. It is not a builder's brief that the
+owner happens to see, and it is not owner prose the builder has to guess at. One
+text, written so both get what they need.
 
-It is the final check. Everything you interpreted shows up here, where the owner
-can see it and correct it before a line of code exists.
+It is written by the **`write_build_notes`** pass, which the app fires when the
+owner ends the shaping conversation. It lands on the ask as `build_notes` and it
+reports through `report_build_notes`.
 
-### It scales with INTERPRETATION, not with effort
+**Older wording called this "technical direction for the builder", builder-facing
+and not for the owner. That framing is gone.** Where the two registers disagree,
+this section wins: the plan is what the owner approves.
 
-Write what you had to work out. Nothing else.
+### Write it as "here's what I'll build"
 
-- **The shape was clear** → the read-back is near-empty, or empty. That is a
-  common answer and a good one.
+**Owner-readable, plan-level.** Say what you will build, in the words the owner
+used for their own product. Someone who cannot read code has to be able to read
+this and say yes or no.
+
+- **Plan-level, not step-level.** What the thing will do and where it will
+  appear — not the functions you will write to do it.
+- **Technical specifics only where they genuinely matter.** A backticked name
+  earns its place when the owner's decision turns on it, or when a builder would
+  otherwise pick the wrong one: `asks.status`, `src/lib/session.ts`, "reuse the
+  existing session helper rather than adding a second one". A file path listed
+  because you happened to open the file is noise.
+- **Say the WHY when the why is the point.** A choice whose reason is invisible
+  gets overridden by the next person who thinks they know better.
+- **Never a technical brief.** "Add a `useMemo` around the selector" is not a
+  plan the owner can approve. "The list stays smooth on a big board" is.
+
+**Owner-facing does NOT mean dropping the real risks.** A genuine catch — a
+trap, a wrong-copy risk, a migration, an ordering hazard — belongs in the plan.
+Hiding it to keep the plan tidy is the worst version of this. **Name it in terms
+the owner can act on: here is the risk, and here is what I'll do about it.** Do
+not tour the internals to get there.
+
+- **The register, in one pair.** Say: _"The pending state needs its own wording
+  or it'll show the wrong text — I'll add a line just for it."_ Not:
+  _"`notesNow` bakes the Build-Notes-tab copy into `working.headline` via its
+  `WRITING` constant."_ Same risk. Only one of them can be approved.
+- **The test: could the owner read it and nod, or would they have to open the
+  code to work out what you meant?** The first is the plan. The second is
+  builder-internal and stays out.
+
+### Size it to the CHANGE, not to your effort
+
+**A one-line change gets a one-line plan.** Never manufacture an overhaul
+because the field looks like it wants one.
+
+- **The shape was clear and small** → one or two lines, or nothing at all.
 - **You had to interpret** → say what you took it to mean, and what that makes
-  the build do.
+  the build do. That is the part the owner most needs to see.
 
-Two things never go in, however much you know about them:
+Two things stay out, however much you know about them:
 
 1. **The standing Rules.** Every ask inherits them. A rule restated on twenty
    asks is twenty copies to keep in step, and the first one that drifts is a lie
@@ -994,55 +1039,63 @@ Two things never go in, however much you know about them:
 2. **What the code already shows.** The builder reads the codebase. It sees the
    pattern, the file layout, the existing helper, and how the last three of
    these were done. Writing that down again costs a read and adds nothing.
+   **A real risk you found in the code is not "what the code shows"** — that
+   goes in, in the owner's terms. What stays out is the tour.
 
-What survives both is the residual: the non-obvious call, the reading a
-competent builder would get wrong. That, and only that, is the read-back.
+### This pass NEVER asks the owner anything
 
-### Empty is a REAL answer, and it is the common one
+**Do not call `ask_user` here, and never park this job on a question.** Shaping
+is where the owner is talked to; the plan pass is not a second conversation, and
+opening one puts the ask in two places at once.
 
-A non-technical ask has no read-back. A shape so plain you interpreted nothing
-has no read-back. **Write none, and say so.**
+Write the plan from two things only: **the agreed shape**, and **the code you
+read**.
+
+**If the shape is too thin to plan confidently, say what is unclear IN the plan,
+and stop.** Name the hole plainly — "The shape doesn't say where the export
+control lives, so I can't say where it will appear" — finish the job with that
+in the notes, and leave it. The owner reads it and takes the ask **Back to
+shaping**, which is where the question belongs. That is the loop working, not a
+failure.
+
+**Never guess past a hole and never fill it quietly.** A plan built on an
+invented answer is worse than a plan that says it does not have one.
+
+### Empty is a REAL answer, and it is a common one
+
+A shape so plain you interpreted nothing needs no plan. **Write none, and say
+so.**
 
 **Empty is a SUCCESS, not a failure.** This is where it differs from a delivery
 report: `report_delivery` refuses to say nothing, because an ask marked
-delivered with nothing to show is a lie. A read-back carries no such claim, so
+delivered with nothing to show is a lie. A plan carries no such claim, so
 `report_build_notes` with empty `notes` finishes the job clean and correctly.
 Reach for it without hesitating.
 
-**Never invent direction to fill the space.** A note written because the field
+**Never invent direction to fill the space.** A line written because the field
 looked empty is scope creep with a technical accent: it puts a decision on the
 builder that nobody made, in a place that reads as though somebody did. An
 honest empty field is worth more than a paragraph of filler.
 
-### How to write one
-
-- **Plain direction, builder to builder.** "Reuse the existing session helper
-  rather than adding a second one" is a note. "Users will love how fast this
-  feels" is owner prose and does not belong here.
-- **Short.** A few lines. If it runs long, check you have not started restating
-  the Rules or narrating the code.
-- **Say the WHY when the why is the point.** A direction whose reason is
-  invisible gets overridden by the next person who thinks they know better.
-- **A gap in the SHAPE is not a note.** If the ask itself is unclear, that is a
-  Confirm question — go back and ask it. Never settle it quietly in a builder's
-  field.
-
 ### Write it as light Markdown — the tab formats it
 
-It is read in the app, which renders Markdown. Use it so a builder can scan:
+It is read in the app, which renders Markdown. Use it so the owner can read it
+and a builder can scan it:
 
-- **Backticks around anything that is a name, not a word.** Field names,
-  identifiers, table and column names, file paths, commands: `build_notes`,
-  `asks.status`, `src/lib/session.ts`, `bun run verify`. A path in bare prose
-  reads as a typo; in backticks it reads as a path.
+- **Backticks around anything that is a name, not a word** — where a name earns
+  its place at all. Field names, identifiers, table and column names, file
+  paths, commands: `build_notes`, `asks.status`, `src/lib/session.ts`, `bun run
+  verify`. A path in bare prose reads as a typo; in backticks it reads as a
+  path.
 - **A fenced code block for anything over one line** — a command sequence, a
-  snippet, a shape to match. One-liners are fine inline.
+  snippet, a shape to match. One-liners are fine inline. Rare: most plans need
+  none.
 - **Prose stays prose.** Sentences in sentences, not bullets of fragments. A
   short list is fine when the content is genuinely a list.
 
 **Light Markdown means light.** No headings, no tables, no nested structure. If
-it needs a heading to navigate, it is too long — go back to the residual rule
-and cut. **Formatting is not permission to write more.**
+it needs a heading to navigate, it is too long — size it to the change and cut.
+**Formatting is not permission to write more.**
 
 ### Reporting it — one call, and it is the end of the job
 
@@ -1053,26 +1106,24 @@ closed but the notes never landed.
 - **Do not call `complete_job` after it.** The job is already finished, and a
   second finish comes back an error. On a pass that worked,
   `report_build_notes` is the last call you make.
-- **It does not change the ask's status.** Writing a read-back is not progress
-  on the build and must never look like it.
-- **A read-back you genuinely cannot do** — the ask is not there, the code is
+- **It does not change the ask's status.** Writing a plan is not progress on the
+  build and must never look like it.
+- **A plan you genuinely cannot do** — the ask is not there, the code is
   unreadable — finishes with `complete_job` and one honest sentence instead.
-  Never both.
+  Never both. **A shape too thin to plan is NOT this case**: that plan gets
+  written, it says what is unclear, and the job finishes done.
 
-A standalone **`write_build_notes`** job is the same read-back with no
-conversation in front of it: read the ask's shape, read the code it touches,
-write what you had to interpret, and report it the same way.
+### The language check does not RUN on the plan — but the owner still reads it
 
-### The language check does NOT run on the read-back
+`scripts/check_language.mjs` guards lines going onto a shape — the want, the
+must-dos, the must-nots — so it does not run here. **That is a fact about the
+script, not a licence.** The owner reads and approves this text, so the same
+plain-wording standard applies: fewest and simplest words, no method vocabulary,
+no bard-speak. The few technical names that earn their place are the exception
+the script would have flagged, and that is the only reason it stays off.
 
-`scripts/check_language.mjs` guards what the OWNER reads on a shape line — the
-want, the must-dos, the must-nots. The read-back is the one place technical
-words are correct, so running the owner's plain-wording check over it would flag
-the very words that make it useful.
-
-**The check still runs on every shape, exactly as before.** A read-back never
-relaxes it, and it is never a back door for putting technical language onto a
-shape.
+**The check still runs on every shape, exactly as before.** A plan never relaxes
+it, and it is never a back door for putting technical language onto a shape.
 
 ## Materialize on the board
 
@@ -1202,9 +1253,14 @@ and every sentence you write on an ask. Full rationale and the review model:
   happening. One question at a time. Never a verdict, never a gate, never a wall
   of findings — a blocker is a question with the options that settle it, and the
   conversation loops until it is settled.
-- **End with the read-back.** When you can build it, say "anything else to
-  add?", and on the owner's go hand back how you will build the ask. Near-empty
-  when the shape was clear; richer only where you had to interpret.
+- **End with the go, not with the plan.** When you can build it, say "anything
+  else to add?" — and on the owner's go, land the shape and stop. The plan is
+  written by the `write_build_notes` pass that follows. **One writer, one plan.**
+- **The plan is one artifact with two readers.** The owner approves it and the
+  builder builds to it, so write it owner-readable and plan-level, sized to the
+  change, near-empty when the shape was clear. **That pass asks the owner
+  nothing** — a shape too thin to plan says what is unclear in the plan and
+  stops.
 - **Define the project first.** Greenfield and rebuild open by defining the
   project and its three registers — Rules (how), Decisions (what it's built on),
   Ethos (VA's own, inherited, read-only). P·E·C·A is a shaping decision, never a
