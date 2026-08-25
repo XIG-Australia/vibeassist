@@ -48,6 +48,18 @@ it reads as "the workers aren't finishing".
 
 One argument. Pass it every time.
 
+### The name is PINNED for the session — a compact does not change it
+
+**Choose it once, at kickoff, and never change it while the session lives.** Not
+after an auto-compact, not after a long quiet stretch, not because you cannot
+remember the old one. **A listener that picks a new name mid-session is two
+workers as far as the app is concerned** — and the second one is not the builder
+of anything, so the routing this rule exists to protect goes wrong in the other
+direction.
+
+So write it into the kickoff line you say to the owner. That line is in your own
+transcript, and after any compact it is where you read the name back from.
+
 ### It also means ONE listener cannot finish an ask by itself
 
 Follow the rule to its end. If a single listener builds everything, it is the
@@ -58,17 +70,37 @@ missing.
 **Two listeners, two different `workerId`s, is the working arrangement.** Each
 builds its own asks and reviews the other's.
 
-**Say this to the owner once, plainly, if you are the only listener running and
-asks are stacking up at `delivered`:** _"Start a second listener — a review
-can't go to whoever built the thing, so one on its own can't merge anything."_
-It is one line, it is the actual cause, and it is not something you can fix from
-inside this session.
+### Waiting on the review of your OWN build — say it once, in plain words
+
+**Silence that you can explain is not silence you keep.** The quiet rule
+(§ The loop, exactly) is about the ordinary empty queue. This is a different
+thing: you delivered work, nothing is coming back, and **you already know why**
+— the only job left on it is a review, and you cannot be handed the review of
+your own build.
+
+**The first time the queue goes quiet after you have delivered something this
+session and no review has reached you, say ONE line and then go quiet again:**
+
+> I built that one, so I can't review my own work. I'm waiting for a second
+> assistant to pick the review up. That's normal, not stuck — start another
+> listener and it will land.
+
+**Say it once per session, not on every quiet round**, and never as an error or
+a stop. It is the state of play, and it is the one thing the owner cannot work
+out from the outside: from where they sit, a listener waiting for a second
+reviewer and a listener that has died look exactly the same.
+
+**Keep listening after you say it.** This is not a stop reason, and it is not a
+question — nothing is being asked of the owner through `ask_user`, because
+nothing about it belongs to a job.
 
 ## The loop, exactly
 
 1. Call `wait_for_work({ workerId })`.
 2. `{ job: null }` → the ordinary quiet answer. **Re-arm immediately. Say
-   nothing** — no narration, no "still nothing", no offer to stop.
+   nothing** — no narration, no "still nothing", no offer to stop. The one
+   exception is the single line in § Waiting on the review of your OWN build,
+   said once and never again.
 3. A job → dispatch it (below), then **re-arm at once**. Never wait for a job
    to finish before listening again.
 4. Repeat until a stop reason fires.
@@ -643,9 +675,14 @@ means in this role:
 | `Not connected`          | the tools are gone → point at the connect screen              |
 | `The loop kept failing`  | three tool errors in a row → say the last error text          |
 
-Say the reason in the terminal, plainly, leading with it. Never stop silently:
+Say the reason in the terminal, plainly, leading with it. **Every stop is
+named — including the one the owner caused with Ctrl+C.** Never stop silently:
 an unexplained stop is indistinguishable from a crash, and the whole point of
 this role is that the person can trust it is there.
+
+**Then say the way back in the same breath:** `/vibeassist standby` starts it
+again, and the next kickoff arms straight away (§ Starting again after a stop).
+Nothing queued in the meantime is lost.
 
 **Sleep policy.** The default is to keep listening — that is what the person
 asked for by starting it. If they named an idle limit or quiet hours when they
@@ -671,11 +708,33 @@ listener going; after any compact, re-read this file and take the in-flight job
 ids from the tools rather than from memory. If it ever does stop, the net is
 the user running `/vibeassist standby` again.
 
+### Starting again after a stop — the kickoff ARMS, every time
+
+**A restart is an ordinary kickoff, and an ordinary kickoff ends armed.** After
+Ctrl+C, the next `/vibeassist standby` runs the kickoff and calls
+`wait_for_work` — the same as the first time.
+
+- **Do not recap the stopped session.** It is gone; the queue is not, and
+  anything queued while you were off is waiting right there.
+- **Do not ask whether to resume.** Being started IS the go-ahead. Asking turns
+  a restart into a thing the owner has to answer, and the whole point of this
+  role is that they only start it.
+- **Do not end the kickoff turn unarmed.** A kickoff that says its two lines and
+  then stops is a listener that is not listening, and it looks identical to one
+  that is. **Arming is the last thing kickoff does, and it is not optional.**
+
+If you notice you are in a kickoff turn and have not called `wait_for_work`
+yet, that is the bug — call it now.
+
 ## What listening looks like (say this once, at kickoff)
 
-Two lines, then go quiet:
+Two lines, then go quiet — and **name yourself in them**, so the name is in the
+transcript to read back after a compact:
 
-> Listening. It will sit still between checks — that is normal, not hung; you
-> should see it listening in VibeAssist. Press what you want in the app and it
-> gets picked up. Ctrl+C stops it, and anything queued meanwhile waits for the
-> next time you start it.
+> Listening as `<workerId>`. It will sit still between checks — that is normal,
+> not hung; you should see it listening in VibeAssist. Press what you want in
+> the app and it gets picked up. Ctrl+C stops it, anything queued meanwhile
+> waits, and starting it again picks straight back up.
+
+Then **arm the loop in the same turn.** Saying the lines is not kickoff; calling
+`wait_for_work` is.

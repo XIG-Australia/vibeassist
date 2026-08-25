@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.30.2 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.30.3 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.30.3 (26 Aug 2026): a listener knows its own job and comes back after a stop. Waiting on the review of its OWN build is said ONCE in plain words — “I built that one, so I can’t review my own work… that’s normal, not stuck” — and it keeps listening; the `workerId` is PINNED at kickoff, named in the kickoff line and unchanged across a compact; a restart after Ctrl+C is an ordinary kickoff that ENDS ARMED — no recap, no “shall I carry on?”, nothing for the owner to type; and every stop names its reason and the one command back. See references/standby.md. -->
 <!-- 0.30.2 (25 Aug 2026): a review ends in a MERGE or a SEND-BACK — never held. A clash that only needs conflict markers resolved is resolved; a STRUCTURAL clash, where the main line has moved the ground the build stood on, is a fail — report_review({ passed: false, found: “<what moved> ; build it again on the current main line” }) — which re-queues the ask for a fresh build on today’s code. complete_job(error) is narrowed to “could not run the review at all”; a conflict never goes down it, and a merge is never forced. See references/review.md § Two outcomes, and only two. -->
 <!-- 0.30.1 (25 Aug 2026): every git command targets the REPO’S OWN main line, resolved per job — `git -C <where> rev-parse --abbrev-ref HEAD` — never the literal `main`. In a `master` repo the hardcoded name made every fetch, `worktree add` and merge reach for a branch that is not there, so nothing merged and asks stranded at `delivered`. See references/standby.md § The repo’s main line. -->
 <!-- 0.30.0 (25 Aug 2026): THE MERGE MODEL. One ask is THREE jobs to three different workers — `build` → `code_check` → `review` — and the REVIEWER MERGES on a pass. There are no pull requests, nothing waits on CI and nothing self-merges; `next_approved_ask`, `report_ask_progress`, `report_ask_delivery`, `open_pr`, `get_updates` and the whole curl delivery road are gone, along with `bun run verify` as a gate. `code_check` and `review` are live job kinds (see references/code-check.md and references/review.md) — undocumented, they were refused as unknown kinds and every ask stopped at `delivered`. EVERY `wait_for_work`/`next_job` PASSES A STEADY `workerId`: a review may not go to whoever built the thing, so an unnamed worker is never handed one and nothing ever merges. Worktree cleanup belongs to the MERGE, not the builder. -->
@@ -128,9 +129,8 @@ Here is the live surface, end to end:
    below before you call anything. It is the single most load-bearing argument
    in this skill.
 3. **Repo safety.** The checkout a project serves from stays on its main line.
-   Never
-   switch it onto a build branch to get past something — make the Ask's own
-   worktree beside it (§ 4.1) or yield.
+   Never switch it onto a build branch to get past something — make the Ask's
+   own worktree beside it (§ 4.1) or yield.
 4. **Settings sync (offer-first, and only a nicety).** If a worker profile sync
    is available to this session, missing allow-rules or an unconfigured profile
    → load `references/kickoff-sync.md` and follow it. **It is never a gate**:
@@ -140,6 +140,12 @@ Here is the live surface, end to end:
 5. **Listening roles:** invoked as `standby` → load `references/standby.md`
    BEFORE arming the loop. Invoked as `worker` → load
    `references/listening-roles.md`, which sends you to the same place.
+6. **ARM THE LOOP — kickoff always ends armed.** Call `wait_for_work` before
+   the turn ends. **A restart after a stop is an ordinary kickoff**: do not
+   recap the session that stopped, and **do not ask whether to carry on** —
+   being started is the go-ahead. A kickoff that says its lines and then sits
+   there is a listener that is not listening, and from the outside it looks
+   exactly like one that is.
 
 ## 3 · Mode
 
@@ -194,7 +200,9 @@ yourself, and you never do two of the three on the same Ask.
 ### 4.0 · GET NAMED. Everything else depends on it.
 
 **Every `wait_for_work` and `next_job` call passes a steady `workerId`** — one
-name for this session, the same one every time.
+name for this session, the same one every time. **Pin it at kickoff and never
+change it**, not even after an auto-compact: a name that changes mid-session is
+two workers as far as the app is concerned.
 
 **A review may never go to whoever built the thing.** An unnamed worker cannot
 be told apart from the builder, so the app **never hands a review to one at
@@ -213,9 +221,16 @@ a different worker" })` and keep listening.
 lone listener builds everything, so it is the builder of everything, so it is
 never handed a review. **Two listeners with two different `workerId`s is the
 working arrangement** — each builds its own Asks and reviews the other's. If you
-are the only one running and Asks are stacking up at `delivered`, say so to the
-owner in one line: *"Start a second listener — a review can't go to whoever
-built the thing, so one on its own can't merge anything."*
+are the only one running and Asks are stacking up at `delivered`, **say so once
+in plain words and keep listening** — waiting on a second reviewer and having
+died look identical from the owner's chair:
+
+> I built that one, so I can't review my own work. I'm waiting for a second
+> assistant to pick the review up. That's normal, not stuck — start another
+> listener and it will land.
+
+Once per session, never an error, never a stop, never a question. Full rule:
+`references/standby.md` § Waiting on the review of your OWN build.
 
 ### 4.1 · `build` — make it, report it, leave it
 
