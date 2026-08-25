@@ -66,10 +66,10 @@ core §1; contract pinned by `src/lib/va-check-script.test.ts`.)
 
 A listening worker delivered one packet, drained its ai_jobs, then cleanly
 exited with 6 sprints still queued — two confirmed cycles. → Rule: DRAIN MEANS
-DRAIN — `ask: null` from `next_approved_ask` is the only "queue empty" signal
-(it was `sprint:null` when this happened); the worker role
-overrides `config.mode` boundary pauses; every exit notice states its reason.
-(`references/listening-roles.md`.)
+DRAIN — `{ job: null }` from `wait_for_work` is the only "queue empty" signal
+(it was `sprint:null` when this happened, and an ask-pull tool in between); the
+worker role overrides `config.mode` boundary pauses; every exit states its
+reason. (`references/listening-roles.md`.)
 
 ## The pseudo-XML completion notes
 
@@ -83,8 +83,11 @@ one tagged blob. (Core loop, complete step.)
 ## Task-ID index for the guardrails
 
 - 75a89899 — repo-safety preflight replaces the weak `git branch` glance.
-- 8f0ab37f / 3e849762 — draft PRs while pushing / no finished Ask left as a
-  draft (draft PRs skip preview deploys; a draft can't merge).
+- 8f0ab37f / 3e849762 — **retired with the pull-request road.** Both were
+  rules about leaving finished work sitting in a draft nobody could merge. The
+  current shape has no PRs at all: a reviewer merges the branch by hand, so the
+  standing version of that lesson is "never leave finished work unmerged" —
+  which is why the merge, and the cleanup after it, belong to the review.
 - 1bcede1e / 99867b7b — "Manual steps" section mandatory, operator-grade
   (stated folder, plain language, success signal).
 - db8e0f93 — "Outside the ask" declaration on every done completion, rendered

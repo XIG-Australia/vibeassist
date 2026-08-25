@@ -33,9 +33,40 @@ never simulate a loop that cannot reach anything. Then stop.
 someone is listening; the app refreshes the lease from the call. Never write
 presence yourself, and never call the tool just to look alive.
 
+## ALWAYS PASS A `workerId`. This is the load-bearing line.
+
+**Pick one steady name for this session — `wait_for_work({ workerId })` — and
+pass it on every single call.** Not sometimes. Not on the first one.
+
+Here is why it is the first thing in this file. **A review may never go to
+whoever built the thing**, and an unnamed worker cannot be told apart from one.
+So an unnamed listener is **never handed a review at all** — and a review is the
+only thing that merges anything. The failure is silent and it looks like nothing
+is wrong: builds finish, deliveries land, asks go to `delivered`… and then stop
+there forever, because the merge nobody was handed never happens. From outside
+it reads as "the workers aren't finishing".
+
+One argument. Pass it every time.
+
+### It also means ONE listener cannot finish an ask by itself
+
+Follow the rule to its end. If a single listener builds everything, it is the
+builder of everything, so it can never be handed the review of anything — and
+the board fills up with delivered asks exactly as if the `workerId` were
+missing.
+
+**Two listeners, two different `workerId`s, is the working arrangement.** Each
+builds its own asks and reviews the other's.
+
+**Say this to the owner once, plainly, if you are the only listener running and
+asks are stacking up at `delivered`:** _"Start a second listener — a review
+can't go to whoever built the thing, so one on its own can't merge anything."_
+It is one line, it is the actual cause, and it is not something you can fix from
+inside this session.
+
 ## The loop, exactly
 
-1. Call `wait_for_work`.
+1. Call `wait_for_work({ workerId })`.
 2. `{ job: null }` → the ordinary quiet answer. **Re-arm immediately. Say
    nothing** — no narration, no "still nothing", no offer to stop.
 3. A job → dispatch it (below), then **re-arm at once**. Never wait for a job
@@ -71,21 +102,51 @@ Nothing else travels — not the last job, not the loop's history.
 
 Dispatch into two concurrent lanes:
 
-| Lane      | Takes                             | At once |
-| --------- | --------------------------------- | ------- |
-| **quick** | shaping, questions, anything short | up to 3 |
-| **build** | anything that writes code          | up to 2 |
+| Lane      | Takes                                          | At once |
+| --------- | ---------------------------------------------- | ------- |
+| **quick** | shaping, questions, anything short              | up to 3 |
+| **build** | `build`, `code_check`, `review` — anything that touches a working tree | up to 2 |
 
 - The lanes run **concurrently**: a build that takes an hour must never make a
   shaping request wait.
+- **`code_check` and `review` are NOT quick work.** They merge branches, run a
+  project's whole test suite, apply database changes and — in a review's case —
+  land the merge. They belong in the build lane with everything else that writes
+  to a tree, however short a particular one looks.
 - **Every build gets its own branch and its own worktree.** Two builds in the
   same checkout, or on the same branch, is the one parallel mistake that
   corrupts real work — never do it.
+- **A `code_check` or a `review` works in the worktree the build left behind**
+  (`<checkout>-<shortId>`), so it is never a second tree on the same branch. The
+  three jobs on one ask are strictly one after another — the app never runs two
+  of them at once — so they can share it safely.
 - **Bounded on purpose.** Full lanes are a queue, not a reason to widen: keep
   calling `wait_for_work` (that is what holds presence), and a job you cannot
   start yet waits in hand with an honest breadcrumb — `report_progress`
   "queued behind another job" — which also keeps the claim yours. Never open a
   third build lane because work is waiting.
+
+## One ask, three jobs, three different workers
+
+Building an ask is not one job. It is three, in order, and **the app hands each
+one to a different worker on purpose:**
+
+```
+build  ──report_delivery──▶  code_check  ──all clean──▶  review  ──merges──▶  accepted
+ (worker A)                   (worker B)                  (worker C)
+```
+
+1. **`build`** — makes the branch in its own worktree and reports what it now
+   does. It does not push, does not merge, does not tidy up.
+2. **`code_check`** — a DIFFERENT worker brings the branch up to date, runs the
+   project's checks on the combined result, and reports what each one said. Any
+   failure stops it here and the ask goes back to be built.
+3. **`review`** — a THIRD worker, **never the builder**, reads the combined
+   result against the ask and, if it passes, **merges it and cleans up.**
+
+**The merge only ever happens in step 3.** Nothing else merges, and nothing
+merges itself. **And step 3 only reaches a named worker** — see the `workerId`
+section at the top of this file.
 
 ## The job kinds that exist now
 
@@ -186,6 +247,32 @@ Dispatch into two concurrent lanes:
   above are the rules). Hand a FRESH sub-agent the job and the ask it names, and
   send it to **A `build` job, step by step** below — that section is the whole
   instruction, and it names the playbook to run. Do not write a new build flow.
+- **`code_check`** — **the code pass on a delivered build**, fired by the
+  delivery. **Build lane**, fresh sub-agent, and hand it
+  `references/code-check.md` — that file is the whole contract. It needs the
+  repository. In short: bring the branch up to date on the main line, check the
+  **combined** result, run the project's own tests, type-check, linter and
+  build, apply the database changes and confirm no drift, then report every
+  answer as what the command actually said — `report_code_check`. Any failure
+  stops the ask right there and sends it back to be built. All clean is the only
+  thing that starts a review. **It merges nothing** and it leaves the worktree
+  and branch in place.
+- **`review`** — **the reading, and the merge.** A clean code pass fires it.
+  **Build lane**, fresh sub-agent, and hand it `references/review.md` — that
+  file is the whole contract. It needs the repository.
+
+  Three things a listener has to know about it:
+
+  - **It is the ONLY thing that merges anything.** On a pass the reviewer merges
+    the branch itself and then reports `merged: true`; reporting the pass is
+    what marks the ask accepted. Never tell a review not to merge.
+  - **Only one runs board-wide at a time.** That is the app's doing, not yours,
+    and it is what makes the merge safe.
+  - **It never goes to the worker who built the thing** — which only works if
+    you pass a `workerId`.
+
+  It also **owns the cleanup**: once merged, the worktree is removed and the
+  branch dropped, silently.
 - **Anything else** — do not guess what it means. Finish it with
   `complete_job`'s `error` saying this skill version does not handle that kind,
   tell the user once, and keep listening. A job left claimed and silent is
@@ -243,13 +330,21 @@ this side stores it, and nothing on this side writes it.
    right.
 
 4. **A job that touches no code needs no repo.** `shape_ask`, `check_shape` and
-   `rewrite_finding` work through the board's own tools. Resolve the checkout
-   for a `build`, and for anything else that has to READ or WRITE the code.
+   `rewrite_finding` work through the board's own tools alone.
 
-   **`write_build_notes` needs the checkout — it READS code.** The plan is
-   written from the agreed shape and from what the code shows, so resolve the
-   repo for it the same as for a build. It never writes to the tree: no
-   worktree, no branch, no commit.
+   **Every other kind needs the checkout resolved before it starts:**
+
+   | Kind                | Needs the repo because                                                  |
+   | ------------------- | ----------------------------------------------------------------------- |
+   | `build`             | it writes the code — its own worktree, branch and commits                |
+   | `code_check`        | it merges the main line in and runs the project's checks in the worktree |
+   | `review`            | it reads the code, runs the thing, and **merges the branch**             |
+   | `write_build_notes` | it READS code to write the plan                                         |
+
+   **`write_build_notes` never writes to the tree**: no worktree, no branch, no
+   commit. The other three all do, and a `review` is the one that writes to
+   `main` — so getting the checkout wrong there is the worst version of this
+   mistake there is.
 
 ### One job's changes never land in another repo
 
@@ -289,22 +384,17 @@ request. Everything below is what the SUB-AGENT does.
    No shape, no build. If the want is empty or the shape has a hole in it, that
    is a question (step 6), not a guess.
 
-3. **Run the playbook that exists.** `references/delivery-on-asks.md` is the
-   build flow — **read it ONCE, here, and follow it.** It is one file and it does
-   not change during a build; reading it a second time buys nothing and costs a
-   whole file. Four of its steps arrive differently on this road:
+3. **Run the playbook.** `references/delivery-on-asks.md` is the build flow —
+   **read it ONCE, here, and follow it as written.** It is one file, it is
+   written for exactly this job, and it does not change during a build; reading
+   it a second time buys nothing and costs a whole file.
 
-   | In the playbook              | On a `build` job                                 |
-   | ---------------------------- | ------------------------------------------------ |
-   | Step 1 `next_approved_ask`   | **Skip it.** The job already handed you the ask. |
-   | Step 2 "read what you were handed" | `get_ask({ askId })` — that call, nothing else |
-   | Step 3 `report_ask_progress` | `report_progress({ jobId, note })`               |
-   | Step 6 `report_ask_delivery` | `report_delivery(...)` — it also FINISHES the job |
-
-   Everything else in that file binds exactly as written: build only the ask you
-   were handed, one ask one branch, the `VibeAssist-Ask:` trailer on every
-   commit, verify green before anything is pushed, and a gap in the Shape is a
-   question, never a guess.
+   There is no patch table any more. That file used to describe a different road
+   and needed four steps translating; it now describes this one, so **nothing in
+   it needs adjusting.** Build only the ask you were handed, one ask one branch
+   in its own worktree, the `VibeAssist-Ask:` trailer on every commit, a gap in
+   the shape is a question and never a guess, and the job ends at
+   `report_delivery` — no push, no merge, no cleanup.
 
    **You already have the ask, so do not go looking for it.** `get_ask` in step
    2 is the whole of finding it. Do not read a `plan/` folder or a `board.md`
@@ -362,8 +452,9 @@ you go to report a build:
 - **Then tell the user once** in the terminal: the tool list is stale and
   restarting the listener picks up the new one. Keep listening.
 
-The work itself is not lost — the branch is pushed and the commits are there.
-What is missing is the report, and this makes that visible rather than silent.
+The work itself is not lost — the branch and the commits are there in the ask's
+worktree. What is missing is the report, and this makes that visible rather than
+silent.
 
 ### Where it builds — its own worktree, beside the served checkout
 
@@ -386,7 +477,12 @@ folder sitting on a build branch, and never put the worktree in a global scratch
 location outside the project** — the person's running app would show them
 half-built work and lose whatever they had open, and a worktree parked outside
 the project drifts away from the checkout it belongs to. The served folder stays
-on `main`. Remove the worktree once merged (`git worktree remove <path>`).
+on `main`.
+
+**The build LEAVES the worktree in place.** Its name — `<checkout>-<shortId>` —
+is how the code-check worker and then the reviewer find this ask's work after
+the builder is gone, so it is a handshake and not a scratch folder. It is
+removed once, by whoever merges, after the merge has landed.
 
 **The repository comes from the job's project** — `repo.where` on
 `list_projects`, read before any of this runs. The build job also carries a **`folder` field from the
@@ -395,15 +491,21 @@ routing a build to a subfolder WITHIN a resolved repository — and that increme
 is **deferred.** Until it lands: ignore the field, and never invent routing from
 it.
 
-### Out of scope in this slice — do NOT wire these in
+### Where a build STOPS — and who does the rest
 
-- **The Truth Pass.** A build does not judge its own work. That verdict is the
-  person's, in the morning review.
-- **The merge.** Nothing here merges anything, anywhere.
+**A build ends at `report_delivery`.** The branch and the worktree stay exactly
+where they are, and the sub-agent is done.
 
-**In this slice a build lands its branch and reports delivered. That is the whole
-end of it.** If you find yourself reaching for a merge, stop — it is not missing,
-it is deliberately not here.
+- **A build never judges its own work.** That is the `code_check` that its
+  delivery fires, and the `review` after it — both to other workers.
+- **A build never merges.** The reviewer merges, and only on a pass.
+- **A build never tidies up.** The worktree and the branch are the handoff to
+  the two jobs that come next. **Cleanup belongs to the merge.**
+
+If you find yourself reaching for a merge inside a build, stop — it is not
+missing, it belongs two jobs later. And if you find yourself removing the
+worktree at the end of a build, stop — that is the leak this arrangement exists
+to close, pointed the wrong way.
 
 ## Say what you are doing — only while work is RUNNING
 
@@ -479,12 +581,23 @@ That one call reports and finishes together, so calling `complete_job` after it
 is a second finish and comes back an error. `complete_job` still owns the
 failure path on a build — see § A `build` job, step by step.
 
-**Four job kinds finish through their own reporting call, not `complete_job`:**
-`build` → `report_delivery`, `write_build_notes` → `report_build_notes`,
-`check_shape` → `report_shape_review`, `rewrite_finding` →
-`report_line_rewrite`. Each reports and finishes in one, so a `complete_job`
-after any of them is a second finish and comes back an error. `complete_job`
-still owns the failure path on all four.
+**Six job kinds finish through their own reporting call, not `complete_job`:**
+
+| Kind                | Finishes through      |
+| ------------------- | --------------------- |
+| `build`             | `report_delivery`     |
+| `code_check`        | `report_code_check`   |
+| `review`            | `report_review`       |
+| `write_build_notes` | `report_build_notes`  |
+| `check_shape`       | `report_shape_review` |
+| `rewrite_finding`   | `report_line_rewrite` |
+
+Each reports and finishes in one, so a `complete_job` after any of them is a
+second finish and comes back an error. `complete_job` still owns the failure
+path on all six — but keep that path narrow. **A red check and a failed review
+are not job errors:** they are `report_code_check` with a `false` in it and
+`report_review` with `passed: false`, both of which are those jobs working
+correctly. Reporting a genuine red as a job error hides it from the board.
 
 ## Drain means drain, for a listener
 

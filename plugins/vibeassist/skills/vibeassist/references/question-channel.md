@@ -64,9 +64,7 @@ what you write back, that you chose it yourself.
 Everything above is the **shaping** case: nothing is on disk, the app parks the
 job server-side, and there is no commit to make.
 
-A **build** is different, because there is half-finished work in a tree. Note
-first: **`build` is not a live job kind yet.** This is the shape it lands in,
-recorded now so it is not re-invented later.
+A **build** is different, because there is half-finished work in a tree.
 
 When a build has to stop on a question:
 
@@ -79,9 +77,16 @@ When a build has to stop on a question:
   Any session may be the one that resumes it.
 - **Then ask, and stop.** Same rule — the ask parks the job and ends the turn.
 - **On resume**, continue from the `[parked]` commit.
-- **Before opening a pull request for other work**, `git revert` the `[parked]`
-  commits, so a PR only ever ships finished work. Note the reverted SHAs where
-  you record the parked state, so the work is recoverable.
+- **Never report a delivery on a branch with `[parked]` commits still on it.**
+  Parked work is unfinished by definition, and reporting the delivery hands it
+  straight to a code pass and a review — which is how half-built work reaches a
+  merge. Either finish it once the answer arrives, or `git revert` the
+  `[parked]` commits first and note the reverted SHAs where you record the
+  parked state, so the work stays recoverable.
+
+**The worktree stays either way.** A parked build leaves its worktree and branch
+exactly where a finished one does — the job comes back to that same
+`<checkout>-<shortId>` when the person answers.
 
 ## Ending a run with questions open
 

@@ -3,18 +3,18 @@
   "skills": [
     {
       "name": "vibeassist",
-      "whenToUse": "Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says \"build my VibeAssist Asks\", \"work my VibeAssist queue\", \"drain my VibeAssist backlog\", or similar. Modes — \"review\" (default: one Ask at a time, confirm before the next), \"run\" (work through the run, then pause), \"drain\" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): \"worker\" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), \"standby\" (the listening loop: call wait_for_work, do what comes — shaping and building — and re-arm).",
+      "whenToUse": "Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says \"build my VibeAssist Asks\", \"work my VibeAssist queue\", \"drain my VibeAssist backlog\", or similar. Modes — \"review\" (default: one Ask at a time, confirm before the next), \"run\" (work through the run, then pause), \"drain\" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): \"worker\" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), \"standby\" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).",
       "files": [
         "SKILL.md",
+        "references/code-check.md",
         "references/delivery-on-asks.md",
         "references/incidents.md",
         "references/kickoff-sync.md",
         "references/listening-roles.md",
         "references/question-channel.md",
+        "references/review.md",
         "references/setup.md",
-        "references/standby.md",
-        "scripts/va-check.sh",
-        "scripts/va-preflight.sh"
+        "references/standby.md"
       ]
     },
     {
