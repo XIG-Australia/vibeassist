@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.30.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.30.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.30.1 (25 Aug 2026): every git command targets the REPO’S OWN main line, resolved per job — `git -C <where> rev-parse --abbrev-ref HEAD` — never the literal `main`. In a `master` repo the hardcoded name made every fetch, `worktree add` and merge reach for a branch that is not there, so nothing merged and asks stranded at `delivered`. See references/standby.md § The repo’s main line. -->
 <!-- 0.30.0 (25 Aug 2026): THE MERGE MODEL. One ask is THREE jobs to three different workers — `build` → `code_check` → `review` — and the REVIEWER MERGES on a pass. There are no pull requests, nothing waits on CI and nothing self-merges; `next_approved_ask`, `report_ask_progress`, `report_ask_delivery`, `open_pr`, `get_updates` and the whole curl delivery road are gone, along with `bun run verify` as a gate. `code_check` and `review` are live job kinds (see references/code-check.md and references/review.md) — undocumented, they were refused as unknown kinds and every ask stopped at `delivered`. EVERY `wait_for_work`/`next_job` PASSES A STEADY `workerId`: a review may not go to whoever built the thing, so an unnamed worker is never handed one and nothing ever merges. Worktree cleanup belongs to the MERGE, not the builder. -->
 <!-- 0.29.0 (25 Aug 2026): `plan` is THE PLAN — one artifact the owner approves and the builder builds to. A `write_build_notes` job is the ONLY pass that writes it (a `shape_ask` never does), it needs the repo because it reads code, it asks the owner NOTHING (a shape too thin to plan says what is unclear in the plan and finishes done), and it is written owner-readable and plan-level, sized to the change. A `build` reads the plan from `get_ask` and builds to it, not to the three shape lines alone. See references/standby.md and references/delivery-on-asks.md. -->
 <!-- 0.28.0 (24 Aug 2026): a `shape_ask` job is now the WHOLE shaping conversation — Form and Confirm in one talk, one question at a time through `ask_user`, no verdict and no list handed back. `check_shape` is retired: a stray one is run as the Confirm movement and finished with `report_shape_review({ jobId })` carrying no findings. `report_build_notes` takes `jobId`, not `askId`. See references/standby.md. -->
@@ -125,7 +126,8 @@ Here is the live surface, end to end:
 2. **Pick your `workerId`** — one steady name for this session — and read § 4.0
    below before you call anything. It is the single most load-bearing argument
    in this skill.
-3. **Repo safety.** The checkout a project serves from stays on `main`. Never
+3. **Repo safety.** The checkout a project serves from stays on its main line.
+   Never
    switch it onto a build branch to get past something — make the Ask's own
    worktree beside it (§ 4.1) or yield.
 4. **Settings sync (offer-first, and only a nicety).** If a worker profile sync
@@ -232,16 +234,18 @@ b. **Resolve the repository from the JOB** — `list_projects`, find the job's
 → one plain question, then stop.
 
 c. **Build in the Ask's own worktree**, a sibling of the served checkout inside
-the project folder, named `<checkout>-<shortId>`:
+the project folder, named `<checkout>-<shortId>`. Resolve the repo's main line
+first — `git -C <where> rev-parse --abbrev-ref HEAD`, call it `<mainline>` — and
+never write the literal `main` into a git command:
 
 ```bash
-git -C <where> fetch origin main
-git -C <where> worktree add -b <branch> ../<checkout>-<shortId> origin/main
+git -C <where> fetch origin <mainline>
+git -C <where> worktree add -b <branch> ../<checkout>-<shortId> origin/<mainline>
 ```
 
 Every edit, test, typecheck, build and commit happens there. **Never in the
 served folder**, never on a global scratch path outside the project. The served
-folder stays on `main`. The name is a handshake — it is how the next two workers
+folder stays on its main line. The name is a handshake — it is how the next two workers
 find this work.
 
 d. **Say what you are doing** — `report_progress({ jobId, note })`, one short
@@ -423,7 +427,7 @@ a stash — then stop. Full park-and-resume protocol →
 - **There are no pull requests.** Never push a branch for review, never wait on
   CI, never expect anything to merge itself. The reviewer merges, by hand, on a
   pass — that is the whole gate.
-- **Never commit to or fast-forward `main` except as the reviewer's merge**
+- **Never commit to or fast-forward the main line except as the reviewer's merge**
   (§ 4.3f), and never inside a build.
 - **Never do two of the three jobs on one Ask.** If you built it, you do not
   check it and you do not review it — refuse and say why.

@@ -115,15 +115,18 @@ that grouping is one the person authored, not one a machine proposed.
 4. **Build in the ask's own worktree, beside the served checkout.** Before you
    touch a file, make a git worktree as a **sibling of the served checkout,
    inside the project folder** — the same parent as the folder the app runs from
-   — named `<checkout>-<shortId>`:
+   — named `<checkout>-<shortId>`. Resolve the repo's main line first —
+   `git -C <where> rev-parse --abbrev-ref HEAD`, call it `<mainline>`
+   (`references/standby.md` § The repo's main line) — and never write the
+   literal `main` into a git command:
 
    ```bash
-   git -C <where> fetch origin main
-   git -C <where> worktree add -b <branch> ../<checkout>-<shortId> origin/main
+   git -C <where> fetch origin <mainline>
+   git -C <where> worktree add -b <branch> ../<checkout>-<shortId> origin/<mainline>
    ```
 
-   No remote on that checkout → cut from local `main` instead and skip the
-   fetch. App served from `<project>/app` → build in `<project>/app-<shortId>`.
+   No remote on that checkout → cut from the local `<mainline>` instead and
+   skip the fetch. App served from `<project>/app` → build in `<project>/app-<shortId>`.
    Plugin from `<project>/plugin` → `<project>/plugin-<shortId>`. Edit, test,
    typecheck, build and commit there and nowhere else.
 
@@ -132,7 +135,7 @@ that grouping is one the person authored, not one a machine proposed.
    location outside the project**: the person's running app would show them
    half-built work and lose whatever they were looking at, and a worktree parked
    outside the project drifts away from the checkout it belongs to. The served
-   folder stays on `main`.
+   folder stays on its main line.
 
    **The name is a handshake, not a convenience.** `<checkout>-<shortId>` is how
    the code-check worker and the reviewer find this ask's work after you are
@@ -267,7 +270,7 @@ should be there at all. That confusion is what this replaced.
 ## Everything else still binds
 
 The guardrails in `SKILL.md` § 6 are unchanged and apply here exactly: never
-commit to or fast-forward `main`; build in the ask's own worktree beside the
+commit to or fast-forward the main line; build in the ask's own worktree beside the
 served checkout, inside the project folder — never the folder the dev app
 serves, never a global scratch location outside the project; every deliberate
 stop goes through `ask_user` on the job, never only your terminal;

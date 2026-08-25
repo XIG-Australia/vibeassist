@@ -343,8 +343,32 @@ this side stores it, and nothing on this side writes it.
 
    **`write_build_notes` never writes to the tree**: no worktree, no branch, no
    commit. The other three all do, and a `review` is the one that writes to
-   `main` — so getting the checkout wrong there is the worst version of this
-   mistake there is.
+   the main line — so getting the checkout wrong there is the worst version of
+   this mistake there is.
+
+### The repo's main line — resolve it, never write `main`
+
+**A repository's main line is the branch its served checkout is on.** Some
+projects call it `main`, some call it `master`, some call it something else.
+Read it once per job, right after you resolve `repo.where`, and use that value
+in every git command for the rest of the job:
+
+```bash
+git -C <where> rev-parse --abbrev-ref HEAD     # → the main line; call it <mainline>
+```
+
+`git -C <where> remote` tells you whether there is a remote. There is one → the
+branch to fetch and to start from is `origin/<mainline>`. There is none → plain
+`<mainline>`, and skip the fetch entirely.
+
+**Writing the literal `main` into a command is the bug this exists to stop.** In
+a `master` repo every fetch, every `worktree add` and every merge then reaches
+for a branch that is not there, the command fails, and the ask is left stranded
+at `delivered`.
+
+Read it from **`<where>`, the served checkout** — that folder stays on the main
+line (§ Where it builds). Never read it from an ask's worktree: a worktree sits
+on the ask's branch, so it would hand you the wrong name.
 
 ### One job's changes never land in another repo
 
@@ -352,8 +376,8 @@ The worktree is made **under `repo.where`**, the same way builds already do it
 (see § Where it builds):
 
 ```bash
-git -C <where> fetch origin main
-git -C <where> worktree add -b <branch> ../<checkout-name>-<shortId> origin/main
+git -C <where> fetch origin <mainline>                                    # only if there is a remote
+git -C <where> worktree add -b <branch> ../<checkout-name>-<shortId> origin/<mainline>
 ```
 
 Two jobs for two projects are two worktrees under two different repositories,
@@ -464,8 +488,8 @@ served checkout is **the job's project's `repo.where`** (§ One listener,
 every repo) — never the folder the listener happens to be running in:
 
 ```bash
-git -C <where> fetch origin main
-git -C <where> worktree add -b <branch> ../<checkout-name>-<shortId> origin/main
+git -C <where> fetch origin <mainline>                                    # only if there is a remote
+git -C <where> worktree add -b <branch> ../<checkout-name>-<shortId> origin/<mainline>
 ```
 
 The worktree sits in the **same parent as the folder the app runs from**, named
@@ -477,7 +501,7 @@ folder sitting on a build branch, and never put the worktree in a global scratch
 location outside the project** — the person's running app would show them
 half-built work and lose whatever they had open, and a worktree parked outside
 the project drifts away from the checkout it belongs to. The served folder stays
-on `main`.
+on its main line.
 
 **The build LEAVES the worktree in place.** Its name — `<checkout>-<shortId>` —
 is how the code-check worker and then the reviewer find this ask's work after
