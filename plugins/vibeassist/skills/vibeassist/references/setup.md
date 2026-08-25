@@ -1,8 +1,23 @@
-# Setup — first run / MISSING verdict
+# Setup — the machine profile that keeps a run from stalling
 
-**Load this when:** `va-check.sh` prints `MISSING`, the user asks how to connect
-Claude Code to VibeAssist, or the user complains about repeated permission
-prompts stalling runs.
+**Load this when:** the user asks how to set Claude Code up for VibeAssist, or
+complains about repeated permission prompts stalling runs.
+
+## Connecting is one click — there is nothing to set up for it
+
+**The `mcp__vibeassist__*` tools authenticate themselves** through VibeAssist's
+connect screen. No token, no URL, no checker script, and no env var is involved
+in taking work, building it, checking it, reviewing it or merging it. **Tools
+missing means the session is not connected** — point the user at the connect
+screen, never at a token.
+
+What IS worth setting up is the **permission profile below**, because without it
+a worker prompts on every file it writes in an Ask's worktree, and an overnight
+run stalls waiting for a click nobody is there to give.
+
+(`VIBEASSIST_URL` / `VIBEASSIST_TOKEN` remain only for the optional worker
+preferences fetch in `references/kickoff-sync.md`. That sync is a nicety, never
+a gate — no token, no problem; skip it and carry on.)
 
 ## Where the config lives
 
@@ -49,8 +64,6 @@ below is the same shape for offline reference:
       "Bash(npx vitest run *)",
       "Bash(bunx prettier --check *)",
       "Bash(npx prettier --check *)",
-      "Bash(bash ~/.claude/va-check.sh)",
-      "Bash(bash ~/.claude/va-preflight.sh)",
       "mcp__vibeassist__*",
       "Bash(ls:*)",
       "Bash(cat:*)",
@@ -136,8 +149,8 @@ gates:
 ## Do NOT recommend bypassPermissions
 
 Never suggest full `bypassPermissions` / `--dangerously-skip-permissions`. The
-`acceptEdits` + vetted-allow + deny profile above is the safe default and all a
-sprint run needs. Full bypass lets the worker run ANY command unsupervised (a
+`acceptEdits` + vetted-allow + deny profile above is the safe default and all an
+overnight run needs. Full bypass lets the worker run ANY command unsupervised (a
 real security footgun for non-technical users) AND doesn't fix the stalls that
 actually bite — those come from context compaction, an interactive prompt, or a
 model usage limit, not permission prompts. The "won't stall overnight" property

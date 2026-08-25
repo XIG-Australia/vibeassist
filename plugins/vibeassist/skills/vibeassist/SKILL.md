@@ -1,45 +1,45 @@
 ---
 name: vibeassist
-description: Take the next Ask the user approved in VibeAssist, build it, and report what it now does so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping and building — and re-arm).
+description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.29.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
-<!-- 0.29.0 (25 Aug 2026): `build_notes` is THE PLAN — one artifact the owner approves and the builder builds to. A `write_build_notes` job is the ONLY pass that writes it (a `shape_ask` never does), it needs the repo because it reads code, it asks the owner NOTHING (a shape too thin to plan says what is unclear in the plan and finishes done), and it is written owner-readable and plan-level, sized to the change. A `build` reads the plan from `get_ask` and builds to it, not to the three shape lines alone. See references/standby.md and references/delivery-on-asks.md. -->
-<!-- 0.28.0 (24 Aug 2026): a `shape_ask` job is now the WHOLE shaping conversation — Form and Confirm in one talk, one question at a time through `ask_user`, no verdict and no list handed back. (It ended with the read-back; 0.29.0 moved that to `write_build_notes`.) `check_shape` is retired: a stray one is run as the Confirm movement and finished with `report_shape_review({ jobId })` carrying no findings. `report_build_notes` takes `jobId`, not `askId`. See references/standby.md. -->
-<!-- 0.27.0 (24 Aug 2026): where a project’s code lives comes from the app — `list_projects` returns `repo: { kind, where }` — and the local register (`~/.claude/vibeassist-repos.json`, `scripts/va-repos.example.json`) is retired. A project with `repo: null` is one plain question pointing at Project settings → “Where the code lives”, and the listener writes no config of its own. -->
-<!-- 0.26.0 (24 Aug 2026): one listener serves every repo. The repository is resolved per job from the job’s `projectId` through a register at `~/.claude/vibeassist-repos.json` (stub: `scripts/va-repos.example.json`), the worktree is made under that checkout with `git -C`, and a project with no entry is one plain question, never a guess. -->
+<!-- vibeassist-skill-version: 0.30.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.30.0 (25 Aug 2026): THE MERGE MODEL. One ask is THREE jobs to three different workers — `build` → `code_check` → `review` — and the REVIEWER MERGES on a pass. There are no pull requests, nothing waits on CI and nothing self-merges; `next_approved_ask`, `report_ask_progress`, `report_ask_delivery`, `open_pr`, `get_updates` and the whole curl delivery road are gone, along with `bun run verify` as a gate. `code_check` and `review` are live job kinds (see references/code-check.md and references/review.md) — undocumented, they were refused as unknown kinds and every ask stopped at `delivered`. EVERY `wait_for_work`/`next_job` PASSES A STEADY `workerId`: a review may not go to whoever built the thing, so an unnamed worker is never handed one and nothing ever merges. Worktree cleanup belongs to the MERGE, not the builder. -->
+<!-- 0.29.0 (25 Aug 2026): `plan` is THE PLAN — one artifact the owner approves and the builder builds to. A `write_build_notes` job is the ONLY pass that writes it (a `shape_ask` never does), it needs the repo because it reads code, it asks the owner NOTHING (a shape too thin to plan says what is unclear in the plan and finishes done), and it is written owner-readable and plan-level, sized to the change. A `build` reads the plan from `get_ask` and builds to it, not to the three shape lines alone. See references/standby.md and references/delivery-on-asks.md. -->
+<!-- 0.28.0 (24 Aug 2026): a `shape_ask` job is now the WHOLE shaping conversation — Form and Confirm in one talk, one question at a time through `ask_user`, no verdict and no list handed back. `check_shape` is retired: a stray one is run as the Confirm movement and finished with `report_shape_review({ jobId })` carrying no findings. `report_build_notes` takes `jobId`, not `askId`. See references/standby.md. -->
+<!-- 0.27.0 (24 Aug 2026): where a project’s code lives comes from the app — `list_projects` returns `repo: { kind, where }` — and the local register is retired. A project with `repo: null` is one plain question pointing at Project settings → “Where the code lives”, and the listener writes no config of its own. -->
+<!-- 0.26.0 (24 Aug 2026): one listener serves every repo. The repository is resolved per job from the job’s `projectId`, the worktree is made under that checkout with `git -C`, and a project with no entry is one plain question, never a guess. -->
 <!-- 0.25.1 (24 Aug 2026): an owner-only step — restart the dev server, apply a migration — is stated as one plain instruction, never as a status about yourself, and nothing is said when none is needed. -->
 <!-- 0.25.0 (24 Aug 2026): silent completion — the standing manners. Cleanup, worktree and branch tidying, merges, retries and version bumps are part of the work, never a question and never a status update. Interrupt only on a genuine fork (irreversible AND unreadable); never hand back a command to run; a real question is one line; done is one short message about what it now does. Binds the standby listener too. -->
-<!-- 0.23.0 (23 Aug 2026): a fifth job kind — `rewrite_finding`: write one shape line again so it carries what a finding still wants, on top of how the line reads NOW. The job carries its own instructions; it finishes through `report_line_rewrite`, empty wording is refused, and what it sends goes on the finding, never on the ask. See references/standby.md. -->
-<!-- 0.22.0 (22 Aug 2026): superseded by 0.28.0 — the shaping review held an ask back only for a blocker. -->
-<!-- 0.21.0 (22 Aug 2026): superseded by 0.28.0 — standby dispatched `check_shape` to a separate shape-review entry. -->
-<!-- 0.20.1 (21 Aug 2026): corrects 0.20.0, which named one machine's scratch folder. The build worktree goes BESIDE the served checkout, inside the project folder — a sibling named <checkout>-<shortId> (app → app-<shortId>, plugin → plugin-<shortId>) — never a global scratch location outside the project. setup.md's additionalDirectories follows: it points at the project folder, not the scratch folder. -->
-<!-- 0.20.0 (21 Aug 2026): a build makes its own worktree off the latest main line and does every edit, test and commit there. Never build in the served folder; never leave the served folder sitting on a build branch. This replaces standby's "builds in the listener's cwd" first cut — see references/standby.md and references/delivery-on-asks.md. -->
-<!-- 0.19.0 (20 Aug 2026): `write_build_notes` became a live job kind, dispatched to the decompose skill in a fresh sub-agent and reported through report_build_notes (that call writes the notes and finishes the job; empty notes is a valid success and the ask stays approved). Its builder-facing framing is superseded by 0.29.0. See references/standby.md. -->
+<!-- 0.23.0 (23 Aug 2026): a job kind — `rewrite_finding`: write one shape line again so it carries what a finding still wants, on top of how the line reads NOW. The job carries its own instructions; it finishes through `report_line_rewrite`, empty wording is refused, and what it sends goes on the finding, never on the ask. See references/standby.md. -->
+<!-- 0.20.1 (21 Aug 2026): the build worktree goes BESIDE the served checkout, inside the project folder — a sibling named <checkout>-<shortId> — never a global scratch location outside the project. Superseded in part by 0.30.0: the builder no longer removes it. -->
+<!-- 0.20.0 (21 Aug 2026): a build makes its own worktree off the latest main line and does every edit, test and commit there. Never build in the served folder; never leave the served folder sitting on a build branch. -->
+<!-- 0.19.0 (20 Aug 2026): `write_build_notes` became a live job kind, dispatched to the decompose skill in a fresh sub-agent and reported through report_build_notes. Its builder-facing framing is superseded by 0.29.0. -->
 <!-- 0.18.1 (20 Aug 2026): the build path never hunts files for the ask — the board is the app behind get_ask, not a plan/ folder or a board.md; and the playbook is read ONCE per build. Reading code to build the thing is unaffected. -->
-<!-- 0.18.0 (20 Aug 2026): a build reads its shape with get_ask on the job's ask id — never list_asks, never the running app's page; and a missing report_delivery fails the job out loud ("restart the listener") rather than falling back to complete_job and stranding the ask on building. See references/standby.md. -->
-<!-- 0.17.1 (20 Aug 2026): on a build, report_delivery reports AND finishes in one call — it is the last call on the success path; complete_job is the failure path only, never both. See references/standby.md. -->
-<!-- 0.17.0 (20 Aug 2026): `build` is a live job kind — standby dispatches it to a fresh sub-agent in the build lane, which runs the existing playbook in references/delivery-on-asks.md, builds in the listener's own folder (folder-routing deferred), reports the three-part delivery. No Truth Pass, no merge in this slice. See references/standby.md. -->
-<!-- 0.16.0 (20 Aug 2026): asking a question PARKS the job and ends the turn — no polling get_answer, no report_progress to hold a claim; the answer re-queues the job and a fresh helper resumes it. See references/standby.md and references/question-channel.md. -->
-<!-- 0.15.0 (20 Aug 2026): a shape_ask job runs the language check before the shape lands. -->
-<!-- 0.14.0 (20 Aug 2026): standby rebuilt on the wait_for_work MCP tool — the va-standby.sh curl-and-token poller is retired; a fresh sub-context per job; a build lane and a quick lane, concurrent and bounded. See references/standby.md. -->
-<!-- 0.12.0 (18 Aug 2026): verify inward (green from the tool is not the running thing — open every touched surface after a generator/scaffold/rename/move); the build note is read from code, never transcribed; send-back routing reasons. -->
+<!-- 0.18.0 (20 Aug 2026): a build reads its shape with get_ask on the job's ask id — never list_asks, never the running app's page; and a missing report_delivery fails the job out loud rather than falling back to complete_job and stranding the ask on building. -->
+<!-- 0.17.1 (20 Aug 2026): on a build, report_delivery reports AND finishes in one call — it is the last call on the success path; complete_job is the failure path only, never both. -->
+<!-- 0.16.0 (20 Aug 2026): asking a question PARKS the job and ends the turn — no polling get_answer, no report_progress to hold a claim; the answer re-queues the job and a fresh helper resumes it. See references/question-channel.md. -->
+<!-- 0.14.0 (20 Aug 2026): standby rebuilt on the wait_for_work MCP tool — the curl-and-token poller is retired; a fresh sub-context per job; a build lane and a quick lane, concurrent and bounded. -->
+<!-- 0.12.0 (18 Aug 2026): verify inward (green from the tool is not the running thing — open every touched surface after a generator/scaffold/rename/move); the build note is read from code, never transcribed. -->
 
 # VibeAssist Ask runner
 
-You take an Ask the user approved in VibeAssist, build it, and report what it
-now does. The user drives WHICH work; you drive HOW.
+You take an Ask the user approved in VibeAssist, build it, check it, review it
+and merge it. The user drives WHICH work; you drive HOW.
 
-**One Ask, one branch, one pull request.** There is no sprint to pull, no task
-to claim and no batch to compose — an Ask already contains Asks, so the tree is
-the grouping. The sprint road was removed on 8 August 2026; if you find yourself
-reaching for `next_sprint`, `start_task` or `complete_task`, they are gone and
-nothing replaced them one-for-one.
+**One Ask is THREE jobs, and each goes to a different worker.** A `build` makes
+the branch and reports what it now does. A `code_check` — someone else — runs
+the project's checks on the combined result. A `review` — a third worker, never
+the builder — reads it against the Ask and, on a pass, **merges it**. That merge
+is the only merge there is.
+
+**There are no pull requests.** Nothing is pushed for review, nothing waits on
+CI, and nothing merges itself when checks go green. If you find yourself
+reaching for a PR, for `next_approved_ask`, for `report_ask_delivery` or for
+`bun run verify`, they are gone and following any of them strands the Ask.
 
 This core is the whole cold happy path. Detail loads on demand from
-`references/` in this skill's directory — each pointer below says when. Helper
-scripts ship in `scripts/` — install them by COPYING the packaged file, never by
-transcribing.
+`references/` in this skill's directory — each pointer below says when.
 
 ## 0 · Silent completion — the standing manners
 
@@ -77,8 +77,8 @@ back. That is the fork rule doing its job, not an exception to it.
 instruction it is: *"restart your dev server to load this."* Never as a status
 about yourself — "I have not restarted the app" leaves them working out whether
 that is a warning, an apology or a job. **If no such step is needed, say
-nothing.** An empty line about it is noise. The delivery report's "Manual
-steps:" section (§ 6) is the same rule written into the record.
+nothing.** An empty line about it is noise. The delivery's `flags` (§ 4) is the
+same rule written into the record.
 
 **Done is one short message: what it now does.** Not a ledger of what you
 cleaned up, not a tour of the branches you deleted, not the retries it took.
@@ -87,79 +87,56 @@ They asked for a working thing, and the answer is that it works.
 **This binds every mode and every role** — review, run, drain, worker and the
 standby listener alike.
 
-## 1 · Connect & verify (every run, first)
+## 1 · Connect — MCP only
 
-**MCP-first.** If the `mcp__vibeassist__*` tools are present (one-click OAuth
-connect), use them for the whole loop — they authenticate automatically and
-mirror the REST endpoints (`next_approved_ask`, `report_ask_progress`,
-`report_ask_delivery`, `ask`/`get_answer`, `get_updates`, `open_pr`), and each
-tool's description carries its own playbook. No env vars or token check needed
-on this path.
+**The whole loop runs on the `mcp__vibeassist__*` tools.** They authenticate
+themselves through the one-click connection, and each tool's description carries
+its own playbook. There is no token to set, no URL to configure and no checker
+script to run.
 
-**Curl fallback (paste-a-key).** Every one of those tools has an HTTP twin, so
-this road is complete — you never need MCP to deliver. It needs two env vars
-visible to Bash: `VIBEASSIST_URL` (default `https://vibeassist.app`, no trailing
-slash) and `VIBEASSIST_TOKEN`. Verify with the allow-listed checker script —
-never an inline compound (it prompts every session):
+**Tools missing → this session is not connected.** Say exactly that and point
+the user at VibeAssist's **connect screen**. Never ask for a token, never reach
+for `curl`, and never simulate a loop that cannot reach anything. Then stop.
 
-```bash
-bash ~/.claude/va-check.sh
-```
+**The curl delivery road is gone.** `next_approved_ask`,
+`report_ask_progress`, `report_ask_delivery`, `get_updates`, `open_pr` and their
+HTTP twins do not exist on either road. If you find yourself composing a
+`curl` to `/api/public/claude/…` to move an Ask along, stop — that is the dead
+road, and every one of its endpoints answers nothing.
 
-Overwrite `~/.claude/va-check.sh` with a copy of this skill's
-`scripts/va-check.sh` whenever it is missing, OR its output has no
-`va-check-version:` line, OR that version is lower than 3 — a stale checker lies
-with authority (see `references/incidents.md`). Line 1 of output is the verdict:
+Here is the live surface, end to end:
 
-| Verdict              | Meaning → action                                                                                                                                    |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `configured`         | Proceed.                                                                                                                                            |
-| `MISSING`            | Not set up → load `references/setup.md` and walk the user through it.                                                                               |
-| `STALE`              | The settings.json token is VALID; this session froze an old env copy → RESTART the session (and the daemon, if it's the daemon). Do NOT regenerate. |
-| `REVOKED`            | A token the check actually READ was rejected → regenerate in VA → paste into `~/.claude/settings.json` → restart.                                   |
-| `UNREACHABLE:<code>` | Network/host problem, not a token problem — check the URL, network, or VA status.                                                                   |
-
-**`CHECK_FAILED:<why>` → the CHECK broke, NOT the token.** Never tell the user
-their token is bad on this verdict — report what actually failed and fix that:
-`cannot-read-settings-json*` = settings.json unparseable or node missing;
-`curl-not-installed` = the curl path is unavailable (the MCP path may still work).
-
-Never print or log the token; never wrap it in `$(...)` (command substitution is
-never auto-approved). Prefer Read/Grep/Glob over shelling out; one tool per Bash
-line; no `$VAR` in a path argument.
-
-**Standby does not take this road at all.** The listening loop is MCP-only: no
-token, no curl, no checker. Tools missing means the session is not connected —
-point the user at VibeAssist's connect screen, never at a token
-(`references/standby.md`).
+| What you need                  | The tool                                       |
+| ------------------------------ | ---------------------------------------------- |
+| Work, handed to you            | `wait_for_work({ workerId })` / `next_job`      |
+| What one Ask says              | `get_ask({ askId })`                            |
+| Where a project's code lives   | `list_projects` → `repo.where`                  |
+| Say what you are doing         | `report_progress({ jobId, note })`              |
+| Finish a build                 | `report_delivery({ jobId, does, check, flags })` |
+| Finish a code pass             | `report_code_check({ jobId, … })`               |
+| Finish a review (and merge)    | `report_review({ jobId, passed, merged, found })` |
+| Ask the person something       | `ask_user({ jobId, question, … })`              |
+| Give up on a job               | `complete_job({ jobId, error })`                |
 
 ## 2 · Kickoff (once per session)
 
-1. **Tool preflight:** `bash ~/.claude/va-preflight.sh` (copy from this skill's
-   `scripts/va-preflight.sh` if missing). All ok → say nothing. `gh` MISSING →
-   not fatal (VA opens PRs server-side); post a one-line `kind:notice` on the
-   first Ask you take. `bun` MISSING → use the npm/npx equivalents. `git` or
-   `node` MISSING → genuinely blocking: raise an `ask` (`kind:decision`).
-2. **Repo-safety preflight** (before touching any clone):
-   `node scripts/preflight.cjs` in the project repo. Verdict SAFE → proceed.
-   NOT SAFE (you're on `main`, or another worker holds this checkout) → stop;
-   make your own worktree for the Ask beside this checkout, inside the project
-   folder (step 4a), or yield. Never switch this checkout onto a build branch to
-   get past it.
-3. **Preferences sync:** fetch once —
-   `curl -s -H "Authorization: Bearer $VIBEASSIST_TOKEN" "$VIBEASSIST_URL/api/public/claude/preferences"`.
-   - **Skill freshness:** if the response's `currentSkillVersion` is newer than
-     this file's version marker, tell the user in ONE line to update the plugin
-     and post a `kind:notice` on the first Ask you take; otherwise say nothing.
-   - Missing allow-rules, an unconfigured worker profile, or a role-model
-     mismatch → load `references/kickoff-sync.md` and follow it. Applying ANY
-     settings change is offer-first in EVERY mode — the consent to build an Ask
-     never covers the user's settings file.
-4. **Listening roles:** invoked as `standby` → load `references/standby.md`
-   BEFORE arming the loop, and skip steps 1–3 above: standby runs on the
-   `mcp__vibeassist__*` tools alone, so there is no token to check, no
-   preflight script to copy and no clone to make safe until a job actually
-   arrives. Invoked as `worker` → load `references/listening-roles.md`.
+1. **Check the tools are there** (§ 1). Missing → not connected; say so and
+   stop.
+2. **Pick your `workerId`** — one steady name for this session — and read § 4.0
+   below before you call anything. It is the single most load-bearing argument
+   in this skill.
+3. **Repo safety.** The checkout a project serves from stays on `main`. Never
+   switch it onto a build branch to get past something — make the Ask's own
+   worktree beside it (§ 4.1) or yield.
+4. **Settings sync (offer-first, and only a nicety).** If a worker profile sync
+   is available to this session, missing allow-rules or an unconfigured profile
+   → load `references/kickoff-sync.md` and follow it. **It is never a gate**:
+   unavailable, or the user says no, → skip it and carry on. Applying ANY
+   settings change is offer-first in EVERY mode — the consent to build an Ask
+   never covers the user's settings file.
+5. **Listening roles:** invoked as `standby` → load `references/standby.md`
+   BEFORE arming the loop. Invoked as `worker` → load
+   `references/listening-roles.md`, which sends you to the same place.
 
 ## 3 · Mode
 
@@ -169,201 +146,227 @@ Every served Ask carries a `config` block
 unless the user gave an explicit mode at invocation (that overrides). No config
 yet → default **review**.
 
-- **review** — ONE Ask, then ask (via the question channel) before the next.
-- **run** — work the run in order; at its end, ask via a `kind:"decision"` /ask.
+- **review** — ONE Ask, then ask (through `ask_user`) before the next.
+- **run** — work the run in order; at its end, ask before going on.
 - **drain** — keep taking approved Asks until there are none.
 - **standby** — the listening loop: `references/standby.md`. It calls
   `wait_for_work`, hands each job to a fresh sub-context (a quick lane and a
-  build lane, concurrent and bounded), and re-arms. No poller, no token.
+  build lane, concurrent and bounded), and re-arms.
 - **worker** — the build listener: `references/listening-roles.md`.
 
 ### Overnight drain — the build-overnight doctrine
 
 The VibeAssist rhythm is **plan during the day, build overnight, review in the
-morning** — the worker owns the overnight half, and the promise is to clear as
+morning** — the listener owns the overnight half, and the promise is to clear as
 much as possible and ENSURE it happens.
 
 - **Build everything buildable.** In drain (and any overnight run) the default
-  is to deliver every approved Ask you are handed — never defer buildable work
+  is to finish every approved Ask you are handed — never defer buildable work
   for tidiness.
-- **Stop for exactly two reasons,** each recorded where the user will see it (a
-  question on the Ask, or `outcome: "failed"` with the reason in `built`):
-  (a) it needs a decision — raise the `/ask`; or (b) it is clearly superseded.
-  Anything else gets built.
-- **End every run with ONE complete report:** what was built, what wasn't, and
+- **Finish the whole chain, not just the build.** An Ask is not done when it is
+  delivered; it is done when it is merged. A run that leaves a pile of
+  `delivered` Asks with no code pass and no review behind them has not cleared
+  the queue — it has moved the queue. **Keep listening: the check and the review
+  arrive as their own jobs.**
+- **Stop for exactly two reasons,** each recorded where the user will see it:
+  (a) it needs a decision — `ask_user`, which parks the job; or (b) it is
+  clearly superseded. Anything else gets built.
+- **End every run with ONE complete report:** what got merged, what didn't, and
   why for each stop. A run that leaves the owner guessing has failed its promise.
 - **The approval gate is the user's.** Approval is the only thing that makes
   work available, and nothing you can pass relaxes it. If the user expects work
   and nothing comes, the answer is almost always that the Ask is shaped but not
   approved — tell them that rather than looking for another way in.
 
-## 4 · The loop
+## 4 · The loop — one Ask, three jobs
 
-**Take the next approved Ask** (it serves AND claims in one call):
-
-```bash
-curl -s -X POST "$VIBEASSIST_URL/api/public/claude/next-approved-ask" \
-  -H "Authorization: Bearer $VIBEASSIST_TOKEN" -H "content-type: application/json" \
-  -d '{}'
+```
+build  ──report_delivery──▶  code_check  ──all clean──▶  review  ──merges──▶  accepted
+ (worker A)                   (worker B)                  (worker C)
 ```
 
-`{"ok":true,"ask":null}` → nothing is approved: say so and stop (or offer to
-wait, in drain). 401 → token problem (re-run the checker). Otherwise you get
-`ask` with its **Shape** (`want`, `mustDo`, `mustNot`), its place in the tree
-(`parentName`, `children`), what it `touches`, the `actions` it names, the
-`branch` to use, the `commitTrailer` to stamp, plus `repo`, `config` and
-`designLanguage`.
+Each arrow is the app firing the next job. You never call the next step
+yourself, and you never do two of the three on the same Ask.
 
-**You are served leaves, not parents.** The deepest approved Ask comes first,
-and a parent is never handed out while a needed child of it is unfinished — a
-parent is delivered by delivering its children. So: do not go looking for the
-parent, and build only the Ask you were handed. Its children are someone else's
-turn, possibly another worker's right now.
+### 4.0 · GET NAMED. Everything else depends on it.
 
-**Right repo, before touching any file:** `git remote get-url origin` must match
-`ask.repo.fullName` — never assume the current directory is correct (stale
-clones in OneDrive/Documents are a known trap). `repo.fullName` null → no repo
-is connected; stop and say so. Mismatch → find the right clone
-(`VIBEASSIST_REPO_DIR` if set, else ask via the question channel); multiple
-matching clones → ask which is canonical, never guess. Then `git fetch origin`
-and `git status` — far behind or unexpectedly dirty → surface it rather than
-building on a stale base.
+**Every `wait_for_work` and `next_job` call passes a steady `workerId`** — one
+name for this session, the same one every time.
 
-a. **Build in your own worktree, beside the served checkout.** Before building an
-approved Ask, create a git worktree for the Ask's `branch` as a **sibling of the
-served checkout, inside the project folder** — the same parent as the folder the
-app runs from — named `<checkout>-<shortId>`:
+**A review may never go to whoever built the thing.** An unnamed worker cannot
+be told apart from the builder, so the app **never hands a review to one at
+all**. And a review is the only thing that merges anything.
 
-```bash
-git fetch origin main
-git worktree add -b <ask.branch> ../<checkout>-<askShortId> origin/main
-```
+So the failure is silent, and it looks like nothing is wrong: builds run,
+deliveries land, Asks reach `delivered`… and stop there forever. From the
+outside it reads as "the workers aren't finishing". **It is one missing
+argument.**
 
-App served from `<project>/app` → build in `<project>/app-<askShortId>`. Plugin
-served from `<project>/plugin` → `<project>/plugin-<askShortId>`. Base it on the
-latest main line and do ALL work there: edit, test, typecheck, build, commit.
-**Never build in the served folder, and never put the worktree in a global
-scratch location outside the project** — a served folder swapped onto a build
-branch shows the user half-built work in their running app and loses whatever
-they were looking at, and a worktree parked outside the project drifts away from
-the checkout it belongs to. The served folder stays pinned to `main`. Remove the
-worktree once merged (`git worktree remove <path>`).
+If you are ever handed the code pass or the review of a build you made in this
+session, do not run it — `complete_job({ jobId, error: "I built this — it needs
+a different worker" })` and keep listening.
 
-**Build to satisfy the Ask's `mustDo` — that IS
-the definition of done**, and read it before writing any code. Anything NOT in
-the Shape is out of scope: a proposal on the board, never a silent diff change.
-A gap in the Shape is a question for the user, not a guess — an Ask with an
-empty `mustDo` is under-shaped, so `/ask` a recommendation-first question rather
-than inventing what "done" means. Honour `mustNot` as a hard boundary.
-`designLanguage` is binding on UI work — ratified AND proposed sections.
-**Anchor the build to a durable goal:** hold `mustDo` as your working objective
-for the whole Ask (a `/goal`-style anchor if your harness supports it) so a
-long, compaction-heavy build never drifts from what "done" means — re-read it
-before you call the Ask finished. An Ask introducing the app's FIRST instance of
-an element type: build a sensible default from the existing tokens/sections and
-say in the PR description which type this is the first of and what you chose —
-never `/ask` for a design call, which would stall a build at 3am on a decision
-you can make and show. Confirm before anything destructive.
+**One listener cannot finish an Ask by itself.** Follow the rule to its end: a
+lone listener builds everything, so it is the builder of everything, so it is
+never handed a review. **Two listeners with two different `workerId`s is the
+working arrangement** — each builds its own Asks and reviews the other's. If you
+are the only one running and Asks are stacking up at `delivered`, say so to the
+owner in one line: *"Start a second listener — a review can't go to whoever
+built the thing, so one on its own can't merge anything."*
 
-**You are NOT handed a technical brief, and that is deliberate.** Working out
-how to build it is your job. Do not file tasks, do not create sub-Asks to track
-your own steps, and do not report your working — none of it belongs on the
-user's board.
+### 4.1 · `build` — make it, report it, leave it
 
-b. **Say what you are doing while you do it:**
+Full playbook: **`references/delivery-on-asks.md`** — read it once per build and
+follow it. In short:
+
+a. **Read the Ask** — `get_ask({ askId })`. The `want`, the **must-do** (that IS
+the definition of done), the **must-not** (a hard boundary), the `plan` the
+owner approved (**build to it** — the three shape lines alone are not your
+brief), and `changeAsked` when the owner wants what they already have to be
+different. A gap in the Shape is a question, never a guess. An empty line is
+empty on purpose. **Never `list_asks`, never the running app's page, and never
+hunt for a `plan/` folder** — the board is the app, not a folder in the repo.
+
+b. **Resolve the repository from the JOB** — `list_projects`, find the job's
+`projectId`, use `repo.where`. Never the folder you are standing in. `repo` null
+→ one plain question, then stop.
+
+c. **Build in the Ask's own worktree**, a sibling of the served checkout inside
+the project folder, named `<checkout>-<shortId>`:
 
 ```bash
-curl -s -X POST "$VIBEASSIST_URL/api/public/claude/report-ask-progress" \
-  -H "Authorization: Bearer $VIBEASSIST_TOKEN" -H "content-type: application/json" \
-  -d '{"askId":"<ASK_ID>","doing":"wiring the sign-in form to the account it creates"}'
+git -C <where> fetch origin main
+git -C <where> worktree add -b <branch> ../<checkout>-<shortId> origin/main
 ```
 
-One short phrase in the PRODUCT's words, never files or approach. Call it when
-you move to a different part of the work, and at least every twenty minutes or
-so on a long build. This is not decoration: the person can see the work
-happening instead of staring at an Ask that has said "building" for an hour, AND
-the lease that decides whether an Ask gets handed to someone else is measured
-from the last thing you said. Go quiet for the full lease and your Ask is
-reclaimed, correctly — from the outside, silence and death are the same thing.
+Every edit, test, typecheck, build and commit happens there. **Never in the
+served folder**, never on a global scratch path outside the project. The served
+folder stays on `main`. The name is a handshake — it is how the next two workers
+find this work.
 
-c. **Git:** the Ask's `branch` → push → pull request; NEVER commit to,
-fast-forward, or push `main` — the PR merges itself once the checks are green.
-No GitHub token or `gh` needed: pass `branch` + `commits` to the delivery call
-and VA opens (or reuses) the branch→main PR from its own stored credentials.
-For explicit control (early PR, draft, non-main base) use `open_pr`. End EVERY
-commit message with a blank line then the `commitTrailer` you were handed
-(`VibeAssist-Ask: <ASK_ID>`) — that trailer is how commits find their way back
-to the Ask; without it the link is guesswork.
+d. **Say what you are doing** — `report_progress({ jobId, note })`, one short
+line in the product's words, whenever you move to a different part of the work
+and every few minutes on a long build. It is also what keeps the job yours:
+silence and death look the same from outside.
 
-d. **Pre-PR gate:** `bun run verify` — the SAME checks CI runs (typecheck, lint,
-any-ratchet, format:check incl. docs/markdown, launcher-ascii, migrations,
-job-features, types-drift, test, build) — must be fully green before ANY PR is
-opened; never ship on a subset. Re-run it after merging a base branch in.
-Touched a migration → also run `bun run db:types` and commit the regenerated
-types file (types-drift only runs in CI; a stale types file is the most common
-release-blocker).
+e. **Stamp every commit** with `VibeAssist-Ask: <askId>` after a blank line.
+Load-bearing twice: it links commits to the Ask, and it is what the code pass
+reads to answer `broughtIn` honestly.
 
-**Verify inward — green from the tool is not "the running thing is right."**
-After any generator, scaffold, route-gen, rename or move, open **each touched
-surface** and confirm its real content survived — a generator can quietly stub a
-file back to boilerplate and still pass typecheck. Check the thing, not just the
-exit code. (A route generator once stubbed a real page to `Hello "/route"!` and
-the build reported done.) This is `verify from reality` pointed at your own
-hands, and it is the one thing the green checks cannot catch.
+f. **Get it right before handing it on** — run the project's own tests,
+type-check, linter and build as you work, and apply any database change your
+work needs. **Verify inward:** after any generator, scaffold, rename or move,
+open each touched surface and confirm the real content survived. Green from a
+tool is not the running thing being right.
 
-e. **Self-review before reporting (opt-in — only when `config.selfReview` is
-true; a per-project POC, off by default).** Before reporting delivery, spawn ONE
-independent reviewer subagent (the Task/Agent tool) with NO authorship context:
-_"You did NOT write this code. Read the diff for this Ask. For EACH line of its
-Must do, output pass/fail plus the file:line that satisfies it. Default to fail
-if uncertain."_ If any line comes back fail, FIX it in-loop and re-review — do
-not report the Ask delivered. **One level of nesting only: the reviewer must not
-spawn its own subagents.** When `config.selfReview` is false, skip this entirely
-(the server-side gate remains the backstop).
+g. **Report it** — `report_delivery({ jobId, does, check, flags })`. `does` is
+what it NOW DOES in the person's own words about their own product; `check` is
+the branch and what to open; `flags` is anything left for them, usually empty.
+**This reports AND finishes the job and fires the code pass** — no
+`complete_job` after it.
 
-f. **Report what you built — once per Ask, right after it:**
+h. **STOP.** **No push. No merge. No cleanup.** Leave the worktree and the
+branch exactly where they are — they are the handoff, and removing them strands
+the two jobs that come next.
+
+Could not build it → `complete_job({ jobId, error })`, one honest sentence, and
+no delivery report. Needing a decision is not a failure: that is `ask_user`.
+
+### 4.2 · `code_check` — a DIFFERENT worker, and nothing here is a judgment
+
+Full contract: **`references/code-check.md`**. In short:
+
+a. **Work in the worktree the build left** — `<checkout>-<shortId>` under the
+job's `repo.where`.
+
+b. **Bring the build up to date FIRST** — merge the main line into the branch
+and **fix what clashes.** Do not abort and hand conflicts back.
+
+c. **Check the COMBINED result, never the branch alone.** The branch on its own
+is not the thing that would be merged.
+
+d. **Run the project's own checks** — its tests, its type-check, its linter, its
+build. Read the real commands off the project; do not invent one and do not run
+a subset. **Then the database:** apply the changes this build needs, and confirm
+the code and the database still agree.
+
+e. **The honesty contract.** `broughtIn` is every Ask id you merged in, **read
+off the `VibeAssist-Ask:` trailers** — not remembered. `ranMigrations` is every
+database change you ran, by version. **The app checks both against real state,
+and if what you say and what it finds disagree, the build goes back.** Name them
+accurately rather than generously.
+
+f. **Report what the commands SAID** —
+`report_code_check({ jobId, broughtIn, ranMigrations, tests, types, lint, build, dbAgrees, found })`.
+Not what you expected them to say, and not what the build said about itself.
+**`found` is owed on any failure**, in enough detail to fix.
+
+g. **Any one false blocks the build right there** — no review starts, nothing
+merges, the Ask goes back with `found` on it. All clean is the only thing that
+starts a review. **Merge nothing**, and leave the worktree and branch in place
+either way.
+
+### 4.3 · `review` — a THIRD worker, and THE ONLY THING THAT MERGES
+
+Full contract: **`references/review.md`**. In short:
+
+a. **Only one review runs board-wide at a time.** Nothing else is landing while
+you hold it — which is exactly what makes the merge at the end safe.
+
+b. **The code pass is already clean** on the combined result, or this job would
+not exist. **That half is settled** — not yours to reopen, not yours to wave
+through. What is left is the reading only judgment can do.
+
+c. **The build's own account is a signpost, never evidence.** Use it to find the
+work; never believe it about the work.
+
+d. **Bring it up to date again** (something may have landed since — a build
+merged from an older start quietly undoes finished work), then **read the
+combined result yourself**: `get_ask`, the real diff, and **run the thing.**
+
+e. **Three questions.** Does it do what the Ask wanted? Is every must-do there
+and every must-not respected? Was anything built that the Ask never asked for?
+Judge against the Ask, not against your taste.
+
+f. **It passes → MERGE IT YOURSELF FIRST**, then report:
 
 ```bash
-curl -s -X POST "$VIBEASSIST_URL/api/public/claude/report-ask-delivery" \
-  -H "Authorization: Bearer $VIBEASSIST_TOKEN" -H "content-type: application/json" \
-  -d '{"askId":"<ASK_ID>","outcome":"accepted",
-       "built":"<what it now does, in the product'"'"'s words, for the owner>",
-       "branch":"<branch>","commits":["<sha>"]}'
+git -C <where> merge --ff-only <branch>
 ```
 
-`built` is the ONE free-text field and there must never be a second — the old
-road had `techDetails` beside its notes, and that is exactly where developer
-working leaked back onto a board that is meant to be the owner's. Write it in
-the product's words: what the thing now does for the person. If a sentence would
-only mean something to a developer, it belongs nowhere.
+then `report_review({ jobId, passed: true, merged: true })`. **A pass is refused
+until the merge has landed**, because reporting the pass is what marks the Ask
+**accepted** — a pass on an unmerged branch says something happened that didn't.
 
-**The build record is read from code, not written by you.** What an Ask touched
-— files, the machinery it uses, the rules it honoured — is read back from the
-code afterward, so never hand-transcribe it onto the Ask; `built` is the one
-product-words sentence and nothing else. A change you're handed flows to the
-build the same way: build it, report what it now does. Updating the Ask's
-**shape** is the front gate's job, and only when the change makes the shape's own
-words wrong — a preference the shape never stated never touches it.
+g. **Then clean up — this is yours, not the builder's.**
 
-`outcome: "accepted"` means _you finished it_. It does **not** mark the Ask
-accepted — that verdict is the user's. `outcome: "failed"` returns the Ask to
-approved so another worker can take it, and is **refused unless `built` carries
-one plain sentence saying what stopped you** ("the sign-in page needs a decision
-about what happens after Google login", not "blocked on OAuth callback config").
-Never leave an Ask stranded on `building`. If the PR could not be opened, the
-delivery is still recorded and the reason comes back in `warnings` — surface it,
-never swallow it.
+```bash
+git -C <where> worktree remove ../<checkout>-<shortId>
+git -C <where> branch -d <branch>
+```
 
-g. **Advance per mode.** review → ask via the inbox before the next Ask.
-run → at the run's end the go/no-go goes through a `kind:"decision"` /ask, never
-a bare terminal question. drain → take the next approved Ask until `ask:null`.
+The builder finished long before this point and had to leave those behind for
+you. **If nobody does it here, every Ask leaks a worktree and a branch.** Do it
+silently — it is part of the work.
+
+h. **It fails → merge NOTHING.** `report_review({ jobId, passed: false, found })`
+— and `found` is owed. A build told to try again and not told what to change is
+the loop this whole shape exists to prevent. Leave the worktree and branch for
+the next build.
+
+**After a few rounds of the same work failing, the app stops it on its own** and
+waits for the person rather than going round again.
+
+### Advance per mode
+
+review → ask through `ask_user` before the next Ask. run → at the run's end the
+go/no-go goes through a question, never a bare terminal prompt. drain → keep
+taking work until there is none.
 
 **Boundary hygiene — an optimisation, never a gate.** Never pause for
 `/compact`: self-compact if you can, otherwise SKIP and keep working
-(auto-compact carries it). `config.contextHygiene: fresh_session` → call
-`rotate_session` (its description covers the flow); not rotated → skip and
-continue. After ANY compact or rotation, re-fetch state from VibeAssist —
-durable truth lives there, not in conversational memory.
+(auto-compact carries it). After ANY compact or rotation, re-fetch state from
+VibeAssist — durable truth lives there, not in conversational memory.
 
 ### The run — one ordered list, and it is theirs
 
@@ -373,8 +376,7 @@ after the queued ones. Nothing becomes invisible by not being queued — that wa
 the mistake sprints made.
 
 You may **propose** what goes in it and in what order — "six Asks are approved
-and aren't in the run; add them?" — through `ask`. Their tap is the consent, and
-only then do you call `set_run_order` with the whole order. Read the current run
+and aren't in the run; add them?" Their tap is the consent. Read the current run
 from `list_asks` (`runPosition` on each row; null means not in it).
 
 ### Shaping gate — chat is intake, not a delivery chute
@@ -386,103 +388,86 @@ walk's full mechanics live in the `vibeassist-decompose` skill — its single-As
 shaping entry is built for exactly this handoff.) You may shape it on the user's
 behalf (quicker) rather than making them do it — but work out which Ask it
 belongs to, apply the change there (or create a new Ask), and NAME where it
-landed. This is the FRONT gate; the delivery report (step f) is the matching
-BACK gate. Approved Asks are already through this gate — build them.
+landed. This is the FRONT gate; the review (§ 4.3) is the matching BACK gate.
+Approved Asks are already through this gate — build them.
 
-## 5 · Questions — the VA inbox is the ONLY visible channel
+## 5 · Questions — `ask_user`, and it PARKS the job
 
-Anything you need the user for — decisions, ambiguity, risk, plan confirmation,
-or a capability/environment blocker (missing credential, tool, permission) —
-goes through `/ask`, in EVERY mode including review. A terminal-only prompt is
-an invisible stall: the queue looks healthy while nothing moves.
+Anything you need the user for — decisions, ambiguity, risk, or a
+capability/environment blocker (missing credential, tool, permission) — goes
+through `ask_user({ jobId, question, options, recommendedOptionId, reasoning })`,
+in EVERY mode including review. A terminal-only prompt is an invisible stall:
+the queue looks healthy while nothing moves.
 
-```bash
-curl -s -X POST "$VIBEASSIST_URL/api/public/claude/ask" \
-  -H "Authorization: Bearer $VIBEASSIST_TOKEN" -H "content-type: application/json" \
-  -d '{"askId":"<ASK_ID>","question":"<one clear sentence>","kind":"decision",
-       "options":[{"id":"a","label":"…"},{"id":"b","label":"…"}],
-       "recommendedOptionId":"a","reasoning":"<one sentence>"}'
-```
+**Scope it to the job you hold.** The question then shows on the Ask that is
+stopped, which is what lets the answer bring that job back to whoever is
+listening then.
 
-**Scope it to the Ask you are building — pass `askId`, not `projectId`.** The
-question then shows on the Ask that is stopped and your build stays open, so you
-carry on the moment it is answered. A project-level question about an Ask you
-are building blocks nothing, lands nowhere near the Ask, and the answer has no
-way back to you.
+**Recommendation-first:** whenever you pass `options` (2–4, crisp,
+mobile-friendly) you MUST pass `recommendedOptionId` and a one-sentence
+`reasoning`, so the user can OK your call in one tap. **A question you could
+answer yourself from the Shape is a defect** — answer it, don't ask it.
 
-Returns `{"ok":true,"questionId":"<id>"}`. **Recommendation-first:** whenever you
-pass `options` (2–4, crisp, mobile-friendly) you MUST pass `recommendedOptionId`
-+ one-sentence `reasoning` so the user can OK your call in one tap. A question
-you could answer yourself from the Shape is a defect — answer it, don't ask it.
-Fall back to a terminal question ONLY if `/ask` is genuinely unavailable, and
-say so.
-
-Then park cleanly and STOP on that Ask: commit WIP as `[parked] WIP: <ask
-name>` (a real commit ending with the ask trailer, never a stash). **Asking
-parks the work and ends your turn on it** — do not poll for the answer, and
-never keep a claim alive while you wait; the answer brings the work back to
-whoever is listening then. Take another SAFE Ask only (nothing that builds on
-parked work); answered blockers outrank fresh work. `dismissed` → proceed on
-best judgment. The question IS the record of why you stopped — do NOT also
-report the delivery failed, which would hand the Ask to the next worker to hit
-the same wall. Full park-and-resume protocol →
-`references/question-channel.md`. Out of safe work → say the questions are
-waiting in the VA inbox, and stop.
+**Asking parks the job and ENDS your turn on it.** Do not poll `get_answer`. Do
+not send `report_progress` to hold the claim — a parked job has no claim and the
+call is refused. Do not also report the job failed; the question is already the
+record of why you stopped. On a build, commit the work-in-progress on the Ask's
+own branch as `[parked] WIP: <ask name>` — a real commit with the trailer, never
+a stash — then stop. Full park-and-resume protocol →
+`references/question-channel.md`.
 
 ## 6 · Guardrails (always binding — history in `references/incidents.md`)
 
-- Never push to, commit to, or fast-forward `main`. Branch → PR. Stop at "PR
-  opened" and report the URL.
-- The canonical clone stays pinned to `main` — build ONLY in worktrees;
-  machine-command guidance you emit is pull-first.
-- **Build in your own worktree, beside the served checkout** (step 4a). One
-  worktree per Ask, a sibling of the served checkout inside the project folder
-  (`<project>/<checkout>-<shortId>`), off latest main. **Which checkout is
-  decided by the JOB's project, not by where you were started** — a listener
-  serves every repo, and `list_projects` says where each one lives
+- **Pass a steady `workerId` on every `wait_for_work` / `next_job`.** Without
+  it no review is ever handed out and nothing on the board merges (§ 4.0).
+- **There are no pull requests.** Never push a branch for review, never wait on
+  CI, never expect anything to merge itself. The reviewer merges, by hand, on a
+  pass — that is the whole gate.
+- **Never commit to or fast-forward `main` except as the reviewer's merge**
+  (§ 4.3f), and never inside a build.
+- **Never do two of the three jobs on one Ask.** If you built it, you do not
+  check it and you do not review it — refuse and say why.
+- **Build in the Ask's own worktree, beside the served checkout** (§ 4.1c). One
+  worktree per Ask, a sibling of the served checkout inside the project folder,
+  off the latest main line. **Which checkout is decided by the JOB's project,
+  not by where you were started** — `list_projects` says where each one lives
   (`repo.where`). A project with no repo set is one plain question — the owner
-  sets it in the app, Project settings → "Where the code lives" — never a guess.
-  See `references/standby.md` § One listener, every repo. Never run a build in the
-  folder the dev app serves, never leave that folder sitting on a build branch,
-  and never put the worktree in a global scratch location outside the project.
-- Open early PRs as DRAFTS while still pushing; mark "Ready for review" exactly
-  once, as your final act — no finished Ask leaves a draft PR.
-- `bun run verify` fully green before ANY PR (step 4d) — docs and markdown
-  included; on Windows, re-check lint/format CRLF noise with
-  `prettier --check --end-of-line auto`. A `build`-only failure usually means a
-  Node builtin imported at the top of a client-bundled file — keep server-only
-  code in a `.server.ts` helper.
-- One delivery report per Ask, right after it, in the product's words.
-- Verify inward (step 4d): after any generator, scaffold, rename or move, open
-  each touched surface and confirm real content survived — green from the tool is
-  not the running thing.
-- When work comes back, the send-back's routing reason says where it failed —
-  **overstep** and **doesn't-work** are yours (the build); **missed intent** and
-  **rule breach** are the shaping/product side, not yours to silently reshape.
-  Fix your side; never edit the Ask's shape to make a send-back go away.
-- Beat while you build (step 4b). Silence is how a live build gets reclaimed.
+  sets it in Project settings → "Where the code lives" — never a guess. Never
+  build in the folder the dev app serves, never leave that folder on a build
+  branch, and never put the worktree outside the project.
+- **The builder never removes the worktree or the branch. The merge does.**
+  Cleaning up at the end of a build strands the code pass and the review;
+  skipping it at the merge leaks one of each per Ask, forever.
+- **Check and review the COMBINED result**, never the branch on its own — both
+  passes bring the main line in first and fix what clashes.
+- **Say what a command SAID.** A code pass reports the real result of the real
+  command; a red test is `tests: false` with `found` filled in, never a job
+  error and never a note to carry on with. An unapplied migration and a
+  code/database disagreement are failures exactly like a red test.
+- **`broughtIn` and `ranMigrations` are read, not remembered.** The app checks
+  them against real state and sends the build back on an overclaim.
+- **A fail must say what was wrong.** `found` is owed on any failed check and
+  any failed review — a build told to try again with no reason is the loop this
+  design exists to prevent.
+- **Verify inward** (§ 4.1f): after any generator, scaffold, rename or move,
+  open each touched surface and confirm real content survived.
+- **Beat while you work** (§ 4.1d). Silence is how a live job gets reclaimed.
+- **One delivery report per Ask, right after it, in the product's words.**
 - Chat is intake, not a delivery chute: a request arriving in chat is captured
   as an Ask and SHAPED (walk → propose → agree) before any build — never built
   inline. Name which Ask it landed on.
-- Overnight/drain runs build everything buildable; stop ONLY for needs-a-decision
-  or superseded, each recorded where the user sees it, and end with one complete
-  report.
-- Every delivery's `built` carries a "Manual steps:" section (operator grade:
-  full command, stated folder, plain language, a "you'll know it worked when…"
-  signal — or exactly "Manual steps: none") AND an "Outside the Ask:" section
-  (anything touched beyond the Shape, or exactly "none").
-- One branch and one PR per Ask; keep changes scoped. New work you SPOT becomes
-  a proposal, never a silent diff change.
+- New work you SPOT becomes a proposal on the board, never a silent diff change.
+  Keep changes scoped to the Ask you hold.
+- When work comes back, fix your side — **never edit the Ask's shape to make a
+  send-back go away.** Work that overstepped or does not work is yours; a shape
+  that asked for the wrong thing goes back to the owner as a question.
+- Overnight/drain runs build everything buildable, **and see each Ask through to
+  merged**, stopping ONLY for needs-a-decision or superseded, each recorded
+  where the user sees it, and ending with one complete report.
 - Confirm before destructive actions, regardless of mode.
 - Stop after 2 consecutive failures and report — don't burn through the queue.
-- A claimed Ask you won't finish never stays `building` — report
-  `outcome: "failed"` with the reason in `built`, so it returns to approved for
-  someone else.
-- NO INVISIBLE PAUSES: every deliberate stop goes through the VA inbox
-  (`/ask`), never ONLY the terminal — in all modes. This covers review
-  checkpoints, failure stops, ambiguity, and capability/environment blockers.
-  A terminal prompt may MIRROR the inbox decision, never replace it.
-- Error telemetry: a notable error you work AROUND still gets a one-line
-  `kind:"notice"` breadcrumb on the current Ask (error + what you did). Signal,
-  not noise — skip trivial fully-recovered blips.
-- Never print or log `VIBEASSIST_TOKEN`.
+- A claimed job you won't finish never goes quiet — `complete_job` with an
+  error, so it returns for someone else.
+- NO INVISIBLE PAUSES: every deliberate stop goes through `ask_user`, never
+  ONLY the terminal — in all modes. A terminal prompt may MIRROR the question,
+  never replace it.
