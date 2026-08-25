@@ -57,6 +57,26 @@ anything it said was left to do. **Use it to find the work. Never believe it
 about the work.** A build reporting that it did something is exactly the claim
 you are here to test.
 
+## Two outcomes, and only two
+
+**A review ends in a MERGE or a SEND-BACK.** There is no third door.
+
+| Outcome       | How                                                             |
+| ------------- | --------------------------------------------------------------- |
+| It merges     | `report_review({ jobId, passed: true, merged: true })` — § 6a    |
+| It goes back  | `report_review({ jobId, passed: false, found })` — § 6c          |
+
+**"Held", "stopped", "left unmerged", "flagged for the owner" are not
+outcomes.** An ask left sitting at `delivered` with an unmerged branch is a
+review that did not finish. Nobody is watching that branch; the owner finds it
+days later, and the work is stale by then.
+
+**A merge you cannot do cleanly is a SEND-BACK, not a stop.** Hard is not a
+reason to hold — it is a reason to say what moved and let a fresh build do it
+again on the current main line. That path is automatic: reporting `passed:
+false` re-queues the ask, and the next builder starts from where the code is
+now.
+
 ## The review, step by step
 
 ### 1 · Read the ask
@@ -88,6 +108,39 @@ git -C <checkout>-<shortId> merge <mainline>
 **Do this even though the code pass did.** Something may have landed since, and
 **a build made on an older starting point and merged as it stands puts back what
 other asks have changed, quietly undoing finished work.** Fix what clashes.
+
+**Two kinds of clash, and they end differently.**
+
+- **Transient — the branch and the main line touched the same lines.** Ordinary
+  git conflict. **Resolve it and carry on.** This is part of the review, not a
+  reason to stop.
+- **Structural — the ground the build stood on has moved.** The main line has
+  changed the thing this branch was built against, so bringing it up to date
+  would mean writing the work again, not merging it. The button attaches to
+  counts that no longer exist; the table it reads was replaced; the page it
+  added is gone. **You cannot resolve this by editing conflict markers, and you
+  must not try.**
+
+  **A structural clash is a FAIL. Send it back, now:**
+
+  ```
+  report_review({ jobId, passed: false, found:
+    "<what moved on the main line, and why this branch no longer fits it>; build it again on the current main line" })
+  ```
+
+  That re-queues the ask and a fresh build rebuilds it against the code as it is
+  today. **It is not `complete_job`** — you ran the review fine, and the answer
+  it produced is "no". And it is not a hold: the ask must never be left
+  delivered-and-unmerged because the merge was hard.
+
+  **That call finishes the job — stop there.** Do not go on to step 4; there is
+  nothing sound left to read. Leave the worktree and the branch where they are,
+  the same as any other fail (§ 6c): the next build takes them over and does the
+  work again on the current main line, rather than patching the old one.
+
+**Never force a merge past a clash.** No `-X ours`, no `-X theirs`, no
+`--strategy` that throws one side away, no commit with markers still in the
+file. A merge you had to force is work quietly destroyed.
 
 ### 4 · Read the COMBINED result, and RUN IT
 
@@ -122,10 +175,13 @@ git -C <where> merge --ff-only <branch>
 ```
 
 You just brought the main line into the branch and nothing else can land while
-you hold
-the only review, so this fast-forwards. **If `--ff-only` refuses, something
+you hold the only review, so this fast-forwards. **If `--ff-only` refuses, something
 landed anyway** — go back to step 3, bring it up to date again, and re-read what
 changed before you try once more. Never force it.
+
+**If it refuses again after that re-sync**, treat it as the structural case in
+§ 3: send it back with `passed: false` and say what moved. **Do not hold the
+job open, and do not try a third time.**
 
 Then report:
 
@@ -180,8 +236,11 @@ waits for the person rather than going round again.
 `report_review` reports and finishes the job in one call. **Do not call
 `complete_job` after it** — a second finish comes back an error.
 
-`complete_job({ jobId, error })` is the failure path only: you could not run the
-review at all (no repository set, the branch is gone, the checkout is unusable).
-One honest sentence. **A build that fails review is not that** — that is
-`report_review` with `passed: false`, which is this job working exactly as
-intended.
+`complete_job({ jobId, error })` is for ONE thing: **you could not run the
+review at all** — no repository set, the branch is gone, the checkout is
+unusable. One honest sentence.
+
+**Nothing about the work itself goes down that road.** A build that fails the
+review is not that. Neither is a merge that clashes, however badly — a clash is
+an answer about the code, and answers go through `report_review` with
+`passed: false`, which is this job working exactly as intended.

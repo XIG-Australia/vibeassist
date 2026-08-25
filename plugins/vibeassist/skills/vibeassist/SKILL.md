@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.30.1 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.30.2 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.30.2 (25 Aug 2026): a review ends in a MERGE or a SEND-BACK — never held. A clash that only needs conflict markers resolved is resolved; a STRUCTURAL clash, where the main line has moved the ground the build stood on, is a fail — report_review({ passed: false, found: “<what moved> ; build it again on the current main line” }) — which re-queues the ask for a fresh build on today’s code. complete_job(error) is narrowed to “could not run the review at all”; a conflict never goes down it, and a merge is never forced. See references/review.md § Two outcomes, and only two. -->
 <!-- 0.30.1 (25 Aug 2026): every git command targets the REPO’S OWN main line, resolved per job — `git -C <where> rev-parse --abbrev-ref HEAD` — never the literal `main`. In a `master` repo the hardcoded name made every fetch, `worktree add` and merge reach for a branch that is not there, so nothing merged and asks stranded at `delivered`. See references/standby.md § The repo’s main line. -->
 <!-- 0.30.0 (25 Aug 2026): THE MERGE MODEL. One ask is THREE jobs to three different workers — `build` → `code_check` → `review` — and the REVIEWER MERGES on a pass. There are no pull requests, nothing waits on CI and nothing self-merges; `next_approved_ask`, `report_ask_progress`, `report_ask_delivery`, `open_pr`, `get_updates` and the whole curl delivery road are gone, along with `bun run verify` as a gate. `code_check` and `review` are live job kinds (see references/code-check.md and references/review.md) — undocumented, they were refused as unknown kinds and every ask stopped at `delivered`. EVERY `wait_for_work`/`next_job` PASSES A STEADY `workerId`: a review may not go to whoever built the thing, so an unnamed worker is never handed one and nothing ever merges. Worktree cleanup belongs to the MERGE, not the builder. -->
 <!-- 0.29.0 (25 Aug 2026): `plan` is THE PLAN — one artifact the owner approves and the builder builds to. A `write_build_notes` job is the ONLY pass that writes it (a `shape_ask` never does), it needs the repo because it reads code, it asks the owner NOTHING (a shape too thin to plan says what is unclear in the plan and finishes done), and it is written owner-readable and plan-level, sized to the change. A `build` reads the plan from `get_ask` and builds to it, not to the three shape lines alone. See references/standby.md and references/delivery-on-asks.md. -->
@@ -312,7 +313,12 @@ either way.
 
 ### 4.3 · `review` — a THIRD worker, and THE ONLY THING THAT MERGES
 
-Full contract: **`references/review.md`**. In short:
+Full contract: **`references/review.md`**. In short.
+
+**A review has exactly TWO outcomes: it MERGES, or it SENDS BACK.** "Held",
+"stopped", "left unmerged" are not outcomes — an Ask left at `delivered` with an
+unmerged branch is a review that did not finish, and nobody is watching that
+branch.
 
 a. **Only one review runs board-wide at a time.** Nothing else is landing while
 you hold it — which is exactly what makes the merge at the end safe.
@@ -327,6 +333,14 @@ work; never believe it about the work.
 d. **Bring it up to date again** (something may have landed since — a build
 merged from an older start quietly undoes finished work), then **read the
 combined result yourself**: `get_ask`, the real diff, and **run the thing.**
+
+**A clash that needs the work REDONE is a fail, not a stop.** An ordinary
+conflict you resolve. But where the main line has moved the ground the build
+stood on — the counts it attached to are gone, the table it read was replaced —
+you cannot merge it, so **send it back**:
+`report_review({ jobId, passed: false, found: "<what moved, and why the branch no longer fits>; build it again on the current main line" })`.
+That re-queues it and a fresh build works from today's code. **Never force a
+merge past a clash, and never route one through `complete_job`.**
 
 e. **Three questions.** Does it do what the Ask wanted? Is every must-do there
 and every must-not respected? Was anything built that the Ask never asked for?
