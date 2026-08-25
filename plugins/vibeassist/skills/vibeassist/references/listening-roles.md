@@ -14,6 +14,12 @@ everything after is pushed from VA (Start, questions, jobs). **Never make the
 user type further instructions into the terminal** — anything you need from them
 goes through `ask_user` on the job.
 
+**A restart is an ordinary kickoff, and it ends ARMED.** After a Ctrl+C the next
+`/vibeassist worker` loads this file, loads `references/standby.md` and calls
+`wait_for_work` — no recap of the stopped session, and no "shall I carry on?".
+Being started is the go-ahead. See `references/standby.md` § Starting again
+after a stop.
+
 **The worker's own wake road is gone.** A worker used to poll for an approved
 Ask over HTTP and pull it with `next_approved_ask`. That whole road — the
 `/updates` endpoint, the `~/.claude/va-standby.sh` bash loop, the stored token,
@@ -28,9 +34,20 @@ loop is the assistant calling it and re-arming.
 
 Every `wait_for_work` / `next_job` call carries one steady name for the session.
 A review may never go to whoever built the thing, so an unnamed worker is never
-handed one, so nothing merges and every Ask stops at `delivered`. The full
-reasoning is at the top of `references/standby.md`; the rule is one argument,
-every call.
+handed one, so nothing merges and every Ask stops at `delivered`. **Pin the name
+at kickoff and keep it, including across a compact** — a name that changes
+mid-session is two workers as far as the app is concerned. The full reasoning is
+at the top of `references/standby.md`; the rule is one argument, every call.
+
+**And when the wait is your own build's review, say so.** You delivered it, so
+you cannot be handed its review — say that once, in plain words, and carry on
+listening:
+
+> I built that one, so I can't review my own work. I'm waiting for a second
+> assistant to pick the review up. That's normal, not stuck — start another
+> listener and it will land.
+
+Full rule: `references/standby.md` § Waiting on the review of your OWN build.
 
 ## What a worker is now responsible for
 
@@ -112,3 +129,7 @@ reusing if an equivalent job kind returns — never as a road to go looking for.
 
 The session sits quietly between checks — that's normal, not hung. Stop it any
 time with Ctrl+C; work queued meanwhile is picked up by the next kickoff.
+
+**Every stop is named out loud, Ctrl+C included** — an unexplained stop is
+indistinguishable from a crash — and the way back is one command,
+`/vibeassist worker`, which arms straight away.
