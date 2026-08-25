@@ -38,6 +38,12 @@ repository from the job's `projectId` — `list_projects`, then `repo.where`
 (`references/standby.md` § One listener, every repo). Never use the folder you
 happen to be standing in.
 
+**Resolve that repo's main line too**, before any git command:
+`git -C <where> rev-parse --abbrev-ref HEAD` — call it `<mainline>`
+(`references/standby.md` § The repo's main line). It is `master` in some
+projects and `main` in others, so the literal `main` fails outright in the ones
+where it is not.
+
 The build's worktree is still there, beside the served checkout, named
 `<checkout>-<shortId>` — the builder is told to leave it exactly so you can pick
 it up. Work in it. If it is genuinely gone, make it again on the same branch:
@@ -52,8 +58,8 @@ git -C <where> worktree add ../<checkout>-<shortId> <branch>
 merged, and fix what clashes:
 
 ```bash
-git -C <where> fetch origin main          # skip where there is no remote
-git -C <checkout>-<shortId> merge main
+git -C <where> fetch origin <mainline>          # skip where there is no remote
+git -C <checkout>-<shortId> merge <mainline>
 ```
 
 **Resolve the conflicts — do not abort and report them.** Bringing it up to date
@@ -143,9 +149,9 @@ waits for the person instead of going round again.
 pass hands them to the reviewer, and a red one hands them back to the builder.
 **Cleanup happens once, at the merge, and it is the reviewer's.**
 
-**And merge nothing.** Bringing `main` INTO the branch is this job. Putting the
-branch into `main` is not, in any circumstance, however green the checks came
-out.
+**And merge nothing.** Bringing the main line INTO the branch is this job.
+Putting the branch into the main line is not, in any circumstance, however green
+the checks came out.
 
 ## The failure path is narrow
 

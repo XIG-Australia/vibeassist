@@ -17,7 +17,8 @@ work.**
 
 **Only one review is ever handed out at once.** While you hold this one, nothing
 else on the board is landing. That is not a queue problem — it is what makes the
-merge at the end safe, because nothing can slip into `main` between you bringing
+merge at the end safe, because nothing can slip into the main line between you
+bringing
 the build up to date and you merging it.
 
 So take your time and do it properly. Nothing is waiting behind you that a
@@ -71,11 +72,17 @@ Resolve the repository from the job's `projectId` — `list_projects`, then
 `repo.where` (`references/standby.md` § One listener, every repo). The ask's
 worktree is beside the served checkout, named `<checkout>-<shortId>`.
 
+**Resolve that repo's main line too** —
+`git -C <where> rev-parse --abbrev-ref HEAD`, call it `<mainline>`
+(`references/standby.md` § The repo's main line). Every git command below uses
+that name; the literal `main` is wrong in any project whose main line is called
+something else.
+
 ### 3 · Bring it up to date, again
 
 ```bash
-git -C <where> fetch origin main          # skip where there is no remote
-git -C <checkout>-<shortId> merge main
+git -C <where> fetch origin <mainline>          # skip where there is no remote
+git -C <checkout>-<shortId> merge <mainline>
 ```
 
 **Do this even though the code pass did.** Something may have landed since, and
@@ -114,7 +121,8 @@ pass. This is not a style review.
 git -C <where> merge --ff-only <branch>
 ```
 
-You just brought `main` into the branch and nothing else can land while you hold
+You just brought the main line into the branch and nothing else can land while
+you hold
 the only review, so this fast-forwards. **If `--ff-only` refuses, something
 landed anyway** — go back to step 3, bring it up to date again, and re-read what
 changed before you try once more. Never force it.
