@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.34.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.35.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.35.0 (26 Aug 2026): MUST-NOT IS A NEGATIVE REQUIREMENT, NOT A SCOPE FENCE. Three spots that told the shaper to fence scope by writing a must-not are corrected: a must-not is a gate or constraint the built thing must obey ("never allow login during maintenance"), never a record that a whole feature wasn't asked for — that is scope, owned by the cake rule's default. AND the cake rule gains its flip side, SUGGESTION IS NOT INVENTION: the shaper MAY propose a proportionate extra the owner might want, as a recommendation-first question — a birthday message on the cake or plates and napkins, yes; twelve tiers with someone leaping out, no. See § The cake rule and § Must do and must not. -->
 <!-- 0.33.0 (26 Aug 2026): THE SKILL IS THE AUTHORITY FOR HOW VA BUILDS. The whole loop is stated once in § 4 — the stages and who ends each, the status ladder, and the database rule — and a project’s CLAUDE.md never overrides it (it owns what the repo IS: stack, branch names, folders, real commands). THE LADDER IS CORRECTED: `building` spans the WHOLE run; `report_delivery` moves NOTHING, it fires the code pass; a PASSING REVIEW writes `delivered` and must carry `mergedCommit` or it is refused; `accepted` is the OWNER’s alone. So a stranded board sits on `building`, not `delivered`. DATABASE CHANGES ARE THE CODE PASS’S: safe ones applied silently, destructive ones gated behind `ask_user` — replacing the old “the owner applies every migration by hand”. -->
 <!-- 0.32.0 (26 Aug 2026): the plan records prerequisites as ROWS as well as prose. `needs_first({ askId, needs, forget })` writes what the board acts on — the run order and the one-press “cue those first” — and the prose line is what the owner reads; both name the same asks and never drift. The pass writes the CURRENT set: read first, add each, forget every row it did not name, and do it all BEFORE `report_build_notes`, which ends the job. An unshaped prerequisite still gets a row (the cue-check shows “still needs shaping”); a prerequisite with no ask id gets the prose line only — never an invented row. “Nothing needed” is recorded on both channels. See the decompose skill § Record it TWICE. -->
 <!-- 0.31.0 (26 Aug 2026): the PLAN works out the BUILD ORDER. Every plan ends with a line or two saying what has to be built first — whether the parent is a real prerequisite or only a grouping, and any prerequisite that is NOT the parent (a sibling, a cousin, a foundation elsewhere). “No order needed” is written down too: a stated no is information, silence is not. The tree says what groups under what, never what comes first. This pass reasons and RECORDS — it never moves, re-parents or reorders anything. See the decompose skill § Build order. -->
@@ -116,17 +117,29 @@ So the rule, binding in every mode and every shaping pass:
   flourish the shape does not name is not permitted-by-omission — it is
   UNDECIDED, and undecided means a walk-question or a held ask, never a
   delivery.
-- **Fence the scope where the temptation is real.** During shaping, ask
-  "how plain?" and write the answer down. The generic fence lives ONCE, as
-  an app-level rule: "Build only what the asks say. Anything extra is a
-  question first." A per-ask must-not is added only where a builder would
-  plausibly add something this user doesn't want ("no extra fields beyond
-  title, due and status", "no settings screen"). Don't repeat the generic
-  fence on every ask.
+- **Scope is the default, not a must-not.** During shaping, ask "how plain?"
+  and land the answer in the want. The generic fence lives ONCE, as an
+  app-level rule the builder now carries too: "Build only what the asks say.
+  Anything extra is a question first" (build skill § 6). Don't repeat it per
+  ask, and don't turn it into must-nots. "No settings screen nobody asked
+  for" is not a must-not — it is scope, and the default already refuses it.
+  A must-not is a different tool, for a different job (§ Must do and must not).
 - **The shape is the stop button.** Review judges delivered-vs-agreed
   against the shape's lines, so an unrequested embellishment is a
   *violation* to send back, never a bonus to applaud. Write shapes tight
   enough that this is checkable.
+
+**The flip side — suggestion is not invention.** Everything above restrains
+what gets BUILT unasked; none of it restrains what the shaper may OFFER.
+Proposing an extra the owner might want is the shaper's job, and a delight
+when it lands — as long as it serves the want they already have and stays in
+proportion to it. A birthday message on the cake, plates and napkins to eat
+it with: offer them. Twelve tiers with someone leaping out: no — that trades
+their want for a grander one they never had. The test, per suggestion: would
+a thoughtful person filling THIS request naturally add it, or does it turn
+the request into a bigger, different one? Offer the first as a
+recommendation-first question — one or two at most — never the second, and
+never a stream of them.
 
 This is why a bare-titled ask is dangerous, not just unfinished: a title
 with no fence is an invitation for the build session to imagine the rest.
@@ -146,11 +159,15 @@ The two must lines exist for where inference goes wrong, and only there:
   from the want. For the deposit: "send a confirmation text", "block out the
   time in the calendar once payment succeeds". Neither is in the want, and a
   builder could plausibly skip both.
-- **Must not** refuses what a builder might WRONGLY add or assume —
+- **Must not** is a negative requirement — a gate or constraint the built
+  thing must obey. It refuses what a builder might WRONGLY add or assume:
   something that could be considered a real option, actively refuted in
-  advance. "Never save customer card details." "Never refund from the app."
-  In the owner's words: must-nots are "things that could be considered as a
-  possible option, but we're making sure they're actively refuted."
+  advance. "Never save customer card details." "Never allow login during
+  maintenance." "Never let this page be crawled." In the owner's words:
+  must-nots are "things that could be considered as a possible option, but
+  we're making sure they're actively refuted." It is NOT where you record
+  that a whole feature wasn't asked for — that is scope, and the cake rule's
+  default handles it, never a must-not line.
 
 Three rules follow:
 
@@ -830,10 +847,10 @@ the corrections a builder needs.
 - For a UI ask: columns, states, behaviour, filters, sorting, design rules.
 - For any other ask: the equivalent defining detail — inputs, rules, edge
   behaviour, what "done" observably looks like.
-- For EVERY ask: ask "how plain?" (the cake rule). Where a builder would
-  plausibly add something the user doesn't want, refuse it in a must-not.
-  Where nothing tempting exists, write no must-not — the app-level fence
-  already covers the generic case.
+- For EVERY ask: ask "how plain?" (the cake rule). Land the answer in the
+  want. What NOT to build is the default, never a must-not; only a genuine
+  constraint the built thing must obey becomes a must-not. Where there is no
+  such constraint, write none — the app-level fence covers the generic case.
 
 Shaping questions are recommendation-first, mostly proposals the user confirms.
 Land each answer in the right line: general picture → the want; a builder might

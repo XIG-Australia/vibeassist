@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.34.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.35.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.35.0 (26 Aug 2026): BUILD ONLY WHAT THE ASK SAYS — SILENCE IS NOT LICENCE. § 6 gains a binding guardrail: an empty must-not is not permission; the default is the plainest competent version of the want and nothing more; a worthwhile addition goes back to shaping as its own question BEFORE it is built, never slipped into the build to be found and pulled out later. § 4.1a nudges it at the point the Ask is read. The rule's home is the decompose skill § The cake rule — this is the build-time half that was missing, and its absence let unshaped and direct builds invent unrequested features. -->
 <!-- 0.34.0 (26 Aug 2026): A REVIEW IS INDEPENDENT BECAUSE IT RUNS IN A FRESH SUB-AGENT, not because it runs in somebody else’s session. A reviewer that has never seen the work built cannot inherit the builder’s assumptions, so ONE listener builds, checks, reviews and merges its own work and NEVER waits for a second listener to exist. The sub-agent is briefed with POINTERS ONLY — job, ask, repo, branch, worktree, contract file — never a summary of what the builder did; it reads get_ask, the real diff and the running thing. The listener holds the claim while the sub-agent works, so a stop mid-review loses nothing. It says “reviewing — a fresh agent is reading it”, never “waiting for another worker”. Retired: “never the builder”, “two listeners is the working arrangement”, and complete_job({ error: “I built this” }). See references/standby.md § INDEPENDENCE COMES FROM THE FRESH SUB-AGENT. -->
 <!-- 0.33.0 (26 Aug 2026): THE SKILL IS THE AUTHORITY FOR HOW VA BUILDS. The whole loop is stated once in § 4 — the stages and who ends each, the status ladder, and the database rule — and a project’s CLAUDE.md never overrides it (it owns what the repo IS: stack, branch names, folders, real commands). THE LADDER IS CORRECTED: `building` spans the WHOLE run; `report_delivery` moves NOTHING, it fires the code pass; a PASSING REVIEW writes `delivered` and must carry `mergedCommit` or it is refused; `accepted` is the OWNER’s alone. So a stranded board sits on `building`, not `delivered`. DATABASE CHANGES ARE THE CODE PASS’S: safe ones applied silently, destructive ones gated behind `ask_user` — replacing the old “the owner applies every migration by hand”. -->
 <!-- 0.32.0 (26 Aug 2026): the plan records prerequisites as ROWS as well as prose. `needs_first({ askId, needs, forget })` writes what the board acts on — the run order and the one-press “cue those first” — and the prose line is what the owner reads; both name the same asks and never drift. The pass writes the CURRENT set: read first, add each, forget every row it did not name, and do it all BEFORE `report_build_notes`, which ends the job. An unshaped prerequisite still gets a row (the cue-check shows “still needs shaping”); a prerequisite with no ask id gets the prose line only — never an invented row. “Nothing needed” is recorded on both channels. See the decompose skill § Record it TWICE. -->
@@ -320,7 +321,8 @@ the definition of done), the **must-not** (a hard boundary), the `plan` the
 owner approved (**build to it** — the three shape lines alone are not your
 brief), and `changeAsked` when the owner wants what they already have to be
 different. A gap in the Shape is a question, never a guess. An empty line is
-empty on purpose. **Never `list_asks`, never the running app's page, and never
+empty on purpose — and an empty must-not is not room to add (§ 6: build only
+what the Ask says). **Never `list_asks`, never the running app's page, and never
 hunt for a `plan/` folder** — the board is the app, not a folder in the repo.
 
 b. **Resolve the repository from the JOB** — `list_projects`, find the job's
@@ -594,6 +596,15 @@ a stash — then stop. Full park-and-resume protocol →
 - Chat is intake, not a delivery chute: a request arriving in chat is captured
   as an Ask and SHAPED (walk → propose → agree) before any build — never built
   inline. Name which Ask it landed on.
+- **Build only what the Ask says — silence is not licence.** The default is the
+  plainest competent version of the want, and nothing more. An empty must-not is
+  not permission; anything the Shape does not name is UNDECIDED, not allowed —
+  ordinary competence within the want is expected, a new capability, screen,
+  option or flourish is not. A worthwhile addition that occurs to you goes back
+  to shaping as its own question — "this also wants X you didn't ask for; want
+  it?" — for the owner to take or leave BEFORE it is built, never slipped into
+  the build for them to find and pull out later. This is the cake rule; its home
+  is the decompose skill § The cake rule.
 - New work you SPOT becomes a proposal on the board, never a silent diff change.
   Keep changes scoped to the Ask you hold.
 - When work comes back, fix your side — **never edit the Ask's shape to make a
