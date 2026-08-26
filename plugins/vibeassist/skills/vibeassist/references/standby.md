@@ -224,8 +224,16 @@ section at the top of this file.
   the parent — a sibling, a cousin, a foundation elsewhere on the board — and
   writes one plain line per real one. **"No order needed" is written down too**;
   a stated no is information, silence is not. It **reasons and records only** —
-  it never moves an ask, re-parents one or changes the run order. The doctrine
-  is in that skill; do not restate it here.
+  it never moves an ask, re-parents one, cues anything or changes the run order.
+
+  **It records on TWO channels, and both are owed.** The prose line is for the
+  owner to read; **`needs_first({ askId, needs, forget })`** writes the rows the
+  board acts on — what orders the run and what puts the one-press "cue those
+  first" in front of the owner. Same prerequisites on both, never a row without
+  a real ask id, and the pass writes the CURRENT set: it forgets the rows it did
+  not name this time, so re-running leaves no stale leftovers. **All of those
+  calls come before `report_build_notes`**, which ends the job. The doctrine is
+  in that skill; do not restate it here.
 
   **This pass asks the owner NOTHING.** No `ask_user`, no parking on a question —
   shaping is where the owner is talked to. If the shape is too thin to plan, the
