@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.30.3 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.31.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.31.0 (26 Aug 2026): the PLAN works out the BUILD ORDER. Every plan ends with a line or two saying what has to be built first — whether the parent is a real prerequisite or only a grouping, and any prerequisite that is NOT the parent (a sibling, a cousin, a foundation elsewhere). “No order needed” is written down too: a stated no is information, silence is not. The tree says what groups under what, never what comes first. This pass reasons and RECORDS — it never moves, re-parents or reorders anything. See the decompose skill § Build order. -->
 <!-- 0.29.0 (25 Aug 2026): the read-back is THE PLAN — one artifact with two readers. The owner approves it and the builder builds to it, so it is written owner-readable and plan-level ("here's what I'll build"), with technical names only where the decision or the build genuinely turns on one. The old "technical direction for the builder, not for the owner" framing (0.19.0) is superseded. It is sized to the CHANGE — a one-line change gets a one-line plan — and empty stays a real answer. ONE WRITER: the `write_build_notes` pass the app fires when the conversation ends; a `shape_ask` never writes `build_notes` too. THE PLAN PASS ASKS NOTHING — no `ask_user`, no parking; a shape too thin to plan says what is unclear IN the plan and stops, and the owner takes it Back to shaping. The build reads the plan from `get_ask` and builds to it, not to the three shape lines alone. -->
 <!-- 0.28.0 (24 Aug 2026): shaping is ONE conversation. Form and Confirm are two movements of the same talk — same channel, same voice, one question at a time — and the owner cannot tell which is happening. A Confirm question puts the AI's reading up ("I'm taking this as X — right?") with options and a recommendation; a genuine blocker is asked the same way ("this fights X — which wins?"), never handed back as a verdict. The separate shape-review entry is RETIRED: no pass/fail, no gate, no wall of findings. When it understands, it says "anything else to add?" and the owner's go ends it. (It also wrote the read-back; 0.29.0 moved that to the `write_build_notes` pass.) A stray `check_shape` job is run as the Confirm movement. `report_build_notes` takes `jobId`, not `askId`. -->
 <!-- 0.24.0 (24 Aug 2026): superseded by 0.28.0 — shape-review findings are brief. -->
@@ -1048,8 +1049,9 @@ Two things stay out, however much you know about them:
 is where the owner is talked to; the plan pass is not a second conversation, and
 opening one puts the ask in two places at once.
 
-Write the plan from two things only: **the agreed shape**, and **the code you
-read**.
+Write the plan from three things only: **the agreed shape**, **the code you
+read**, and **where the ask sits on the board** (§ Build order). Nothing else,
+and nobody asked.
 
 **If the shape is too thin to plan confidently, say what is unclear IN the plan,
 and stop.** Name the hole plainly — "The shape doesn't say where the export
@@ -1064,7 +1066,8 @@ invented answer is worse than a plan that says it does not have one.
 ### Empty is a REAL answer, and it is a common one
 
 A shape so plain you interpreted nothing needs no plan. **Write none, and say
-so.**
+so** — bar the order line, which is always there (§ Build order). "Empty" here
+means that line and nothing else.
 
 **Empty is a SUCCESS, not a failure.** This is where it differs from a delivery
 report: `report_delivery` refuses to say nothing, because an ask marked
@@ -1076,6 +1079,61 @@ Reach for it without hesitating.
 looked empty is scope creep with a technical accent: it puts a decision on the
 builder that nobody made, in a place that reads as though somebody did. An
 honest empty field is worth more than a paragraph of filler.
+
+### Build order — what has to come first, worked out HERE
+
+**Every plan ends with a line or two about order, and they are never left out.**
+No heading, no list — the last line of the plan, in the same prose as the rest.
+This is the read before the build, so it is the moment to notice that something
+else has to exist first — and the owner should never have to spot it themselves,
+weeks later, when a build lands on nothing.
+
+**Work out three things.**
+
+1. **What the parent link actually is.** A parent is sometimes a real
+   prerequisite — the child cannot stand until the parent exists — and sometimes
+   only a grouping, a place on the board where like things live. **Say which
+   one it is.** Never assume: **the tree says what groups under what, and that
+   is not the same question as what has to come first.**
+2. **What else has to exist first.** Look wider than the parent. A prerequisite
+   is often a **sibling**, a **cousin**, or a **foundation somewhere else
+   entirely** — the thing everything quietly stands on. **A prerequisite is not
+   always the parent, and a parent is not automatically a prerequisite.**
+3. **Whether the answer is "nothing".** Most of the time it is, and **that is an
+   answer worth writing down.** "These are independent" told plainly is
+   information; the same thing left unsaid is a silence the owner has to
+   interpret.
+
+**Read it from three places, and none of them is the owner.** The shape (what
+does this thing stand on — a session, a table, a page that has to be there?),
+the board (`get_ask` for this ask, `list_asks` for what is around it), and the
+code (**a thing already built is not a prerequisite** — check before you name
+one).
+
+**Write it as one plain line per real prerequisite**, in the owner's words,
+naming the other ask by its name:
+
+> Needs **Sessions that survive a refresh** first — this reads the signed-in
+> person, and there is nobody to read until that lands.
+
+> The parent, **Account settings**, is a grouping, not a prerequisite — this can
+> be built before it.
+
+**And where there is none, one line, and only one:**
+
+> No order needed — this can be built any time.
+
+**Keep it to that.** One line per real dependency and one line when there are
+none. A paragraph of maybes is the thing this is meant to save the owner from.
+
+**This pass REASONS and RECORDS. It never rearranges.** Do not move an ask, do
+not re-parent one, do not change the run order, and do not set a status or a
+blocked reason. What you conclude goes in the plan, on the ask, where the app
+and the owner can both read it — and **they** decide what to do with it.
+
+**Note honestly:** the plan is where this lands because it is the field this
+pass owns and the app already reads. A first-class dependency link between asks
+would be a change to the app, and it is not something to invent from here.
 
 ### Write it as light Markdown — the tab formats it
 
@@ -1108,6 +1166,9 @@ closed but the notes never landed.
   `report_build_notes` is the last call you make.
 - **It does not change the ask's status.** Writing a plan is not progress on the
   build and must never look like it.
+- **`notes` is never wholly empty any more** — the order line always lands
+  (§ Build order). The shortest real plan is that one line on its own, and that
+  is a perfectly good answer.
 - **A plan you genuinely cannot do** — the ask is not there, the code is
   unreadable — finishes with `complete_job` and one honest sentence instead.
   Never both. **A shape too thin to plan is NOT this case**: that plan gets

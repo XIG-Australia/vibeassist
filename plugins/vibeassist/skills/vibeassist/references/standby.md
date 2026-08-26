@@ -218,6 +218,15 @@ section at the top of this file.
   gets a one-line plan, and **writing none is a real answer.** Do not let a
   sub-agent invent direction to fill the field.
 
+  **It also works out the BUILD ORDER, and always says what it found.** Does
+  this ask need anything built first? The sub-agent decides whether the parent
+  is a real prerequisite or only a grouping, catches prerequisites that are not
+  the parent — a sibling, a cousin, a foundation elsewhere on the board — and
+  writes one plain line per real one. **"No order needed" is written down too**;
+  a stated no is information, silence is not. It **reasons and records only** —
+  it never moves an ask, re-parents one or changes the run order. The doctrine
+  is in that skill; do not restate it here.
+
   **This pass asks the owner NOTHING.** No `ask_user`, no parking on a question —
   shaping is where the owner is talked to. If the shape is too thin to plan, the
   sub-agent says what is unclear IN the plan and finishes done; the owner reads
@@ -229,9 +238,10 @@ section at the top of this file.
   `report_delivery`: the job kind and the tool it reports through are named
   differently on purpose. So **do not call `complete_job` after it**; that is a
   second finish and comes back an error. Two things differ from
-  `report_delivery`: **empty `notes` is a valid SUCCESS here**, not a failure —
-  nothing ask-specific to say, call it empty and the job finishes clean — and it
-  **does not move the ask's status.** The ask stays `approved`.
+  `report_delivery`: **a near-empty `notes` is a valid SUCCESS here**, not a
+  failure — nothing ask-specific to say beyond the order line is a real answer
+  and the job finishes clean — and it **does not move the ask's status.** The
+  ask stays `approved`.
 - **`check_shape`** — **retired.** It was a separate review that judged a shape
   and handed back findings. Confirm now happens inside the shaping conversation,
   so there is nothing left for a second pass to do, and there is no shape-review
