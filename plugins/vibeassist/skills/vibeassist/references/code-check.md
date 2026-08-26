@@ -95,7 +95,16 @@ Two separate things, and both block:
 
 - **Apply the database changes this build needs.** A migration that was never
   run is a failure exactly like a red test — it is never a note to carry on
-  with.
+  with. **Applying them is YOURS**: this pass is where they land, whatever a
+  project's own notes may say about the owner running them by hand.
+  - **Safe and reversible → just apply it**, silently. A new table, a new
+    column, an index, a policy. Ordinary work, no question (SKILL.md § 0).
+  - **Destructive → ASK FIRST, every time.** Dropping or renaming a table or a
+    column, anything that loses data the owner cannot get back. **`ask_user` on
+    the job**, which parks it — never the terminal alone, and never apply first
+    and mention it after.
+  - **How** a project writes and runs its migrations — the folder, the naming,
+    the command — is the project's own, and you read it there.
 - **Confirm the code and the database still agree** — no drift. That is
   `dbAgrees`.
 

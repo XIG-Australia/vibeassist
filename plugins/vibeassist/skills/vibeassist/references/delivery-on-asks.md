@@ -194,7 +194,7 @@ that grouping is one the person authored, not one a machine proposed.
    - **flags** — anything now left to them, a database change still to run being
      the usual one. Usually empty, and **empty is a real answer.**
 
-   **This call reports AND finishes in one.** It moves the ask to `delivered`,
+   **This call reports AND finishes in one.** It fires the code pass,
    closes the job, and fires the code pass. **Do NOT call `complete_job` after
    it** — the job is already finished and a second finish comes back an error.
    On a build that worked, `report_delivery` is the last call you make.
@@ -210,7 +210,8 @@ that grouping is one the person authored, not one a machine proposed.
 
 9. **Stop there.** The delivery fires a `code_check` job, which goes to a
    different worker; a clean code pass fires a `review`, which goes to a third;
-   the reviewer merges it and the ask is accepted. **You do not push. You do not
+   the reviewer merges it and THAT is what marks the ask `delivered`; accepting
+   is the owner's alone. **You do not push. You do not
    merge. You do not tidy up.** If you find yourself reaching for any of those,
    stop — they belong to the workers after you.
 

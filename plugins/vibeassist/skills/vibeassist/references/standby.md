@@ -42,9 +42,10 @@ Here is why it is the first thing in this file. **A review may never go to
 whoever built the thing**, and an unnamed worker cannot be told apart from one.
 So an unnamed listener is **never handed a review at all** — and a review is the
 only thing that merges anything. The failure is silent and it looks like nothing
-is wrong: builds finish, deliveries land, asks go to `delivered`… and then stop
-there forever, because the merge nobody was handed never happens. From outside
-it reads as "the workers aren't finishing".
+is wrong: builds finish, deliveries land… and every ask sits on `building`
+forever, because `building` spans the whole run and the merge nobody was handed
+is the only thing that ends it. From outside it reads as "the workers aren't
+finishing".
 
 One argument. Pass it every time.
 
@@ -64,8 +65,8 @@ transcript, and after any compact it is where you read the name back from.
 
 Follow the rule to its end. If a single listener builds everything, it is the
 builder of everything, so it can never be handed the review of anything — and
-the board fills up with delivered asks exactly as if the `workerId` were
-missing.
+the board fills up with asks stuck on `building` exactly as if the `workerId`
+were missing.
 
 **Two listeners, two different `workerId`s, is the working arrangement.** Each
 builds its own asks and reviews the other's.
@@ -164,7 +165,7 @@ Building an ask is not one job. It is three, in order, and **the app hands each
 one to a different worker on purpose:**
 
 ```
-build  ──report_delivery──▶  code_check  ──all clean──▶  review  ──merges──▶  accepted
+build ──report_delivery──▶ code_check ──all clean──▶ review ──merges──▶ delivered ──▶ accepted (THE OWNER)
  (worker A)                   (worker B)                  (worker C)
 ```
 
@@ -315,7 +316,10 @@ section at the top of this file.
 
   - **It is the ONLY thing that merges anything.** On a pass the reviewer merges
     the branch itself and then reports `merged: true`; reporting the pass is
-    what marks the ask accepted. Never tell a review not to merge.
+    what marks the ask `delivered` — the work reaching the place the owner can
+    open it. The pass must carry `mergedCommit`, the commit the merge landed
+    as, or it is refused. **Accepting is the owner's alone.** Never tell a
+    review not to merge.
   - **Only one runs board-wide at a time.** That is the app's doing, not yours,
     and it is what makes the merge safe.
   - **It never goes to the worker who built the thing** — which only works if
@@ -414,7 +418,7 @@ branch to fetch and to start from is `origin/<mainline>`. There is none → plai
 **Writing the literal `main` into a command is the bug this exists to stop.** In
 a `master` repo every fetch, every `worktree add` and every merge then reaches
 for a branch that is not there, the command fails, and the ask is left stranded
-at `delivered`.
+on `building`.
 
 Read it from **`<where>`, the served checkout** — that folder stays on the main
 line (§ Where it builds). Never read it from an ask's worktree: a worktree sits
@@ -490,8 +494,10 @@ request. Everything below is what the SUB-AGENT does.
    - **flags** — anything now left to them, a database change still to run being
      the usual one. Usually empty, and empty is a real answer.
 
-   **This call reports AND finishes in one.** It moves the ask to `delivered`
-   and closes the job. A build that skips it is a build nobody can see.
+   **This call reports AND finishes in one.** It fires the code pass and closes
+   the job. A build that skips it is a build nobody can see. **It does not move
+   the ask's status** — the ask stays `building` until a review passes and lands
+   the work.
 
    **Do NOT call `complete_job` after it.** The job is already finished, and a
    second finish comes back an error — "a finished job cannot be finished again".
