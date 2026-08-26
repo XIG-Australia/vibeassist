@@ -38,14 +38,16 @@ presence yourself, and never call the tool just to look alive.
 **Pick one steady name for this session — `wait_for_work({ workerId })` — and
 pass it on every single call.** Not sometimes. Not on the first one.
 
-Here is why it is the first thing in this file. **A review may never go to
-whoever built the thing**, and an unnamed worker cannot be told apart from one.
-So an unnamed listener is **never handed a review at all** — and a review is the
-only thing that merges anything. The failure is silent and it looks like nothing
-is wrong: builds finish, deliveries land… and every ask sits on `building`
-forever, because `building` spans the whole run and the merge nobody was handed
-is the only thing that ends it. From outside it reads as "the workers aren't
-finishing".
+Here is why it is the first thing in this file. **It is who holds a job.** The
+claim, the lease and the beat all hang off it, so an unnamed listener cannot
+hold work properly — and the app may decline to hand it the passes that judge a
+build at all. The failure is silent and it looks like nothing is wrong: builds
+finish, deliveries land… and every ask sits on `building` forever, because
+`building` spans the whole run and the merge nobody was handed is the only thing
+that ends it. From outside it reads as "the workers aren't finishing".
+
+**It is NOT what makes a review independent.** That is the fresh sub-agent —
+see § INDEPENDENCE COMES FROM THE FRESH SUB-AGENT below.
 
 One argument. Pass it every time.
 
@@ -61,47 +63,77 @@ direction.
 So write it into the kickoff line you say to the owner. That line is in your own
 transcript, and after any compact it is where you read the name back from.
 
-### It also means ONE listener cannot finish an ask by itself
+## INDEPENDENCE COMES FROM THE FRESH SUB-AGENT, NOT A SECOND SESSION
 
-Follow the rule to its end. If a single listener builds everything, it is the
-builder of everything, so it can never be handed the review of anything — and
-the board fills up with asks stuck on `building` exactly as if the `workerId`
-were missing.
+**A review is independent because the thing doing it has never seen the work
+built** — not because it is running in somebody else's terminal.
 
-**Two listeners, two different `workerId`s, is the working arrangement.** Each
-builds its own asks and reviews the other's.
+Every job already runs in **its own sub-agent carrying only that job's material**
+(§ A fresh context per job). A reviewing sub-agent starts with no memory of the
+build: not the decisions, not the dead ends, not the builder's reasons for
+thinking it is fine. It has to go and read the code and the ask to have any
+opinion at all. **That is the whole of what makes a reviewer honest**, and it is
+just as true when the same listener built the thing an hour ago.
 
-### Waiting on the review of your OWN build — say it once, in plain words
+**So ONE listener is enough.** It builds, it checks, it reviews, it merges. It
+**never waits for a second listener to exist**, and it never sits on delivered
+work because nobody else turned up. If you find yourself about to tell the owner
+to start another listener so something can merge, that is the old road.
 
-**Silence that you can explain is not silence you keep.** The quiet rule
-(§ The loop, exactly) is about the ordinary empty queue. This is a different
-thing: you delivered work, nothing is coming back, and **you already know why**
-— the only job left on it is a review, and you cannot be handed the review of
-your own build.
+**What the listener must NOT do is review from its own context.** The listener
+holds the loop; it does not hold opinions about the code. **A review the
+listener runs in its own head is not a review** — it is the builder marking its
+own homework with the marking scheme still open. Always the fresh sub-agent.
 
-**The first time the queue goes quiet after you have delivered something this
-session and no review has reached you, say ONE line and then go quiet again:**
+### Brief it with POINTERS, never a summary
 
-> I built that one, so I can't review my own work. I'm waiting for a second
-> assistant to pick the review up. That's normal, not stuck — start another
-> listener and it will land.
+**What the reviewing sub-agent is handed:** the job id, the ask id, the repo,
+the branch, and the worktree it is in. **That is all.** Plus the contract file —
+`references/review.md` for a review, `references/code-check.md` for a check.
 
-**Say it once per session, not on every quiet round**, and never as an error or
-a stop. It is the state of play, and it is the one thing the owner cannot work
-out from the outside: from where they sit, a listener waiting for a second
-reviewer and a listener that has died look exactly the same.
+**What it is NEVER handed:** your account of what the build did, why it did it,
+what was hard, or what you think it got right. **A builder's-eye summary is the
+builder's assumptions in a new coat**, and handing one over undoes the whole
+point of the fresh context. The sub-agent goes to the sources of truth itself —
+`get_ask` for what was wanted, the real diff and the real code for what was
+done, and the thing running for whether it works.
 
-**Keep listening after you say it.** This is not a stop reason, and it is not a
-question — nothing is being asked of the owner through `ask_user`, because
-nothing about it belongs to a job.
+The delivery report is not an exception. The app puts it on the job as a
+**signpost for finding the work** — the branch, and anything left to do — and
+the contract files say plainly that it is never evidence about the work.
+
+### It stays a TRACKED JOB the whole time
+
+The listener **holds the claim while its sub-agent works**, and beats with
+`report_progress` on a long one. So a listener that stops mid-review loses
+nothing: the claim lapses, the job goes back to the queue, and the next listener
+— or the same one, restarted — picks it up and reviews it from scratch. **A
+review in flight is never a review that can go missing.**
+
+### Say what is happening — "reviewing", never "waiting"
+
+When a review is out with a sub-agent and the owner asks, or the queue is
+otherwise quiet, the true sentence is short:
+
+> Reviewing that one now — a fresh agent is reading the code and the ask.
+
+**Never "waiting for another worker to pick it up".** Nothing is waiting on
+another worker any more, and saying so sends the owner off to start a listener
+they do not need.
+
+**One honest note.** Where the app still refuses to hand a check or a review to
+the worker that built the thing, you will simply not be offered it. **Say that
+plainly, once, and keep listening** — and do NOT work around it by changing your
+`workerId`, which is a lie about who you are and breaks the claim it is for.
+Lifting that gate is a change to the app, never something to fake from here.
 
 ## The loop, exactly
 
 1. Call `wait_for_work({ workerId })`.
 2. `{ job: null }` → the ordinary quiet answer. **Re-arm immediately. Say
    nothing** — no narration, no "still nothing", no offer to stop. The one
-   exception is the single line in § Waiting on the review of your OWN build,
-   said once and never again.
+   exception is saying what a job in flight is doing when asked — "reviewing —
+   a fresh agent is reading it" (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
 3. A job → dispatch it (below), then **re-arm at once**. Never wait for a job
    to finish before listening again.
 4. Repeat until a stop reason fires.
@@ -159,10 +191,10 @@ Dispatch into two concurrent lanes:
   "queued behind another job" — which also keeps the claim yours. Never open a
   third build lane because work is waiting.
 
-## One ask, three jobs, three different workers
+## One ask, three jobs, three fresh sub-agents
 
-Building an ask is not one job. It is three, in order, and **the app hands each
-one to a different worker on purpose:**
+Building an ask is not one job. It is three, in order, and **each runs in its own
+fresh sub-agent that starts from nothing:**
 
 ```
 build ──report_delivery──▶ code_check ──all clean──▶ review ──merges──▶ delivered ──▶ accepted (THE OWNER)
@@ -171,15 +203,17 @@ build ──report_delivery──▶ code_check ──all clean──▶ review 
 
 1. **`build`** — makes the branch in its own worktree and reports what it now
    does. It does not push, does not merge, does not tidy up.
-2. **`code_check`** — a DIFFERENT worker brings the branch up to date, runs the
+2. **`code_check`** — a fresh sub-agent brings the branch up to date, runs the
    project's checks on the combined result, and reports what each one said. Any
    failure stops it here and the ask goes back to be built.
-3. **`review`** — a THIRD worker, **never the builder**, reads the combined
-   result against the ask and, if it passes, **merges it and cleans up.**
+3. **`review`** — a fresh sub-agent that has never seen this work built reads
+   the combined result against the ask and, if it passes, **merges it and cleans
+   up.**
 
 **The merge only ever happens in step 3.** Nothing else merges, and nothing
-merges itself. **And step 3 only reaches a named worker** — see the `workerId`
-section at the top of this file.
+merges itself. **Steps 2 and 3 are never run in the listener's own context** —
+their independence is the fresh sub-agent, and the same listener may run all
+three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
 
 ## The job kinds that exist now
 
@@ -322,8 +356,10 @@ section at the top of this file.
     review not to merge.
   - **Only one runs board-wide at a time.** That is the app's doing, not yours,
     and it is what makes the merge safe.
-  - **It never goes to the worker who built the thing** — which only works if
-    you pass a `workerId`.
+  - **It is read by a FRESH sub-agent that has never seen the work built**, and
+    that is what makes it honest — not whose terminal it runs in. The same
+    listener may have built the thing; hand the review out and it is still a
+    real review. **Never run it in the listener's own context.**
 
   It also **owns the cleanup**: once merged, the worktree is removed and the
   branch dropped, silently.

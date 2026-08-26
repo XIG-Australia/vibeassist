@@ -5,9 +5,10 @@ depth than `SKILL.md` § 4 gives it. That section is the loop; this is the
 reasoning behind it and the detail that did not fit.
 
 **A build is the FIRST of three jobs on one ask.** You build it and report what
-it now does. A different worker then runs the code pass
-(`references/code-check.md`), and a third reads it and merges it
-(`references/review.md`). **You do none of those.** Do not push, do not open
+it now does. A **fresh sub-agent** then runs the code pass
+(`references/code-check.md`), and another reads it and merges it
+(`references/review.md`) — each starting from nothing and reading the code and
+the ask for itself. **You do none of those.** Do not push, do not open
 anything, do not merge, and do not tidy the worktree away — the merge owns the
 cleanup, and the two workers after you need what you leave behind.
 
@@ -208,11 +209,10 @@ that grouping is one the person authored, not one a machine proposed.
    use it to find the work and never to believe it about the work. Write it for
    the person, honestly, and let the two passes after you establish the rest.
 
-9. **Stop there.** The delivery fires a `code_check` job, which goes to a
-   different worker; a clean code pass fires a `review`, which goes to a third;
-   the reviewer merges it and THAT is what marks the ask `delivered`; accepting
-   is the owner's alone. **You do not push. You do not
-   merge. You do not tidy up.** If you find yourself reaching for any of those,
+9. **Stop there.** The delivery fires a `code_check` job, run by a fresh
+   sub-agent; a clean code pass fires a `review`, run by another; the reviewer
+   merges it and THAT is what marks the ask `delivered`; accepting is the
+   owner's alone. **You do not push. You do not merge. You do not tidy up.** If you find yourself reaching for any of those,
    stop — they belong to the workers after you.
 
 **A build you genuinely cannot do → `complete_job({ jobId, error })`** with one

@@ -24,17 +24,21 @@ the build up to date and you merging it.
 So take your time and do it properly. Nothing is waiting behind you that a
 rushed review would help.
 
-## Never the builder
+## You are a FRESH agent, and that is what makes this honest
 
-**Pass a steady `workerId` on every `wait_for_work` / `next_job` call.** A
-review may not go to whoever built the thing, and a worker with no name cannot
-be told apart from one — so an unnamed worker is **never handed a review at
-all**, and the board quietly fills up with delivered asks that nobody merges.
-The `workerId` is what makes this job exist.
+**You have never seen this work built.** Not the decisions, not the dead ends,
+not the reasons somebody had for thinking it was fine. You were handed pointers
+and nothing else: the job, the ask, the repo, the branch, the worktree.
 
-If you are somehow handed the review of a build you made in this session, do not
-run it: `complete_job({ jobId, error: "I built this — it needs a different
-reviewer" })` and keep listening.
+**That is the independence, and it is enough.** It does not matter whose
+terminal you are running in or who built the thing an hour ago — you cannot
+inherit an assumption you were never told. **So go and read.** `get_ask` for
+what was wanted, the real diff and the real code for what was done, and the
+thing running for whether it works.
+
+**If anyone hands you a summary of what the build did, it is a signpost and
+never evidence** (§ The build's own account). Use it to find the work. Judge from
+what you read yourself.
 
 ## What is already settled, and what is left
 

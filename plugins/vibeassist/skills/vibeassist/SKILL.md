@@ -3,11 +3,12 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.33.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.34.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.34.0 (26 Aug 2026): A REVIEW IS INDEPENDENT BECAUSE IT RUNS IN A FRESH SUB-AGENT, not because it runs in somebody else’s session. A reviewer that has never seen the work built cannot inherit the builder’s assumptions, so ONE listener builds, checks, reviews and merges its own work and NEVER waits for a second listener to exist. The sub-agent is briefed with POINTERS ONLY — job, ask, repo, branch, worktree, contract file — never a summary of what the builder did; it reads get_ask, the real diff and the running thing. The listener holds the claim while the sub-agent works, so a stop mid-review loses nothing. It says “reviewing — a fresh agent is reading it”, never “waiting for another worker”. Retired: “never the builder”, “two listeners is the working arrangement”, and complete_job({ error: “I built this” }). See references/standby.md § INDEPENDENCE COMES FROM THE FRESH SUB-AGENT. -->
 <!-- 0.33.0 (26 Aug 2026): THE SKILL IS THE AUTHORITY FOR HOW VA BUILDS. The whole loop is stated once in § 4 — the stages and who ends each, the status ladder, and the database rule — and a project’s CLAUDE.md never overrides it (it owns what the repo IS: stack, branch names, folders, real commands). THE LADDER IS CORRECTED: `building` spans the WHOLE run; `report_delivery` moves NOTHING, it fires the code pass; a PASSING REVIEW writes `delivered` and must carry `mergedCommit` or it is refused; `accepted` is the OWNER’s alone. So a stranded board sits on `building`, not `delivered`. DATABASE CHANGES ARE THE CODE PASS’S: safe ones applied silently, destructive ones gated behind `ask_user` — replacing the old “the owner applies every migration by hand”. -->
 <!-- 0.32.0 (26 Aug 2026): the plan records prerequisites as ROWS as well as prose. `needs_first({ askId, needs, forget })` writes what the board acts on — the run order and the one-press “cue those first” — and the prose line is what the owner reads; both name the same asks and never drift. The pass writes the CURRENT set: read first, add each, forget every row it did not name, and do it all BEFORE `report_build_notes`, which ends the job. An unshaped prerequisite still gets a row (the cue-check shows “still needs shaping”); a prerequisite with no ask id gets the prose line only — never an invented row. “Nothing needed” is recorded on both channels. See the decompose skill § Record it TWICE. -->
 <!-- 0.31.0 (26 Aug 2026): the PLAN works out the BUILD ORDER. Every plan ends with a line or two saying what has to be built first — whether the parent is a real prerequisite or only a grouping, and any prerequisite that is NOT the parent (a sibling, a cousin, a foundation elsewhere). “No order needed” is written down too: a stated no is information, silence is not. The tree says what groups under what, never what comes first. This pass reasons and RECORDS — it never moves, re-parents or reorders anything. See the decompose skill § Build order. -->
-<!-- 0.30.3 (26 Aug 2026): a listener knows its own job and comes back after a stop. Waiting on the review of its OWN build is said ONCE in plain words — “I built that one, so I can’t review my own work… that’s normal, not stuck” — and it keeps listening; the `workerId` is PINNED at kickoff, named in the kickoff line and unchanged across a compact; a restart after Ctrl+C is an ordinary kickoff that ENDS ARMED — no recap, no “shall I carry on?”, nothing for the owner to type; and every stop names its reason and the one command back. See references/standby.md. -->
+<!-- 0.30.3 (26 Aug 2026): a listener knows its own job and comes back after a stop. Its own-build wait line is SUPERSEDED by 0.34.0 — a listener now reviews its own work in a fresh sub-agent and never waits. Still standing: the `workerId` is PINNED at kickoff, named in the kickoff line and unchanged across a compact; a restart after Ctrl+C is an ordinary kickoff that ENDS ARMED — no recap, no “shall I carry on?”, nothing for the owner to type; and every stop names its reason and the one command back. See references/standby.md. -->
 <!-- 0.30.2 (25 Aug 2026): a review ends in a MERGE or a SEND-BACK — never held. A clash that only needs conflict markers resolved is resolved; a STRUCTURAL clash, where the main line has moved the ground the build stood on, is a fail — report_review({ passed: false, found: “<what moved> ; build it again on the current main line” }) — which re-queues the ask for a fresh build on today’s code. complete_job(error) is narrowed to “could not run the review at all”; a conflict never goes down it, and a merge is never forced. See references/review.md § Two outcomes, and only two. -->
 <!-- 0.30.1 (25 Aug 2026): every git command targets the REPO’S OWN main line, resolved per job — `git -C <where> rev-parse --abbrev-ref HEAD` — never the literal `main`. In a `master` repo the hardcoded name made every fetch, `worktree add` and merge reach for a branch that is not there, so nothing merged and asks stranded at `delivered`. See references/standby.md § The repo’s main line. -->
 <!-- 0.30.0 (25 Aug 2026): THE MERGE MODEL. One ask is THREE jobs to three different workers — `build` → `code_check` → `review` — and the REVIEWER MERGES on a pass. There are no pull requests, nothing waits on CI and nothing self-merges; `next_approved_ask`, `report_ask_progress`, `report_ask_delivery`, `open_pr`, `get_updates` and the whole curl delivery road are gone, along with `bun run verify` as a gate. `code_check` and `review` are live job kinds (see references/code-check.md and references/review.md) — undocumented, they were refused as unknown kinds and every ask stopped at `delivered`. EVERY `wait_for_work`/`next_job` PASSES A STEADY `workerId`: a review may not go to whoever built the thing, so an unnamed worker is never handed one and nothing ever merges. Worktree cleanup belongs to the MERGE, not the builder. -->
@@ -33,11 +34,12 @@ description: Take the next Ask the user approved in VibeAssist, build it, check 
 You take an Ask the user approved in VibeAssist, build it, check it, review it
 and merge it. The user drives WHICH work; you drive HOW.
 
-**One Ask is THREE jobs, and each goes to a different worker.** A `build` makes
-the branch and reports what it now does. A `code_check` — someone else — runs
-the project's checks on the combined result. A `review` — a third worker, never
-the builder — reads it against the Ask and, on a pass, **merges it**. That merge
-is the only merge there is.
+**One Ask is THREE jobs, and each runs in its own FRESH sub-agent.** A `build`
+makes the branch and reports what it now does. A `code_check` runs the project's
+checks on the combined result. A `review` reads it against the Ask and, on a
+pass, **merges it**. That merge is the only merge there is. **The reviewer is
+independent because it has never seen the work built**, not because it is in
+somebody else's session — so **one listener can do all three**.
 
 **There are no pull requests.** Nothing is pushed for review, nothing waits on
 CI, and nothing merges itself when checks go green. If you find yourself
@@ -280,33 +282,33 @@ name for this session, the same one every time. **Pin it at kickoff and never
 change it**, not even after an auto-compact: a name that changes mid-session is
 two workers as far as the app is concerned.
 
-**A review may never go to whoever built the thing.** An unnamed worker cannot
-be told apart from the builder, so the app **never hands a review to one at
-all**. And a review is the only thing that merges anything.
+**The `workerId` is who HOLDS a job** — the claim, the lease and the beat all
+hang off it. An unnamed listener cannot hold work properly, and the app may
+decline to hand it the passes that judge a build at all. A review is the only
+thing that merges anything.
+
+**It is not what makes a review independent.** That is the fresh sub-agent: a
+reviewer that has never seen the work built has to go and read the code and the
+Ask to have any opinion (§ 4.3).
 
 So the failure is silent, and it looks like nothing is wrong: builds run,
 deliveries land… and every Ask sits on `building` forever, because `building`
 spans the whole run and only a passing review ends it. From the outside it reads
 as "the workers aren't finishing". **It is one missing argument.**
 
-If you are ever handed the code pass or the review of a build you made in this
-session, do not run it — `complete_job({ jobId, error: "I built this — it needs
-a different worker" })` and keep listening.
+**ONE listener is enough.** It builds, checks, reviews and merges its own work,
+because the check and the review each run in **a fresh sub-agent that starts from
+nothing** and reads the code and the Ask for itself. **Never wait for a second
+listener to exist**, and never tell the owner to start one so something can
+merge — that is the old road.
 
-**One listener cannot finish an Ask by itself.** Follow the rule to its end: a
-lone listener builds everything, so it is the builder of everything, so it is
-never handed a review. **Two listeners with two different `workerId`s is the
-working arrangement** — each builds its own Asks and reviews the other's. If you
-are the only one running and Asks are stacking up unmerged, **say so once
-in plain words and keep listening** — waiting on a second reviewer and having
-died look identical from the owner's chair:
+**Never run a check or a review in the listener's own context.** That is the
+builder marking its own homework. Always hand it out.
 
-> I built that one, so I can't review my own work. I'm waiting for a second
-> assistant to pick the review up. That's normal, not stuck — start another
-> listener and it will land.
-
-Once per session, never an error, never a stop, never a question. Full rule:
-`references/standby.md` § Waiting on the review of your OWN build.
+If the app declines to offer you the check or the review of your own build, say
+so plainly once and keep listening — and **never work around it by changing your
+`workerId`**, which is a lie about who you are. Full rule:
+`references/standby.md` § INDEPENDENCE COMES FROM THE FRESH SUB-AGENT.
 
 ### 4.1 · `build` — make it, report it, leave it
 
@@ -369,7 +371,7 @@ the two jobs that come next.
 Could not build it → `complete_job({ jobId, error })`, one honest sentence, and
 no delivery report. Needing a decision is not a failure: that is `ask_user`.
 
-### 4.2 · `code_check` — a DIFFERENT worker, and nothing here is a judgment
+### 4.2 · `code_check` — a FRESH sub-agent, and nothing here is a judgment
 
 Full contract: **`references/code-check.md`**. In short:
 
@@ -404,7 +406,7 @@ merges, the Ask goes back with `found` on it. All clean is the only thing that
 starts a review. **Merge nothing**, and leave the worktree and branch in place
 either way.
 
-### 4.3 · `review` — a THIRD worker, and THE ONLY THING THAT MERGES
+### 4.3 · `review` — a FRESH sub-agent, and THE ONLY THING THAT MERGES
 
 Full contract: **`references/review.md`**. In short.
 
@@ -412,6 +414,19 @@ Full contract: **`references/review.md`**. In short.
 "stopped", "left unmerged" are not outcomes — an Ask left on `building` with an
 unmerged branch is a review that did not finish, and nobody is watching that
 branch.
+
+**It runs in a FRESH sub-agent that has never seen the work built**, briefed
+with pointers only — the job, the Ask, the repo, the branch, the worktree, and
+`references/review.md`. **Never a summary of what the builder did**; that is the
+builder’s assumptions in a new coat. The sub-agent reads `get_ask`, the real
+diff and the running thing, and judges from those. **The same listener may have
+built it** — the fresh context is the independence, so hand it out and it is a
+real review. **Never review from the listener’s own context.**
+
+**The listener holds the job while its sub-agent works**, and beats on a long
+one. Stop mid-review and nothing is lost: the claim lapses, the job returns to
+the queue, and it is reviewed from scratch. Say **"reviewing — a fresh agent is
+reading it"**, never "waiting for another worker".
 
 a. **Only one review runs board-wide at a time.** Nothing else is landing while
 you hold it — which is exactly what makes the merge at the end safe.
