@@ -3,7 +3,8 @@ name: vibeassist
 description: Take the next Ask the user approved in VibeAssist, build it, check it, review it and merge it, so the Ask updates itself. Use when the user runs /vibeassist, or says "build my VibeAssist Asks", "work my VibeAssist queue", "drain my VibeAssist backlog", or similar. Modes — "review" (default: one Ask at a time, confirm before the next), "run" (work through the run, then pause), "drain" (keep going until nothing is approved). Listening roles (smart kickoff, run once per working session): "worker" (build approved Asks, then keep listening — new work starts automatically when the user presses Start in VA), "standby" (the listening loop: call wait_for_work, do what comes — shaping, building, checking and reviewing — and re-arm).
 ---
 
-<!-- vibeassist-skill-version: 0.32.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.33.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.33.0 (26 Aug 2026): THE SKILL IS THE AUTHORITY FOR HOW VA BUILDS. The whole loop is stated once in § 4 — the stages and who ends each, the status ladder, and the database rule — and a project’s CLAUDE.md never overrides it (it owns what the repo IS: stack, branch names, folders, real commands). THE LADDER IS CORRECTED: `building` spans the WHOLE run; `report_delivery` moves NOTHING, it fires the code pass; a PASSING REVIEW writes `delivered` and must carry `mergedCommit` or it is refused; `accepted` is the OWNER’s alone. So a stranded board sits on `building`, not `delivered`. DATABASE CHANGES ARE THE CODE PASS’S: safe ones applied silently, destructive ones gated behind `ask_user` — replacing the old “the owner applies every migration by hand”. -->
 <!-- 0.32.0 (26 Aug 2026): the plan records prerequisites as ROWS as well as prose. `needs_first({ askId, needs, forget })` writes what the board acts on — the run order and the one-press “cue those first” — and the prose line is what the owner reads; both name the same asks and never drift. The pass writes the CURRENT set: read first, add each, forget every row it did not name, and do it all BEFORE `report_build_notes`, which ends the job. An unshaped prerequisite still gets a row (the cue-check shows “still needs shaping”); a prerequisite with no ask id gets the prose line only — never an invented row. “Nothing needed” is recorded on both channels. See the decompose skill § Record it TWICE. -->
 <!-- 0.31.0 (26 Aug 2026): the PLAN works out the BUILD ORDER. Every plan ends with a line or two saying what has to be built first — whether the parent is a real prerequisite or only a grouping, and any prerequisite that is NOT the parent (a sibling, a cousin, a foundation elsewhere). “No order needed” is written down too: a stated no is information, silence is not. The tree says what groups under what, never what comes first. This pass reasons and RECORDS — it never moves, re-parents or reorders anything. See the decompose skill § Build order. -->
 <!-- 0.30.3 (26 Aug 2026): a listener knows its own job and comes back after a stop. Waiting on the review of its OWN build is said ONCE in plain words — “I built that one, so I can’t review my own work… that’s normal, not stuck” — and it keeps listening; the `workerId` is PINNED at kickoff, named in the kickoff line and unchanged across a compact; a restart after Ctrl+C is an ordinary kickoff that ENDS ARMED — no recap, no “shall I carry on?”, nothing for the owner to type; and every stop names its reason and the one command back. See references/standby.md. -->
@@ -45,6 +46,28 @@ reaching for a PR, for `next_approved_ask`, for `report_ask_delivery` or for
 
 This core is the whole cold happy path. Detail loads on demand from
 `references/` in this skill's directory — each pointer below says when.
+
+## THIS SKILL IS THE AUTHORITY FOR HOW VA BUILDS
+
+**Everything about how work moves — the stages and their order, who applies
+database changes, and what each status means — is stated here, once, and this
+is where it is decided.** A worker following this skill has everything it needs
+to run the loop correctly. **You should never have to go looking for the loop in
+a project's own notes.**
+
+**A project's `CLAUDE.md` does not override this.** Where one describes the
+loop, the statuses, who merges or who applies a migration, **it is out of date
+and this skill wins.** Do not follow it, do not average the two, and do not ask
+which is right — build to what is written here and say once, plainly, that the
+project's file disagrees.
+
+**What a project's own notes ARE for**, and where they still win: what that
+repo IS. Its stack, its branch names, its folder layout, the exact commands its
+tests and build run under, its house style. **This skill never states those**,
+because they are different in every repo — you read them from the project.
+
+**The line, in one sentence.** How VA builds is this skill's. What this
+particular code is, is the project's.
 
 ## 0 · Silent completion — the standing manners
 
@@ -174,10 +197,10 @@ much as possible and ENSURE it happens.
 - **Build everything buildable.** In drain (and any overnight run) the default
   is to finish every approved Ask you are handed — never defer buildable work
   for tidiness.
-- **Finish the whole chain, not just the build.** An Ask is not done when it is
-  delivered; it is done when it is merged. A run that leaves a pile of
-  `delivered` Asks with no code pass and no review behind them has not cleared
-  the queue — it has moved the queue. **Keep listening: the check and the review
+- **Finish the whole chain, not just the build.** An Ask is done when it is
+  MERGED, and `building` spans the whole run until then. A run that leaves a
+  pile of reported-but-unmerged Asks with no code pass and no review behind them
+  has not cleared the queue — it has moved the queue. **Keep listening: the check and the review
   arrive as their own jobs.**
 - **Stop for exactly two reasons,** each recorded where the user will see it:
   (a) it needs a decision — `ask_user`, which parks the job; or (b) it is
@@ -192,12 +215,63 @@ much as possible and ENSURE it happens.
 ## 4 · The loop — one Ask, three jobs
 
 ```
-build  ──report_delivery──▶  code_check  ──all clean──▶  review  ──merges──▶  accepted
- (worker A)                   (worker B)                  (worker C)
+build ──report_delivery──▶ code_check ──all clean──▶ review ──merges──▶ delivered ──▶ accepted
+(worker A)                 (worker B)                (worker C)                       (THE OWNER)
 ```
 
 Each arrow is the app firing the next job. You never call the next step
-yourself, and you never do two of the three on the same Ask.
+yourself, and you never do two of the three on the same Ask. **The last arrow is
+not yours at all** — see the ladder below.
+
+### The stages, end to end — and what actually ends each one
+
+| Stage          | Who                       | What ends it                                                                                                  |
+| -------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **build**      | worker A                  | `report_delivery` — what it NOW DOES. **It does not move the status**; it fires the code pass.                  |
+| **code_check** | worker B                  | `report_code_check` — what the real commands said, on the combined result, **database changes applied**.        |
+| **review**     | worker C, never A         | The reviewer MERGES by hand, then `report_review` with `merged: true` **and `mergedCommit`**. That writes `delivered`. |
+| **accept**     | **the OWNER, and no one else** | They open the merged thing, try it, and accept it. Nothing you call can do this.                            |
+
+### The status ladder — three words, and only one of them moves on its own
+
+- **`building` spans the WHOLE run.** It is set when the build starts and it
+  stays through the code pass and the review. **An Ask mid-check or mid-review
+  still reads `building`** — that is correct, not a stuck board. A review
+  passing is the only thing that ends it.
+- **`delivered` means the work REACHED THE PLACE THE OWNER CAN POKE IT** — the
+  main line, after the merge. It is **not** "the builder said it was done".
+  **A passing review is what writes it**, and the pass must carry
+  `mergedCommit` — the commit the merge landed as — because `delivered` with
+  nothing behind it sends the owner off to look at nothing.
+- **`accepted` is the OWNER's, and only the owner's.** It means they looked. No
+  worker writes it, no pass writes it, and a review that has just merged has
+  certainly not looked — the work arrived a second ago.
+
+> **If you remember one thing:** a build reporting a delivery does **not** make
+> the Ask `delivered`, and a review passing does **not** make it `accepted`.
+> Both used to be true and neither is now.
+
+### Database changes — the code pass applies them, and destruction is gated
+
+**The code pass applies the database changes the build needs, and names them in
+`ranMigrations`.** An unapplied change is a failure exactly like a red test, and
+code and database that disagree is another. **A build is not done while either
+is true.**
+
+- **Safe and reversible → just apply it.** Adding a table, a column, an index, a
+  policy. This is ordinary work: no question, no flag, no waiting on the owner
+  (§ 0).
+- **Destructive → GATED, every time.** Dropping or renaming a table or a column,
+  anything that loses data the owner cannot get back, anything with no way back.
+  **Stop and ask through `ask_user` on the job**, which parks it (§ 5) — never
+  only in the terminal, and never "I'll do it and mention it after".
+- **Anything the owner must run themselves** — because only they can — goes in
+  the delivery's `flags` as one plain instruction, and nothing is said when
+  there is none (§ 0).
+
+**Where a project's own notes say the owner applies every migration by hand,
+that is the old road and this rule replaces it.** What stays the project's is
+HOW its migrations are written and run — the folder, the naming, the command.
 
 ### 4.0 · GET NAMED. Everything else depends on it.
 
@@ -211,9 +285,9 @@ be told apart from the builder, so the app **never hands a review to one at
 all**. And a review is the only thing that merges anything.
 
 So the failure is silent, and it looks like nothing is wrong: builds run,
-deliveries land, Asks reach `delivered`… and stop there forever. From the
-outside it reads as "the workers aren't finishing". **It is one missing
-argument.**
+deliveries land… and every Ask sits on `building` forever, because `building`
+spans the whole run and only a passing review ends it. From the outside it reads
+as "the workers aren't finishing". **It is one missing argument.**
 
 If you are ever handed the code pass or the review of a build you made in this
 session, do not run it — `complete_job({ jobId, error: "I built this — it needs
@@ -223,7 +297,7 @@ a different worker" })` and keep listening.
 lone listener builds everything, so it is the builder of everything, so it is
 never handed a review. **Two listeners with two different `workerId`s is the
 working arrangement** — each builds its own Asks and reviews the other's. If you
-are the only one running and Asks are stacking up at `delivered`, **say so once
+are the only one running and Asks are stacking up unmerged, **say so once
 in plain words and keep listening** — waiting on a second reviewer and having
 died look identical from the owner's chair:
 
@@ -285,7 +359,8 @@ g. **Report it** — `report_delivery({ jobId, does, check, flags })`. `does` is
 what it NOW DOES in the person's own words about their own product; `check` is
 the branch and what to open; `flags` is anything left for them, usually empty.
 **This reports AND finishes the job and fires the code pass** — no
-`complete_job` after it.
+`complete_job` after it. **It does NOT move the Ask to `delivered`**: the Ask
+stays `building` until a review passes and lands the work (§ 4 · the ladder).
 
 h. **STOP.** **No push. No merge. No cleanup.** Leave the worktree and the
 branch exactly where they are — they are the handoff, and removing them strands
@@ -310,7 +385,8 @@ is not the thing that would be merged.
 d. **Run the project's own checks** — its tests, its type-check, its linter, its
 build. Read the real commands off the project; do not invent one and do not run
 a subset. **Then the database:** apply the changes this build needs, and confirm
-the code and the database still agree.
+the code and the database still agree. **Safe changes you just apply;
+destructive ones are asked first** (§ 4 · Database changes).
 
 e. **The honesty contract.** `broughtIn` is every Ask id you merged in, **read
 off the `VibeAssist-Ask:` trailers** — not remembered. `ranMigrations` is every
@@ -333,7 +409,7 @@ either way.
 Full contract: **`references/review.md`**. In short.
 
 **A review has exactly TWO outcomes: it MERGES, or it SENDS BACK.** "Held",
-"stopped", "left unmerged" are not outcomes — an Ask left at `delivered` with an
+"stopped", "left unmerged" are not outcomes — an Ask left on `building` with an
 unmerged branch is a review that did not finish, and nobody is watching that
 branch.
 
@@ -369,9 +445,12 @@ f. **It passes → MERGE IT YOURSELF FIRST**, then report:
 git -C <where> merge --ff-only <branch>
 ```
 
-then `report_review({ jobId, passed: true, merged: true })`. **A pass is refused
-until the merge has landed**, because reporting the pass is what marks the Ask
-**accepted** — a pass on an unmerged branch says something happened that didn't.
+then `report_review({ jobId, passed: true, merged: true, mergedCommit })` —
+**`mergedCommit` is the commit the merge landed as, and a pass without it is
+refused.** A pass is refused until the merge has landed, because **reporting the
+pass is what writes `delivered`** — the work reaching the first place the owner
+can open it. **It does not accept anything**; accepting is the owner looking,
+and they have not looked yet (§ 4 · the ladder).
 
 g. **Then clean up — this is yours, not the builder's.**
 
@@ -453,6 +532,15 @@ a stash — then stop. Full park-and-resume protocol →
 
 ## 6 · Guardrails (always binding — history in `references/incidents.md`)
 
+- **This skill is the authority for how VA builds.** A project's `CLAUDE.md`
+  never overrides the stages, the statuses, who merges or who applies a database
+  change. It owns what that repo IS — stack, branch names, folders, the real
+  commands — and nothing else (§ THIS SKILL IS THE AUTHORITY).
+- **The ladder, and only one rung is the owner's.** `building` spans the whole
+  run; a passing review writes `delivered` and must carry `mergedCommit`;
+  `accepted` is the owner's alone. A delivery report moves nothing (§ 4).
+- **The code pass applies database changes.** Safe ones silently, destructive
+  ones only after `ask_user`. An unapplied change is a failure like a red test.
 - **Pass a steady `workerId` on every `wait_for_work` / `next_job`.** Without
   it no review is ever handed out and nothing on the board merges (§ 4.0).
 - **There are no pull requests.** Never push a branch for review, never wait on

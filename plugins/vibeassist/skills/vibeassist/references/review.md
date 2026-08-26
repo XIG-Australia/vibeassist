@@ -63,7 +63,7 @@ you are here to test.
 
 | Outcome       | How                                                             |
 | ------------- | --------------------------------------------------------------- |
-| It merges     | `report_review({ jobId, passed: true, merged: true })` — § 6a    |
+| It merges     | `report_review({ jobId, passed: true, merged: true, mergedCommit })` — § 6a |
 | It goes back  | `report_review({ jobId, passed: false, found })` — § 6c          |
 
 **"Held", "stopped", "left unmerged", "flagged for the owner" are not
@@ -186,13 +186,18 @@ job open, and do not try a third time.**
 Then report:
 
 ```
-report_review({ jobId, passed: true, merged: true })
+report_review({ jobId, passed: true, merged: true, mergedCommit: "<sha>" })
 ```
 
-**`merged: true` is a statement of fact and the app treats it as one.** A pass
-is refused until the merge has actually landed, because **reporting a pass is
-what marks the ask accepted** — a pass on an unmerged branch tells the owner
-something happened that did not.
+**`merged: true` and `mergedCommit` are statements of fact and the app treats
+them as such.** A pass is refused until the merge has actually landed and you
+can say what it landed as. **You merged it, so you know the commit** — read it
+off the main line, never guess it.
+
+**A pass writes `delivered`, not `accepted`.** `delivered` means the work
+reached the first place the owner can open it and try it, which is exactly what
+your merge just did. **Accepting is the owner looking at it**, and they have not
+looked — it arrived a second ago. Nothing you call accepts anything.
 
 ### 6b · The cleanup is yours
 

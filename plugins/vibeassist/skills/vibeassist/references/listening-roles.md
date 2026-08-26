@@ -34,7 +34,7 @@ loop is the assistant calling it and re-arming.
 
 Every `wait_for_work` / `next_job` call carries one steady name for the session.
 A review may never go to whoever built the thing, so an unnamed worker is never
-handed one, so nothing merges and every Ask stops at `delivered`. **Pin the name
+handed one, so nothing merges and every Ask sits on `building` forever. **Pin the name
 at kickoff and keep it, including across a compact** — a name that changes
 mid-session is two workers as far as the app is concerned. The full reasoning is
 at the top of `references/standby.md`; the rule is one argument, every call.
@@ -51,7 +51,10 @@ Full rule: `references/standby.md` § Waiting on the review of your OWN build.
 
 ## What a worker is now responsible for
 
-**An Ask is not done when it is delivered. It is done when it is merged.**
+**An Ask is done when it is MERGED, and the owner has the last word after that.**
+`building` spans the whole run — build, check and review — and a passing
+review is what writes `delivered`. `accepted` is the owner looking at it, and
+theirs alone. The full ladder is the worker skill's `SKILL.md` § 4.
 
 The old worker's job ended at "delivery reported". The current one does not:
 building an Ask is three jobs — `build`, then `code_check`, then `review` — each
