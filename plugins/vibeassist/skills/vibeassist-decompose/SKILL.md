@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.31.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.32.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.32.0 (26 Aug 2026): the plan records prerequisites as ROWS as well as prose. `needs_first({ askId, needs, forget })` writes what the board acts on — the run order and the one-press “cue those first” — and the prose line is what the owner reads; both name the same asks and never drift. The pass writes the CURRENT set: read first, add each, forget every row it did not name, and do it all BEFORE `report_build_notes`, which ends the job. An unshaped prerequisite still gets a row (the cue-check shows “still needs shaping”); a prerequisite with no ask id gets the prose line only — never an invented row. “Nothing needed” is recorded on both channels. See the decompose skill § Record it TWICE. -->
 <!-- 0.31.0 (26 Aug 2026): the PLAN works out the BUILD ORDER. Every plan ends with a line or two saying what has to be built first — whether the parent is a real prerequisite or only a grouping, and any prerequisite that is NOT the parent (a sibling, a cousin, a foundation elsewhere). “No order needed” is written down too: a stated no is information, silence is not. The tree says what groups under what, never what comes first. This pass reasons and RECORDS — it never moves, re-parents or reorders anything. See the decompose skill § Build order. -->
 <!-- 0.29.0 (25 Aug 2026): the read-back is THE PLAN — one artifact with two readers. The owner approves it and the builder builds to it, so it is written owner-readable and plan-level ("here's what I'll build"), with technical names only where the decision or the build genuinely turns on one. The old "technical direction for the builder, not for the owner" framing (0.19.0) is superseded. It is sized to the CHANGE — a one-line change gets a one-line plan — and empty stays a real answer. ONE WRITER: the `write_build_notes` pass the app fires when the conversation ends; a `shape_ask` never writes `build_notes` too. THE PLAN PASS ASKS NOTHING — no `ask_user`, no parking; a shape too thin to plan says what is unclear IN the plan and stops, and the owner takes it Back to shaping. The build reads the plan from `get_ask` and builds to it, not to the three shape lines alone. -->
 <!-- 0.28.0 (24 Aug 2026): shaping is ONE conversation. Form and Confirm are two movements of the same talk — same channel, same voice, one question at a time — and the owner cannot tell which is happening. A Confirm question puts the AI's reading up ("I'm taking this as X — right?") with options and a recommendation; a genuine blocker is asked the same way ("this fights X — which wins?"), never handed back as a verdict. The separate shape-review entry is RETIRED: no pass/fail, no gate, no wall of findings. When it understands, it says "anything else to add?" and the owner's go ends it. (It also wrote the read-back; 0.29.0 moved that to the `write_build_notes` pass.) A stray `check_shape` job is run as the Confirm movement. `report_build_notes` takes `jobId`, not `askId`. -->
@@ -1127,13 +1128,56 @@ naming the other ask by its name:
 none. A paragraph of maybes is the thing this is meant to save the owner from.
 
 **This pass REASONS and RECORDS. It never rearranges.** Do not move an ask, do
-not re-parent one, do not change the run order, and do not set a status or a
-blocked reason. What you conclude goes in the plan, on the ask, where the app
-and the owner can both read it — and **they** decide what to do with it.
+not re-parent one, do not change the run order, do not cue anything, and do not
+set a status or a blocked reason. What you conclude gets written down — and
+**the owner and the app** decide what to do with it.
 
-**Note honestly:** the plan is where this lands because it is the field this
-pass owns and the app already reads. A first-class dependency link between asks
-would be a change to the app, and it is not something to invent from here.
+### Record it TWICE — the prose line, and a row
+
+**Two channels, and both are owed.** The prose line is for the owner to read.
+The **rows** are what the board can act on: they are what orders the run and
+what puts the one-press "cue those first" in front of the owner. **A prose line
+on its own leaves the press dead**, however right the reasoning was.
+
+The tool is **`needs_first({ askId, needs, forget })`** — `askId` is the ask that
+needs something, `needs` adds one prerequisite by id, `forget` takes one back.
+Pass neither and it just reads. **It locks nothing**: nothing refuses work
+because of a row, it is shown to the owner at the moment they cue, and they may
+go ahead anyway. So **record what is TRUE, not what you wish were enforced.**
+
+**Do it in this order, and finish before you report:**
+
+1. **Read what is already there** — `needs_first({ askId })` comes back with the
+   rows this ask already has, by name and status.
+2. **Add every prerequisite you named**, one call each, with the ask id you
+   already looked up on the board. **The row and the prose line name the same
+   asks** — if it is in the prose, it is a row; if it is a row, it is in the
+   prose. They must never drift apart.
+3. **`forget` every row you did NOT name this time.** A plan pass writes the
+   current set: re-running it leaves no duplicates (the same pair recorded twice
+   is stored once) and **no stale leftovers** from a reading that has moved on.
+   The read comes back by name — match the name against `list_asks` to get the
+   id to forget.
+4. **Then `report_build_notes`** — that call finishes the job, so every
+   `needs_first` call has to be done before it.
+
+**A prerequisite that is not shaped yet still gets a row.** Never skip one for
+being unready — the row carries its status, and the owner's cue-check is built
+to show "still needs shaping". A silently missing row is the failure; an unready
+one is the check working.
+
+**Never write a row without a real ask id.** If what has to come first is not on
+the board at all, it has no id, so it gets the **prose line only** — say plainly
+that the thing it needs is not an ask yet. **Do not invent an id, and do not
+turn a guess into a row.**
+
+**"Nothing needed" is recorded on BOTH channels too** — no rows (forget any that
+are left over), and the prose line saying so. A stated no on one channel and
+silence on the other is exactly the drift this rule exists to stop.
+
+**`needs_first` missing from this session's tools?** Say so out loud, once, and
+**still write the prose line** — the reasoning is not lost, only the row.
+Never quietly substitute another tool, and never drop the prose to match.
 
 ### Write it as light Markdown — the tab formats it
 
@@ -1169,6 +1213,8 @@ closed but the notes never landed.
 - **`notes` is never wholly empty any more** — the order line always lands
   (§ Build order). The shortest real plan is that one line on its own, and that
   is a perfectly good answer.
+- **Every `needs_first` call comes BEFORE this one.** This call ends the job, so
+  a row written after it is a row never written (§ Record it TWICE).
 - **A plan you genuinely cannot do** — the ask is not there, the code is
   unreadable — finishes with `complete_job` and one honest sentence instead.
   Never both. **A shape too thin to plan is NOT this case**: that plan gets
