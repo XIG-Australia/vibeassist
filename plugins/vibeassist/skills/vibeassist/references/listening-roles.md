@@ -39,15 +39,17 @@ at kickoff and keep it, including across a compact** — a name that changes
 mid-session is two workers as far as the app is concerned. The full reasoning is
 at the top of `references/standby.md`; the rule is one argument, every call.
 
-**And when the wait is your own build's review, say so.** You delivered it, so
-you cannot be handed its review — say that once, in plain words, and carry on
-listening:
+**You review your own builds, and that is fine.** The check and the review each
+run in **a fresh sub-agent that has never seen the work built**, briefed with
+pointers — the ask, the branch, the worktree — and never with your account of
+what you did. That fresh context IS the independence. **Never wait for a second
+listener, and never review from your own context.** When one is out, the true
+line is short:
 
-> I built that one, so I can't review my own work. I'm waiting for a second
-> assistant to pick the review up. That's normal, not stuck — start another
-> listener and it will land.
+> Reviewing that one now — a fresh agent is reading the code and the ask.
 
-Full rule: `references/standby.md` § Waiting on the review of your OWN build.
+Full rule: `references/standby.md` § INDEPENDENCE COMES FROM THE FRESH
+SUB-AGENT.
 
 ## What a worker is now responsible for
 
@@ -58,8 +60,9 @@ theirs alone. The full ladder is the worker skill's `SKILL.md` § 4.
 
 The old worker's job ended at "delivery reported". The current one does not:
 building an Ask is three jobs — `build`, then `code_check`, then `review` — each
-handed to a different worker, and the merge happens in the third. A listener
-takes whichever of them it is handed.
+run in **its own fresh sub-agent**, and the merge happens in the third. A
+listener takes whichever of them it is handed, and **one listener can take all
+three**: the reviewer is independent because it has never seen the work built.
 
 So **a listener that stops after the builds are done has not finished the
 queue.** The checks and the reviews arrive as their own jobs, after, and they

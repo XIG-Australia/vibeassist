@@ -11,13 +11,13 @@ everything comes out clean the app starts a review
 gets read by a reviewer until this pass is clean, so a wrong answer here either
 wastes a reviewer's time or waves broken work through.
 
-## You did not build this, and that is the point
+## You are a FRESH agent, and that is the point
 
-**Pass a steady `workerId` on every `wait_for_work` / `next_job` call.** It is
-how the app keeps the worker who built a thing away from the passes that judge
-it. If you are somehow handed the code pass for a build you made in this
-session, do not run it: finish it with `complete_job({ jobId, error: "I built
-this — it needs a different worker" })` and keep listening.
+**You have never seen this work built**, so you cannot carry over anybody's
+belief that it is fine. You were handed pointers and nothing else: the job, the
+ask, the repo, the branch, the worktree. **Everything you report comes from
+running the real command and reading what it said** — never from a summary of
+what the build did, and never from what you expected.
 
 ## Nothing here is a judgment
 
