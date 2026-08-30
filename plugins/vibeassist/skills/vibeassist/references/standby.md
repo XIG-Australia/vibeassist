@@ -170,7 +170,7 @@ Dispatch into two concurrent lanes:
 | Lane      | Takes                                          | At once |
 | --------- | ---------------------------------------------- | ------- |
 | **quick** | shaping, questions, anything short              | up to 3 |
-| **build** | `build`, `code_check`, `review` — anything that touches a working tree | up to 2 |
+| **build** | `build`, `code_check`, `review` — anything that touches a working tree; and `ingest`, which is heavy repo-reading work | up to 2 |
 
 - The lanes run **concurrently**: a build that takes an hour must never make a
   shaping request wait.
@@ -181,6 +181,10 @@ Dispatch into two concurrent lanes:
 - **Every build gets its own branch and its own worktree.** Two builds in the
   same checkout, or on the same branch, is the one parallel mistake that
   corrupts real work — never do it.
+- **`ingest` is the exception in this lane.** It reads the whole repository but
+  writes to no tree — no branch, no worktree, no merge. It sits in the build lane
+  because it is long, heavy work, not because it touches a tree; the worktree
+  rules above do not apply to it.
 - **A `code_check` or a `review` works in the worktree the build left behind**
   (`<checkout>-<shortId>`), so it is never a second tree on the same branch. The
   three jobs on one ask are strictly one after another — the app never runs two
@@ -363,6 +367,50 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
 
   It also **owns the cleanup**: once merged, the worktree is removed and the
   branch dropped, silently.
+- **`ingest`** — **bring an existing app in.** The owner pointed a project at
+  its code and asked for the as-is board. Fresh sub-agent, and it **needs the
+  repo** — resolve `repo.where` per job (§ One listener, every repo), because it
+  reads the whole repository. It writes to **no tree**: no worktree, no branch,
+  no merge. It is not a build. It is long, heavy work, so it runs in the **build
+  lane** where the heavy jobs live — see the lane note there.
+
+  What the sub-agent does:
+
+  1. **Survey the code with the `vibeassist-map` skill**, then hand that survey
+     to the `vibeassist-decompose` skill's **BREAKDOWN — from an existing
+     codebase (ingestion)** entry. **The code is the truth** (that skill's rule
+     3a): reproduce what is already there — the pages, elements, capabilities and
+     automations that exist — as the as-is tree. This is **structure, not a
+     shaping walk**: names, kinds and parentage, and for each node the status the
+     code shows it reached — **`delivered`** for work that is built and shipped.
+     **Do not run the collaborative Q&A and do not shape each ask**; per-ask
+     shaping is a later `shape_ask` job, never this one.
+  2. **Do NOT import it.** `preview_import` and `import_reading` are not the
+     landing for an ingest — they clamp already-built work down to `approved`,
+     and this is the owner's own running app, not a proposal. **The owner lands
+     it themselves in the app, at delivered**, from the reading you hand back.
+  3. **Report the reading as the job's result, and finish in one call:**
+
+     ```
+     complete_job({ jobId, result: { reading: {
+       asks: [ { key, parentKey, name, kind, want, mustDo, mustNot, status } ]
+     } } })
+     ```
+
+     `key` is any string unique within the reading; `parentKey` names another ask
+     in it, or is left off for the top level; `kind` is page | element |
+     capability | automation; `status` is what the code shows the node reached —
+     `delivered` for built-and-shipped. A shape line the code does not settle is
+     left empty; never invent one to fill a gap. **An empty reading is a
+     failure**, the same as any other empty result — if the map found nothing to
+     bring in, say why with `complete_job`'s `error` instead of reporting an
+     empty one.
+  4. **Say what you are doing** with `report_progress` as you go. Mapping a whole
+     app is long, and the note is what the owner watches on the bring-in screen
+     and what keeps the claim yours.
+
+  **The language check does not gate this pass** — it lands nothing on the board;
+  the owner does that. The check runs when each ask is later shaped.
 - **Anything else** — do not guess what it means. Finish it with
   `complete_job`'s `error` saying this skill version does not handle that kind,
   tell the user once, and keep listening. A job left claimed and silent is
@@ -430,11 +478,12 @@ this side stores it, and nothing on this side writes it.
    | `code_check`        | it merges the main line in and runs the project's checks in the worktree |
    | `review`            | it reads the code, runs the thing, and **merges the branch**             |
    | `write_build_notes` | it READS code to write the plan                                         |
+   | `ingest`            | it READS the whole repository to work out the as-is board               |
 
-   **`write_build_notes` never writes to the tree**: no worktree, no branch, no
-   commit. The other three all do, and a `review` is the one that writes to
-   the main line — so getting the checkout wrong there is the worst version of
-   this mistake there is.
+   **`write_build_notes` and `ingest` never write to the tree**: no worktree, no
+   branch, no commit — they only read. The other three all write, and a `review`
+   is the one that writes to the main line — so getting the checkout wrong there
+   is the worst version of this mistake there is.
 
 ### The repo's main line — resolve it, never write `main`
 

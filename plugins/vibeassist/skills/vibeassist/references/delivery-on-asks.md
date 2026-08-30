@@ -184,8 +184,8 @@ that grouping is one the person authored, not one a machine proposed.
    checks cannot catch, which is why it is yours and not the code pass's.
 
 8. **Report the delivery — and that is the END of the job.**
-   `report_delivery({ jobId, does, check, flags })` — three parts, and the first
-   two are owed:
+   `report_delivery({ jobId, does, check, flags, copy })` — the first two are
+   owed:
 
    - **does** — what it NOW DOES, in the words the person would use about their
      own product. Never files, never how it was built. If a sentence would only
@@ -194,6 +194,15 @@ that grouping is one the person authored, not one a machine proposed.
      on it.
    - **flags** — anything now left to them, a database change still to run being
      the usual one. Usually empty, and **empty is a real answer.**
+   - **copy** — **every user-facing string this build wrote or changed, one per
+     line, each with the state it shows in.** UI copy hides across states — an
+     empty state, an error, a loading line — and the owner can only see it all by
+     triggering every one. This is how they read every word in one place instead.
+     Write the string and where it appears: `"Save" — the button on the form`,
+     `"Nothing needs you right now" — the empty needs-you list`. Every word must
+     already pass `scripts/check_copy.mjs` and the standard (§ the copy
+     guardrail); this list is so the owner SEES them, not a second gate. Empty is
+     a real answer when the build touched no words.
 
    **This call reports AND finishes in one.** It fires the code pass,
    closes the job, and fires the code pass. **Do NOT call `complete_job` after

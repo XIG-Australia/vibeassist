@@ -165,10 +165,19 @@ you nothing about whether the person got what they asked for.
 3. **Was anything built that the ask never asked for?** Scope creep is a fail
    here, even when the extra thing is good. It belongs on the board as its own
    ask, where the owner can see it and choose.
+4. **Does every word a user reads obey the copy standard?** Read the visible
+   strings — buttons, headings, empty states, errors. A button written as a
+   description instead of the common word ("Place it where it can be retrieved
+   later" for Save; "See what came back"), a verbose or conversational label,
+   chatbot filler, exclamation marks — each is a send-back. Judge against
+   `references/ui-copy-standard.md`, and run `scripts/check_copy.mjs` on the
+   strings as the mechanical floor.
 
 **Judge against the ask, not against your preferences.** Code you would have
 written differently, but which does what was asked and breaks no must-not, is a
-pass. This is not a style review.
+pass. This is not a style review — with one exception, and it is not taste: copy
+is judged against the WRITTEN standard, the same way a must-not is. "I'd have
+worded it differently" is not a finding; "this breaks the copy standard" is.
 
 ### 6a · It passes → MERGE IT YOURSELF, THEN REPORT
 
