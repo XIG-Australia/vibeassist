@@ -385,6 +385,19 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      code shows it reached — **`delivered`** for work that is built and shipped.
      **Do not run the collaborative Q&A and do not shape each ask**; per-ask
      shaping is a later `shape_ask` job, never this one.
+
+     **Give each ask its COMPONENTS — every part and behaviour.** The map records
+     the actions on each page; turn them into the ask's components: one per
+     distinct thing a person sees or does on it — a button, a field, a behaviour
+     like drag-to-resize or a keyboard shortcut — each a **name** and a **plain
+     one-block definition** in the owner's words (what it is and does, not the
+     code). For an ingest, **lean toward capturing a part as a component rather
+     than folding it into the shape** — a component is granular and easy to edit
+     on its own, where the shape is not. Two rules keep it clean: **do not make a
+     component for anything that already became its own ask** (if "Speak instead
+     of typing" is a child ask, it is not also a component of the chat), and **run
+     the language check on the definitions** the same as any line that lands. A
+     part with no clear common name is still a component — name it plainly.
   2. **Do NOT import it.** `preview_import` and `import_reading` are not the
      landing for an ingest — they clamp already-built work down to `approved`,
      and this is the owner's own running app, not a proposal. **The owner lands
@@ -393,7 +406,10 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
 
      ```
      complete_job({ jobId, result: { reading: {
-       asks: [ { key, parentKey, name, kind, want, mustDo, mustNot, status } ]
+       asks: [ {
+         key, parentKey, name, kind, want, mustDo, mustNot, status,
+         components: [ { name, definition } ]
+       } ]
      } } })
      ```
 
@@ -401,7 +417,10 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      in it, or is left off for the top level; `kind` is page | element |
      capability | automation; `status` is what the code shows the node reached —
      `delivered` for built-and-shipped. A shape line the code does not settle is
-     left empty; never invent one to fill a gap. **An empty reading is a
+     left empty; never invent one to fill a gap. **`components`** is the ask's
+     parts (above) — each a `name` and a `definition` block; leave it off for an
+     ask that genuinely has none. The parts land as the ask's components, already
+     built, for the owner to see and edit. **An empty reading is a
      failure**, the same as any other empty result — if the map found nothing to
      bring in, say why with `complete_job`'s `error` instead of reporting an
      empty one.
