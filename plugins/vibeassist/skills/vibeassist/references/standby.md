@@ -381,8 +381,14 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      codebase (ingestion)** entry. **The code is the truth** (that skill's rule
      3a): reproduce what is already there — the pages, elements, capabilities and
      automations that exist — as the as-is tree. This is **structure, not a
-     shaping walk**: names, kinds and parentage, and for each node the status the
-     code shows it reached — **`delivered`** for work that is built and shipped.
+     shaping walk**: names, kinds and parentage, and a status that is **only ever
+     one of two**: **`delivered`** for a node that is in the running app, and
+     **`proposed`** for a gap you noticed that is not built. **Never `building`,
+     `queued`, `approved`, `shaping` or `accepted`** — those are pipeline states
+     the owner and the run drive, not facts about existing code, and `building`
+     in particular leaves an ask reading as mid-build forever with no job behind
+     it. Code that exists but looks half-finished is still `delivered` (it is
+     there); only a real gap is `proposed`.
      **Do not run the collaborative Q&A and do not shape each ask**; per-ask
      shaping is a later `shape_ask` job, never this one.
 
@@ -415,8 +421,8 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
 
      `key` is any string unique within the reading; `parentKey` names another ask
      in it, or is left off for the top level; `kind` is page | element |
-     capability | automation; `status` is what the code shows the node reached —
-     `delivered` for built-and-shipped. A shape line the code does not settle is
+     capability | automation; `status` is **`delivered`** (in the running app) or
+     **`proposed`** (a gap, not built) — never a pipeline state. A shape line the code does not settle is
      left empty; never invent one to fill a gap. **`components`** is the ask's
      parts (above) — each a `name` and a `definition` block; leave it off for an
      ask that genuinely has none. The parts land as the ask's components, already
