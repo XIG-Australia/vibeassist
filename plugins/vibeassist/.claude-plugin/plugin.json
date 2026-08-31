@@ -1,6 +1,6 @@
 {
   "name": "vibeassist",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "description": "Keep control of what you're building: take the Asks you approved and build them, decompose an idea or an existing codebase into Asks, map a repository the way its users meet it, and review what got built against what you asked for.",
   "author": {
     "name": "VibeAssist"

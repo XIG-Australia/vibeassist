@@ -392,18 +392,35 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      **Do not run the collaborative Q&A and do not shape each ask**; per-ask
      shaping is a later `shape_ask` job, never this one.
 
-     **Give each ask its COMPONENTS — every part and behaviour.** The map records
-     the actions on each page; turn them into the ask's components: one per
-     distinct thing a person sees or does on it — a button, a field, a behaviour
-     like drag-to-resize or a keyboard shortcut — each a **name** and a **plain
-     one-block definition** in the owner's words (what it is and does, not the
-     code). For an ingest, **lean toward capturing a part as a component rather
-     than folding it into the shape** — a component is granular and easy to edit
-     on its own, where the shape is not. Two rules keep it clean: **do not make a
-     component for anything that already became its own ask** (if "Speak instead
-     of typing" is a child ask, it is not also a component of the chat), and **run
-     the language check on the definitions** the same as any line that lands. A
-     part with no clear common name is still a component — name it plainly.
+     **Give each ask its COMPONENTS — every part AND every action.** The map
+     records both what is on each page and what a person can DO there, and both
+     become components: one per distinct thing a person **sees** (a part — the
+     header, a field) and one per distinct thing a person **does** (an action —
+     hide the tree, switch project, drag to resize, a keyboard shortcut). The
+     map's action list is the checklist — an action on it that is not its own
+     component has been dropped. **Do not dissolve the actions into a part's
+     prose**: "the header, with buttons to hide the tree and chat" buries two
+     real actions inside one noun — split them out so each stands as its own
+     component.
+
+     Name and define each in **plain, standard English, held to
+     `references/ui-copy-standard.md`** — the same bar as every string that
+     lands. Write it the way a help-centre or a good product would: SHORT and
+     direct, what it is and what it does, nothing more. **Do NOT write in the
+     codebase's own literary comment voice, and do NOT echo the code's
+     comments** — they are evidence for the map, never copy for the owner. A
+     definition that reads like a line from a novel is wrong; one that reads like
+     a tooltip is right. Names are the plainest true label a person would know —
+     **"Menu", not "Where you can go"; "Sign in", not "The sign-in door".**
+
+     For an ingest, **lean toward capturing a part or action as a component
+     rather than folding it into the shape** — a component is granular and easy
+     to edit on its own, where the shape is not. Two rules keep it clean: **do
+     not make a component for anything that already became its own ask** (if
+     "Speak instead of typing" is a child ask, it is not also a component of the
+     chat), and **hold every name and definition to the copy standard above** —
+     run `check_copy` on the definitions the same as any line that lands. A part
+     with no clear common name is still a component — name it plainly.
   2. **Do NOT import it.** `preview_import` and `import_reading` are not the
      landing for an ingest — they clamp already-built work down to `approved`,
      and this is the owner's own running app, not a proposal. **The owner lands
