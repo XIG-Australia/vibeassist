@@ -83,6 +83,19 @@ These are the tells of AI copy. They are banned, not discouraged.
 - **Explaining the obvious.** "Here you can…", "This screen lets you…", "This is
   where you…", "Use this to…". If the screen needs a sentence to explain what it
   obviously is, the screen is the problem, not the missing sentence.
+- **Redundant qualifiers that state the obvious.** "in your own words", "if you
+  like", "as you see fit", "however you want", "whatever you prefer". Of course it
+  is their words and their choice. Cut the qualifier — it adds nothing and it
+  reads as if the reader needed telling.
+- **Clever phrasing that has to be decoded.** "It leads with the half you need and
+  the other half is always one link away." A metaphor or a small riddle standing in
+  for the plain fact. If the reader has to work out what a line means, it has
+  failed. Say the plain thing.
+- **A rule where a description belongs.** "Never take a message when no assistant is
+  listening. Say so instead." reads like an instruction to the software, not a
+  description for the person. Say what the PERSON experiences: "If nothing is
+  listening, it tells you instead of losing your message." This one bites shape
+  lines hardest — a want or a must-not written as an internal rule.
 - **"You're all set" / "You're good to go" / "Sit back and relax" / "Happy
   building!"** Filler that says nothing.
 - **Vague calls to action.** "Click here", "Submit", "Continue" where a real verb
@@ -128,6 +141,13 @@ These are the tells of AI copy. They are banned, not discouraged.
   page is the projects; it does not need announcing)*.
 - "Submit" → "Create it" / "Save" / "Send" — whatever it actually does.
 - "Awaiting Your Confirmation" → "Waiting on you".
+- "Say what you want in your own words and it answers." → "Ask it anything about
+  this." *(the "in your own words" is filler; they know)*.
+- "Never take a message when no assistant is listening. Say so instead." → "If
+  nothing is listening, it tells you rather than losing your message." *(describe
+  the experience, not the rule)*.
+- "It leads with the half you need and the other half is always one link away." →
+  "Shows what you need first; the rest is one click away." *(say the plain thing)*.
 
 ## What the checker can and can't do
 

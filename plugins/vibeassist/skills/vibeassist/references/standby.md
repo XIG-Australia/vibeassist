@@ -413,6 +413,17 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      a tooltip is right. Names are the plainest true label a person would know —
      **"Menu", not "Where you can go"; "Sign in", not "The sign-in door".**
 
+     **The same bar covers the ask's OWN words, not just its components.** An
+     ask's **name**, its **want**, and its **must-do / must-not** are copy the
+     owner reads too — hold them to the same standard. Describe what the person
+     experiences, plainly: never restate the obvious ("say what you want *in your
+     own words*" — of course they are), never phrase a want or a must as an
+     internal rule ("never take a message when no assistant is listening" → "if
+     nothing is listening, it tells you instead of losing your message"), and
+     never be clever at the cost of clear ("it leads with the half you need and
+     the other half is a link away" → say the plain thing). Run check_copy on the
+     shape lines the same as the definitions.
+
      For an ingest, **lean toward capturing a part or action as a component
      rather than folding it into the shape** — a component is granular and easy
      to edit on its own, where the shape is not. Two rules keep it clean: **do
