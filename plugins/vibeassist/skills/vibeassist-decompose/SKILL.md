@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.43.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.44.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.44.0 (3 Sep 2026): A CHANGE A MUST-NOT NOW FORBIDS IS HEALED IN SHAPING, BEFORE THE ASK IS QUEUED. When a change adds behaviour an existing must-not rules out (buttons on a tab whose must-not said "nothing here asks you for anything"), that line is now untrue against what was just agreed — the shaper rewrites it to the boundary it really means, or drops it, as part of settling the change. A change is not settled while a must-not still contradicts it, and an ask never reaches the run carrying a shape that fights itself — the catch belongs here, in the shape, not later in the build. § Record a change only when the shape's own words go wrong. The build-side backstop is the vibeassist skill's references/delivery-on-asks.md § the plan never outranks a must-not. -->
 <!-- 0.35.0 (26 Aug 2026): MUST-NOT IS A NEGATIVE REQUIREMENT, NOT A SCOPE FENCE. Three spots that told the shaper to fence scope by writing a must-not are corrected: a must-not is a gate or constraint the built thing must obey ("never allow login during maintenance"), never a record that a whole feature wasn't asked for — that is scope, owned by the cake rule's default. AND the cake rule gains its flip side, SUGGESTION IS NOT INVENTION: the shaper MAY propose a proportionate extra the owner might want, as a recommendation-first question — a birthday message on the cake or plates and napkins, yes; twelve tiers with someone leaping out, no. See § The cake rule and § Must do and must not. -->
 <!-- 0.33.0 (26 Aug 2026): THE SKILL IS THE AUTHORITY FOR HOW VA BUILDS. The whole loop is stated once in § 4 — the stages and who ends each, the status ladder, and the database rule — and a project’s CLAUDE.md never overrides it (it owns what the repo IS: stack, branch names, folders, real commands). THE LADDER IS CORRECTED: `building` spans the WHOLE run; `report_delivery` moves NOTHING, it fires the code pass; a PASSING REVIEW writes `delivered` and must carry `mergedCommit` or it is refused; `accepted` is the OWNER’s alone. So a stranded board sits on `building`, not `delivered`. DATABASE CHANGES ARE THE CODE PASS’S: safe ones applied silently, destructive ones gated behind `ask_user` — replacing the old “the owner applies every migration by hand”. -->
 <!-- 0.32.0 (26 Aug 2026): the plan records prerequisites as ROWS as well as prose. `needs_first({ askId, needs, forget })` writes what the board acts on — the run order and the one-press “cue those first” — and the prose line is what the owner reads; both name the same asks and never drift. The pass writes the CURRENT set: read first, add each, forget every row it did not name, and do it all BEFORE `report_build_notes`, which ends the job. An unshaped prerequisite still gets a row (the cue-check shows “still needs shaping”); a prerequisite with no ask id gets the prose line only — never an invented row. “Nothing needed” is recorded on both channels. See the decompose skill § Record it TWICE. -->
@@ -425,6 +426,19 @@ order → there is no false record to correct, so it flows to the build and neve
 touches the shape. And the build note is **read from code**, so what got *built*
 records itself on the next read; the only thing hand-maintained is the want.
 
+**The sharp case — a change that a must-not now forbids. Heal it HERE, before the
+ask is queued.** When the owner approves behaviour an existing must-not rules out
+— buttons on a tab whose must-not said "nothing here asks you for anything" — that
+line is now untrue against what was just agreed. Rewrite it to the boundary it
+really means ("Nothing here asks you to fill anything in"), or drop it if it means
+nothing now, as part of settling the change. **Never let an ask reach the run
+carrying a must-not that fights the change just approved.** The catch belongs here,
+in the shape — a build that meets a self-contradicting shape only trips on it and
+comes back needing you, and if the line is never healed it trips on it again the
+next build, and the one after. Surface the clash and its fix in the same breath
+(§ surface a contradiction before the user has to catch it); a change is not
+settled while a must-not still contradicts it.
+
 ## Labels — Page, Element, Capability, Automation
 
 **Rewritten 12 August 2026, agreed with the product owner.** The old
@@ -656,11 +670,7 @@ from its verified output: its pages ARE your top-level surfaces (rule 8), its
 capabilities/actions default to SHAPE LINES on the surface that holds them
 (the cart rule — promote one to its own ask only when it passes a promotion
 test), its Findings become walk-questions, and every claim arrives with
-file:line evidence already checked. (In the **automated `ingest` job** there is
-no walk to ask into — the standby loop runs this pass with the collaborative Q&A
-off — so there its Findings and per-page defects land as **proposed fix-asks**
-instead, parented under the ask each is about; see the vibeassist skill's
-`references/standby.md` § the ingest job.) The mapper sees every click handler;
+file:line evidence already checked. The mapper sees every click handler;
 most of them are lines, not asks. Only when the mapper cannot run, read the code broadly by hand
 (routes, tables, major components/services/jobs). Either way, decompose from
 **what it actually contains** —

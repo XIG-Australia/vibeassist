@@ -69,7 +69,20 @@ that grouping is one the person authored, not one a machine proposed.
      unclear — is the owner's signal, not yours to solve. Do not guess past it:
      ask, the same as any other gap.
    - **The plan never outranks a must-not**, on this ask or above it. If the two
-     genuinely fight, that is a question, not a choice you make quietly.
+     genuinely fight, that is a question, not a choice you make quietly. **And a
+     resolved contradiction HEALS THE SHAPE — it never just clears one build.**
+     Where the fight is that the must-not, as written, forbids something the
+     owner actually wants — a stale or mis-worded line — put the EXACT
+     replacement wording in the `ask_user` question, and when the owner confirms,
+     the offending line is rewritten to what it now means as part of resolving
+     it. **Never deliver an ask whose own must-not still contradicts what you
+     built.** An unchanged line is re-found by the next build and by every
+     review, so a verbal "yes, go ahead" that leaves the words alone is a
+     nag-loop, not a resolution — it clears, it does not heal (see the decompose
+     skill § the shape review fixes the shape). If the tool refuses to rewrite an
+     owner-agreed line, that refusal is the thing to fix — flag it as **blocking**
+     and do NOT mark the ask done; never deliver the ask carrying a line that
+     fights its own delivery.
 
    **The ask is already in hand — do NOT go looking for it.** It came from a
    tool, and that response IS the ask. **The board lives in the app, behind
