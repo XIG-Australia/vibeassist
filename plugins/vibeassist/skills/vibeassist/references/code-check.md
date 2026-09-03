@@ -106,7 +106,10 @@ Two separate things, and both block:
   - **How** a project writes and runs its migrations — the folder, the naming,
     the command — is the project's own, and you read it there.
 - **Confirm the code and the database still agree** — no drift. That is
-  `dbAgrees`.
+  `dbAgrees`. Inspect it by NAMING the worktree —
+  `git -C <checkout>-<shortId> diff -- <path>` — never by `cd`-ing into it: a
+  bare `cd` stalls on a permission approval that never comes when unattended
+  (`references/standby.md` § Resolving it, per job).
 
 A project with no database has nothing to run and nothing to disagree: empty
 `ranMigrations` and `dbAgrees` true.

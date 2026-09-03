@@ -554,9 +554,16 @@ this side stores it, and nothing on this side writes it.
    `projectId`. Read it per job, so a path set mid-session is picked up on the
    next one without a restart.
 2. **`repo` there → `repo.where` is the checkout for this job**, and every git
-   command runs against it: `git -C <where> …`, or from inside the worktree
-   made under it. **Never rely on the working directory** — the folder the
-   listener is standing in decides nothing.
+   command NAMES ITS DIRECTORY: `git -C <where> …` for the checkout,
+   `git -C <checkout>-<shortId> …` for the worktree made under it. **Never `cd`
+   into a folder and run git there** — not even to peek at a diff, and not in a
+   sub-agent you hand a check to. A bare `cd` leaves the working directory
+   unresolvable to the permission check, so with the deny floor in place
+   (`.env` and its kind) it cannot prove the path you touch is safe and stops
+   for an approval — which never comes when the run is unattended, so the job
+   just hangs. Naming the directory keeps the path resolvable and the check
+   silent. **Never rely on the working directory** — the folder the listener is
+   standing in decides nothing.
 3. **`repo` is `null` → ASK ONCE, one line**, and let the question park the
    job:
 
