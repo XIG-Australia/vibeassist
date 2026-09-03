@@ -553,17 +553,22 @@ this side stores it, and nothing on this side writes it.
 1. **Call `list_projects`** and find the entry whose `id` is the job's
    `projectId`. Read it per job, so a path set mid-session is picked up on the
    next one without a restart.
-2. **`repo` there → `repo.where` is the checkout for this job**, and every git
-   command NAMES ITS DIRECTORY: `git -C <where> …` for the checkout,
-   `git -C <checkout>-<shortId> …` for the worktree made under it. **Never `cd`
-   into a folder and run git there** — not even to peek at a diff, and not in a
-   sub-agent you hand a check to. A bare `cd` leaves the working directory
-   unresolvable to the permission check, so with the deny floor in place
-   (`.env` and its kind) it cannot prove the path you touch is safe and stops
-   for an approval — which never comes when the run is unattended, so the job
-   just hangs. Naming the directory keeps the path resolvable and the check
-   silent. **Never rely on the working directory** — the folder the listener is
-   standing in decides nothing.
+2. **`repo` there → `repo.where` is the checkout for this job**, and EVERY
+   command that reads, searches or touches files NAMES ITS DIRECTORY rather than
+   `cd`-ing into it: `git -C <where> …` and `git -C <checkout>-<shortId> …`,
+   `grep -rn … <checkout>-<shortId>/src`, `find <checkout>-<shortId> …`,
+   `cat <checkout>-<shortId>/<path>`, and the same for anything else. **Never
+   `cd` into a folder and run a command there** — not git, not grep, not find,
+   not cat, not to peek at a diff, and NOT in a sub-agent you hand a search or a
+   check to: brief it with the worktree path and this rule, because a delegated
+   general-purpose agent does not read these references and will `cd` unless it
+   is told not to. A bare `cd` leaves the working directory unresolvable to the
+   permission check, so with the deny floor in place (`.env` and its kind) it
+   cannot prove the path the command reads is safe and stops for an approval —
+   which never comes when the run is unattended, so the job just hangs. Naming
+   the directory keeps the path resolvable and the check silent. **Never rely on
+   the working directory** — the folder the listener is standing in decides
+   nothing.
 3. **`repo` is `null` → ASK ONCE, one line**, and let the question park the
    job:
 
