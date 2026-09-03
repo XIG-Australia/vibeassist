@@ -129,6 +129,9 @@ Lifting that gate is a change to the app, never something to fake from here.
 
 ## The loop, exactly
 
+0. **At kickoff only, before the first call: reap the worktrees that are done
+   with** (§ Before you arm — reap the worktrees that are done with). Once per
+   session, never inside the loop.
 1. Call `wait_for_work({ workerId })`.
 2. `{ job: null }` → the ordinary quiet answer. **Re-arm immediately. Say
    nothing** — no narration, no "still nothing", no offer to stop. The one
@@ -146,6 +149,53 @@ Lifting that gate is a change to the app, never something to fake from here.
 > happened" is the normal state of a listener, not a reason to end.
 >
 > The only ends are the stop reasons below.
+
+## Before you arm — reap the worktrees that are done with
+
+Run this ONCE at kickoff, before the first `wait_for_work` — never inside the
+loop. It is the other end of cleanup-on-merge. A build leaves its worktree as the
+handshake to the code-check and the review, and the reviewer removes it on the
+merge (§ Where a build STOPS). But a build that never reaches that merge — one
+that failed its rounds and stopped for a person, a session that died mid-run, an
+ask dropped or deleted, a board reconciled out from under it — leaves its worktree
+behind with nobody coming to remove it. One per build, for ever, is the leak this
+closes.
+
+Resolve the repo's main line first (§ The repo's main line — call it
+`<mainline>`), then look at every build worktree beside the served checkout —
+BOTH the ones git still tracks and the folders it has forgotten, because a
+de-registered leftover is exactly what piles up:
+
+```
+git -C <where> worktree list                 # the ones git still tracks
+ls -d <where>/../<checkout-name>-*            # every sibling on disk, tracked or not
+```
+
+Remove one ONLY when it is provably done with — ALL THREE must hold:
+
+1. **No live job for its ask.** The `<shortId>` in the name names the ask. Read
+   it; if a `build`, `code_check` or `review` is still out for that ask, LEAVE IT
+   — it is active work, and it may be another listener's lane. A worktree with a
+   job still going is never reaped.
+2. **Its work has landed or been abandoned** — one of:
+   - its branch is merged into the main line:
+     `git -C <where> merge-base --is-ancestor <branch> <mainline>` succeeds; or
+   - its ask no longer exists (`get_ask` → not found) or is dropped.
+3. **It is not the served checkout.** Never touch `<where>` itself, whatever it
+   is named.
+
+Then remove it:
+- **Tracked** → `git -C <where> worktree remove <path>` (add `--force` only if it
+  is clean), then `git -C <where> worktree prune`, and delete the branch if it is
+  merged.
+- **A folder git has forgotten** → delete the folder directly, but **unlink its
+  `node_modules` first when that is a symlink** — a recursive delete that follows
+  the link tears through the shared package store it points at. Remove the link,
+  then the folder.
+
+Do it silently — cleanup is part of the work, never a question and never a status
+line (§ silent completion). A worktree that fails any of the three tests is left
+untouched and unmentioned; a doubtful case is always left, never forced.
 
 ## A fresh context per job — never the listener's own
 
@@ -432,27 +482,6 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      chat), and **hold every name and definition to the copy standard above** —
      run `check_copy` on the definitions the same as any line that lands. A part
      with no clear common name is still a component — name it plainly.
-
-     **Carry the map's ATTENTION ITEMS as proposed fix-asks — never drop them.**
-     The map calls out two things beyond the tree, and both are currently lost if
-     you only build the tree. A per-page **⚠ Defect worth knowing about** (a dead
-     button, a count hard-coded to zero, a panel that is an empty frame, a
-     destructive action with no confirmation) and a repo-wide **Findings** section
-     (a dead surface, a table nothing touches, a table with no row-level security,
-     a write with no visible feedback). **Each one becomes its own `proposed`
-     ask** — VA's own rule is that a finding becomes an ask, not a note — parented
-     under the ask it is about (a repo-wide finding under the ask it most concerns,
-     or at the top level if it concerns none). So `proposed` now covers two cases:
-     a whole surface that is not built, AND a fix for something that IS built but
-     is wrong. Its **want is the FIX in plain owner speech** — what the app should
-     do once it is put right ("Show the real needs-you and replies counts — today
-     they are always zero"), never the file-and-line, never the word "defect", and
-     never the code's own comment voice. Hold it to the copy standard and
-     `check_copy` it like every other line. Give it a **stable plain name** so a
-     second ingest of the same repo lands no second copy of the same fix. **Only
-     carry what the map actually found, cited to real code — never invent an issue
-     to fill the section**, and a defect whose fix is ALREADY a proposed gap-ask in
-     the tree is not also a second ask: one or the other, never both.
   2. **Do NOT import it.** `preview_import` and `import_reading` are not the
      landing for an ingest — they clamp already-built work down to `approved`,
      and this is the owner's own running app, not a proposal. **The owner lands
@@ -471,9 +500,7 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
      `key` is any string unique within the reading; `parentKey` names another ask
      in it, or is left off for the top level; `kind` is page | element |
      capability | automation; `status` is **`delivered`** (in the running app) or
-     **`proposed`** (a gap that is not built, OR a fix for something built-but-wrong
-     — the attention items above are just more `proposed` asks in this same list)
-     — never a pipeline state. A shape line the code does not settle is
+     **`proposed`** (a gap, not built) — never a pipeline state. A shape line the code does not settle is
      left empty; never invent one to fill a gap. **`components`** is the ask's
      parts (above) — each a `name` and a `definition` block; leave it off for an
      ask that genuinely has none. The parts land as the ask's components, already
