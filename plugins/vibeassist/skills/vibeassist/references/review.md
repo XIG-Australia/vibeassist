@@ -153,6 +153,12 @@ The build on top of what is already there — never the build on its own.
 - **Read the real diff and the real code.** Not a summary of it.
 - **Run the thing and see the result for yourself.** Open the page, click the
   button, call the endpoint. Verify from reality.
+- **Run it in YOUR OWN worktree, on YOUR OWN port — never the owner's served
+  checkout on port 3000.** They are using that one, and many checks sharing it is
+  what bottlenecks and crashes it. Start the project's serve command (CLAUDE.md
+  § Serving it for a review) against the branch you are verifying, on a free port
+  of your own, and **kill it the moment you are done** — a review never leaves a
+  server running.
 
 Green checks tell you the code compiles and the tests that exist pass. They tell
 you nothing about whether the person got what they asked for.

@@ -196,6 +196,12 @@ that grouping is one the person authored, not one a machine proposed.
    `Hello "/route"!` and the build reported done.) This is the one thing green
    checks cannot catch, which is why it is yours and not the code pass's.
 
+   **When you run it, run YOUR OWN instance — your worktree, your own port, never
+   the owner's served checkout on port 3000.** The owner is on that one, and many
+   checks sharing it is what bottlenecks and crashes it. Start the project's serve
+   command (CLAUDE.md § Serving it for a review) on a free port of your own, and
+   **kill it when you are done** — a check never leaves a server running.
+
 8. **Report the delivery — and that is the END of the job.**
    `report_delivery({ jobId, does, check, flags, copy })` — the first two are
    owed:
