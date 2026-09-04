@@ -553,22 +553,31 @@ this side stores it, and nothing on this side writes it.
 1. **Call `list_projects`** and find the entry whose `id` is the job's
    `projectId`. Read it per job, so a path set mid-session is picked up on the
    next one without a restart.
-2. **`repo` there → `repo.where` is the checkout for this job**, and EVERY
-   command that reads, searches or touches files NAMES ITS DIRECTORY rather than
-   `cd`-ing into it: `git -C <where> …` and `git -C <checkout>-<shortId> …`,
-   `grep -rn … <checkout>-<shortId>/src`, `find <checkout>-<shortId> …`,
-   `cat <checkout>-<shortId>/<path>`, and the same for anything else. **Never
-   `cd` into a folder and run a command there** — not git, not grep, not find,
-   not cat, not to peek at a diff, and NOT in a sub-agent you hand a search or a
-   check to: brief it with the worktree path and this rule, because a delegated
-   general-purpose agent does not read these references and will `cd` unless it
-   is told not to. A bare `cd` leaves the working directory unresolvable to the
-   permission check, so with the deny floor in place (`.env` and its kind) it
-   cannot prove the path the command reads is safe and stops for an approval —
-   which never comes when the run is unattended, so the job just hangs. Naming
-   the directory keeps the path resolvable and the check silent. **Never rely on
-   the working directory** — the folder the listener is standing in decides
-   nothing.
+2. **`repo` there → `repo.where` is the checkout for this job.** Two rules, and
+   they split on git versus the build:
+   - **Git and file-search NAME THEIR DIRECTORY, never a `cd`:** `git -C <where>
+     …` and `git -C <checkout>-<shortId> …`, `grep -rn … <checkout>-<shortId>/src`,
+     `find <checkout>-<shortId> …`, `cat <checkout>-<shortId>/<path>`. For git
+     this is not only about the prompt — it is how the mainline resolves from the
+     served checkout and how each command reaches the right repo (§ The repo's
+     main line). Naming the directory also keeps the path resolvable, so the
+     permission check stays silent.
+   - **To RUN the build inside the worktree — install, typecheck, test, the dev
+     build — `cd` into it:** `cd <checkout>-<shortId> && npm run <script>`. These
+     tools need a real working directory, and `cd` is the plain way to give them
+     one. It is silent because the checkout's allow-list carries `cd` and the
+     read/nav commands (`grep`, `ls`, `cat`, `find`, `head`, `tail`) alongside
+     `git`, `npm`, `npx` and `node` — add them once to
+     `.claude/settings.local.json` and every worktree under the checkout is
+     covered. **Never use `EnterWorktree` to get into the worktree.** It
+     relocates the session's permission root, and for a worktree outside
+     `.claude/worktrees/` — which every build worktree is, by design (§ Where it
+     builds) — Claude Code asks for an approval that never comes on an unattended
+     run, so the job hangs. A plain `cd` has no such gate.
+   - **Brief any sub-agent the same** — a delegated general-purpose agent does
+     not read these references, so hand it the worktree path and both rules: git
+     and search name the directory, it may `cd` into the worktree to run the
+     build, and it must never call `EnterWorktree`.
 3. **`repo` is `null` → ASK ONCE, one line**, and let the question park the
    job:
 
