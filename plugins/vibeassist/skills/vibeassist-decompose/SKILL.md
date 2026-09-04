@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.50.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.51.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.51.0 (12 Aug 2026): SHAPING LANDS THE PARTS AN ASK IS MADE OF, as drafts. New app tool `set_components({ askId, components:[{name, definition}] })` (lib/mcp/tools.ts, lib/asks/components.ts landDraftComponents/whatIsNew) lands a page's or capability's parts as DRAFT components the owner reviews on the Shape tab — additive and safe (a part the ask already has, by name, is left alone; re-running never doubles one). Components moved onto the Shape tab and the standalone Components tab is gone (app: ShapeTab renders them, AskView + openOnTab drop the tab). Recommendation-first, never over-decomposed, a part is not a child ask. § The shaping conversation gains "The parts it is made of — land them as drafts". -->
 <!-- 0.50.0 (12 Aug 2026): THE PLAN PASS MAY ASK NOW — one thing at a time, in the chat. The old "this pass NEVER asks" rule is reversed: its reason (a question would open a second conversation in a second place) is gone, because the whole conversation lives in the chat and a build-notes question surfaces there in the same card shaping's do (pairs with the app change: notesNow.ts reads the parked question, thread.ts shows it in the approved phase, BuildNotesTab points to the chat). So a genuine technical fork the shape/code/board can't settle → `ask_user` and park, unlimited but one at a time. A hole in the SHAPE still goes Back to shaping, not a plan question. § This pass MAY ask — one thing at a time, in the chat. -->
 
 <!-- 0.49.0 (4 Sep 2026): A shape_ask JOB CARRIES THE CONVERSATION SO FAR — CONTINUE IT, NEVER RESTART. Pairs with the app change (lib/assistant/shaping.ts, conversationSoFar.ts): a re-run now receives `conversation` in its input — every prior question and answer for this ask, oldest first — so the fresh session picks up instead of asking everything again. This is the clobber fix: the record was always durable in job_questions, it just was never read back. § The shaping conversation gains "A shape_ask job carries the conversation so far". `note` and `change` are honoured the same way. -->
@@ -946,6 +947,31 @@ that never saw those turns, and this list is the whole memory of them.
 
 The three shape lines are the settled result; `conversation` is how they were
 reached. Build on both; throw away neither.
+
+### The parts it is made of — land them as drafts
+
+An ask often has PARTS — a page has a header, a list, a filter; a capability has
+pieces that each do something. When the shape makes those parts plain, land them
+with **`set_components({ askId, components: [{ name, definition }] })`**, so the
+owner sees the parts on the Shape tab and does not have to name every one by
+hand.
+
+- **Drafts, for the owner to review.** Each is a name and, optionally, a block
+  saying what the part is, how it looks and what it does. They land as drafts the
+  owner edits, keeps or ignores; **nothing is built by this**, and it never
+  approves or queues anything.
+- **Recommendation-first, and never over-decomposed.** Propose only the parts
+  you are confident the ask genuinely has. An ask with no natural parts gets
+  none; two obvious parts are two, not eight invented ones. The cake rule holds
+  here too — parts OF the cake, not extra tiers nobody asked for.
+- **Additive and safe to re-run.** A part the ask already has (matched by name)
+  is left exactly as it is, so landing again as the conversation continues never
+  doubles one and never writes over a part the owner has edited or that has
+  already built. Land the new ones; leave the rest.
+- **A part is not a child ask.** A component has no shape and no build of its
+  own — it is built when its ask is. If a "part" is really its own thing with its
+  own want and its own build, that is a child ask (`create_ask`), not a
+  component.
 
 ### One question at a time — always
 
