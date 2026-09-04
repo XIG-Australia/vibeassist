@@ -3,7 +3,10 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.45.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.50.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.50.0 (12 Aug 2026): THE PLAN PASS MAY ASK NOW — one thing at a time, in the chat. The old "this pass NEVER asks" rule is reversed: its reason (a question would open a second conversation in a second place) is gone, because the whole conversation lives in the chat and a build-notes question surfaces there in the same card shaping's do (pairs with the app change: notesNow.ts reads the parked question, thread.ts shows it in the approved phase, BuildNotesTab points to the chat). So a genuine technical fork the shape/code/board can't settle → `ask_user` and park, unlimited but one at a time. A hole in the SHAPE still goes Back to shaping, not a plan question. § This pass MAY ask — one thing at a time, in the chat. -->
+
+<!-- 0.49.0 (4 Sep 2026): A shape_ask JOB CARRIES THE CONVERSATION SO FAR — CONTINUE IT, NEVER RESTART. Pairs with the app change (lib/assistant/shaping.ts, conversationSoFar.ts): a re-run now receives `conversation` in its input — every prior question and answer for this ask, oldest first — so the fresh session picks up instead of asking everything again. This is the clobber fix: the record was always durable in job_questions, it just was never read back. § The shaping conversation gains "A shape_ask job carries the conversation so far". `note` and `change` are honoured the same way. -->
 <!-- 0.44.0 (3 Sep 2026): A CHANGE A MUST-NOT NOW FORBIDS IS HEALED IN SHAPING, BEFORE THE ASK IS QUEUED. When a change adds behaviour an existing must-not rules out (buttons on a tab whose must-not said "nothing here asks you for anything"), that line is now untrue against what was just agreed — the shaper rewrites it to the boundary it really means, or drops it, as part of settling the change. A change is not settled while a must-not still contradicts it, and an ask never reaches the run carrying a shape that fights itself — the catch belongs here, in the shape, not later in the build. § Record a change only when the shape's own words go wrong. The build-side backstop is the vibeassist skill's references/delivery-on-asks.md § the plan never outranks a must-not. -->
 <!-- 0.35.0 (26 Aug 2026): MUST-NOT IS A NEGATIVE REQUIREMENT, NOT A SCOPE FENCE. Three spots that told the shaper to fence scope by writing a must-not are corrected: a must-not is a gate or constraint the built thing must obey ("never allow login during maintenance"), never a record that a whole feature wasn't asked for — that is scope, owned by the cake rule's default. AND the cake rule gains its flip side, SUGGESTION IS NOT INVENTION: the shaper MAY propose a proportionate extra the owner might want, as a recommendation-first question — a birthday message on the cake or plates and napkins, yes; twelve tiers with someone leaping out, no. See § The cake rule and § Must do and must not. -->
 <!-- 0.33.0 (26 Aug 2026): THE SKILL IS THE AUTHORITY FOR HOW VA BUILDS. The whole loop is stated once in § 4 — the stages and who ends each, the status ladder, and the database rule — and a project’s CLAUDE.md never overrides it (it owns what the repo IS: stack, branch names, folders, real commands). THE LADDER IS CORRECTED: `building` spans the WHOLE run; `report_delivery` moves NOTHING, it fires the code pass; a PASSING REVIEW writes `delivered` and must carry `mergedCommit` or it is refused; `accepted` is the OWNER’s alone. So a stranded board sits on `building`, not `delivered`. DATABASE CHANGES ARE THE CODE PASS’S: safe ones applied silently, destructive ones gated behind `ask_user` — replacing the old “the owner applies every migration by hand”. -->
@@ -926,6 +929,24 @@ manner: **one question at a time, options, a recommendation, short.**
 There is no verdict at the end of this. **You are not a gate.** You confirm you
 understood; the owner decides.
 
+### A shape_ask job carries the conversation so far — continue it, never restart
+
+A `shape_ask` job's input carries `conversation`: every question already asked
+about this ask and the answer that came back, oldest first. It is empty only on
+a true first pass. **Read it and pick up from there** — you are a fresh session
+that never saw those turns, and this list is the whole memory of them.
+
+- **Never re-ask something already answered in `conversation`.** They answered it
+  once; asking again is the clobber this exists to stop.
+- **Never start the walk over.** What they told you stands, the same as a shape
+  line they already agreed — carry on from where it left off.
+- `note` (something the owner added after a first pass) and `change` (a delta on
+  what they already have) are theirs the same way: fold them in, never
+  re-litigate them.
+
+The three shape lines are the settled result; `conversation` is how they were
+reached. Build on both; throw away neither.
+
 ### One question at a time — always
 
 `ask_user` carries every question, Form and Confirm alike. Asking parks the job
@@ -1090,25 +1111,40 @@ Two things stay out, however much you know about them:
    **A real risk you found in the code is not "what the code shows"** — that
    goes in, in the owner's terms. What stays out is the tour.
 
-### This pass NEVER asks the owner anything
+### This pass MAY ask — one thing at a time, in the chat
 
-**Do not call `ask_user` here, and never park this job on a question.** Shaping
-is where the owner is talked to; the plan pass is not a second conversation, and
-opening one puts the ask in two places at once.
+It used to be told never to. The reason was that a question here would be a
+second conversation in a second place — and that reason is gone. The whole
+conversation lives in the chat now, and a question the plan pass parks on
+surfaces there in the same card shaping's questions do. So asking is not a
+second conversation; it is the same one, and answering it brings this job back
+to carry on from where it stopped.
 
-Write the plan from three things only: **the agreed shape**, **the code you
-read**, and **where the ask sits on the board** (§ Build order). Nothing else,
-and nobody asked.
+So when a genuine non-obvious call is the ask's to make and **the agreed shape,
+the code you read, and where the ask sits on the board** cannot settle it,
+**`ask_user` and park** rather than guess — exactly the way shaping does (load
+the question channel). One question at a time: the job parks, your turn ends,
+and when it is answered the job comes back and you can ask the next. There is no
+cap on how many a plan may need — only that they go one at a time and each earns
+its place.
 
-**If the shape is too thin to plan confidently, say what is unclear IN the plan,
-and stop.** Name the hole plainly — "The shape doesn't say where the export
-control lives, so I can't say where it will appear" — finish the job with that
-in the notes, and leave it. The owner reads it and takes the ask **Back to
-shaping**, which is where the question belongs. That is the loop working, not a
-failure.
+**Ask only for a REAL fork.** The bar is the same as everywhere: never a thing
+the code already shows, never a thing you can decide yourself, never a list, and
+never a question asked to fill an empty field. A plan that asks about everything
+is as wrong as one that invents direction — the residual is still the residual,
+and most passes still ask nothing at all.
+
+**A hole in the SHAPE is not a plan question — that still goes Back to shaping.**
+If what is missing is the owner's intent, the want itself too thin to build from,
+that is not a technical fork for the plan to settle: name the hole plainly in the
+notes — "The shape doesn't say where the export control lives" — finish the job,
+and the owner takes the ask **Back to shaping**, where intent is settled. Asking
+is for a technical call the plan owns; Back to shaping is for a shape that isn't
+agreed yet.
 
 **Never guess past a hole and never fill it quietly.** A plan built on an
-invented answer is worse than a plan that says it does not have one.
+invented answer is worse than one that asked, or one that says plainly it does
+not have an answer.
 
 ### Empty is a REAL answer, and it is a common one
 
