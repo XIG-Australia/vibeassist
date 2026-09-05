@@ -282,7 +282,10 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
   time**, through `ask_user`; the channel refuses a second on the same job
   anyway. **There is no verdict at the end** — no pass, no fail, no list handed
   back. A genuine blocker goes out as one more question with the options that
-  settle it. The doctrine is in that skill; do not restate it here.
+  settle it. **After an answer moves the shape, it says the delta in the chat** —
+  `say_in_chat({ jobId, said })`, one line on what just changed, never a
+  restatement of the whole shape. The doctrine is in that skill; do not restate
+  it here.
 
   **It ends at the go, and writes NO plan.** When the shape is understood, the
   sub-agent asks "anything else to add?", lands the shape on the owner's go, and
@@ -325,10 +328,14 @@ three (§ INDEPENDENCE COMES FROM THE FRESH SUB-AGENT).
   in that skill; do not restate it here.
 
   **This pass asks the owner NOTHING.** No `ask_user`, no parking on a question —
-  shaping is where the owner is talked to. If the shape is too thin to plan, the
-  sub-agent says what is unclear IN the plan and finishes done; the owner reads
-  it and takes the ask Back to shaping. The doctrine is in that skill; do not
-  restate it here.
+  shaping is where the owner is talked to. It does say ONE line as it starts —
+  `say_in_chat({ jobId, said })`, a handoff ("your shape's agreed, I'm putting
+  the build notes together; they'll show up in the workspace") so the chat does
+  not just fall silent — but that is a TELL, not a question: nothing parks and
+  nothing waits, and after it the pass works quietly. If the shape is too thin to
+  plan, the sub-agent says what is unclear IN the plan and finishes done; the
+  owner reads it and takes the ask Back to shaping. The doctrine is in that
+  skill; do not restate it here.
 
   It reports back with **`report_build_notes({ jobId, notes })`**, which writes
   the notes and **finishes the job in one call** — the same split as `build` and

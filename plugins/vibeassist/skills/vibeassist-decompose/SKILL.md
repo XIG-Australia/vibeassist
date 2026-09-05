@@ -3,7 +3,8 @@ name: vibeassist-decompose
 description: Turn a raw idea (greenfield), an existing codebase (breakdown/ingestion), or an app the user wants to replace (rebuild) into an Idea Tree of asks on the VibeAssist board, through a collaborative, recommendation-first Q&A walk. Use when the user runs /vibeassist decompose, or says "decompose my idea", "break down this app", "break this down into asks", "build my idea tree", "turn this repo into asks", "map my codebase in VibeAssist", "ingest this project" — for a rebuild — "rebuild this app", "rewrite it from scratch", "the ideas are right but the implementation is awful", "re-platform this" — and for shaping one ask — "shape this ask", "spec this ask", "flesh out this ask". Five entries — greenfield (propose from knowledge and judgment), breakdown (decompose from what the code contains), rebuild (decompose the idea fresh, the old app as witness and quarry, never as truth), the shaping conversation (skip the tree and shape the one ask — Form and Confirm as one continuous conversation, one question at a time, never a verdict), and the plan (the read-back written after that conversation ends — what will be built, owner-readable and plan-level, approved by the owner and followed by the builder; it lands as the build notes, is sized to the change, and asks the owner nothing). Proposals are draft-first — the user accepts before the board changes.
 ---
 
-<!-- vibeassist-skill-version: 0.51.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- vibeassist-skill-version: 0.52.0 (single-sourced from plugins/vibeassist/.claude-plugin/plugin.json — keep them in step) -->
+<!-- 0.52.0 (5 Sep 2026): THE ASSISTANT SAYS THE DELTA AND THE HANDOFF IN THE CHAT. New app tool `say_in_chat({ jobId, said })` posts one plain line as your turn in the ask's chat (lib/mcp/tools.ts) — a tell, not a question, no parking. Pairs with the app change that moved questions, answers and the read-back into the chat (slices 1–2: questions are bubbles; the read-back text left the actions band, which is now buttons only). So: after you capture an answer in a `shape_ask`, say the DELTA — what CHANGED, not the whole shape ("I've added these components: …", "Set the must-not so it stays read-only"); and when the `write_build_notes` pass starts, say the HANDOFF once ("Your shape's agreed — I'm putting the build notes together; they'll show up in the workspace") then work quietly. Never restate what the owner can already see in the workspace. § The shaping conversation gains "Say what you captured — the delta, in the chat"; the plan gains "Say you're on it, then work quietly". -->
 <!-- 0.51.0 (12 Aug 2026): SHAPING LANDS THE PARTS AN ASK IS MADE OF, as drafts. New app tool `set_components({ askId, components:[{name, definition}] })` (lib/mcp/tools.ts, lib/asks/components.ts landDraftComponents/whatIsNew) lands a page's or capability's parts as DRAFT components the owner reviews on the Shape tab — additive and safe (a part the ask already has, by name, is left alone; re-running never doubles one). Components moved onto the Shape tab and the standalone Components tab is gone (app: ShapeTab renders them, AskView + openOnTab drop the tab). Recommendation-first, never over-decomposed, a part is not a child ask. § The shaping conversation gains "The parts it is made of — land them as drafts". -->
 <!-- 0.50.0 (12 Aug 2026): THE PLAN PASS MAY ASK NOW — one thing at a time, in the chat. The old "this pass NEVER asks" rule is reversed: its reason (a question would open a second conversation in a second place) is gone, because the whole conversation lives in the chat and a build-notes question surfaces there in the same card shaping's do (pairs with the app change: notesNow.ts reads the parked question, thread.ts shows it in the approved phase, BuildNotesTab points to the chat). So a genuine technical fork the shape/code/board can't settle → `ask_user` and park, unlimited but one at a time. A hole in the SHAPE still goes Back to shaping, not a plan question. § This pass MAY ask — one thing at a time, in the chat. -->
 
@@ -985,6 +986,25 @@ In a LIVE terminal conversation — the user typed "shape this ask" and is sitti
 there — ask in chat instead. Still one at a time. The channel changes; the
 manner does not.
 
+### Say what you captured — the delta, in the chat
+
+When an answer moves the shape, say what moved — one line, in the chat, through
+**`say_in_chat({ jobId, said })`**. It posts as your turn in the same
+conversation the question and the answer are in, and then you carry straight on
+to the next question or to landing the shape. It is a TELL, not a question:
+nothing parks, nothing waits.
+
+- **Say the DELTA, never the whole shape.** The owner sees the shape itself in
+  the workspace — the lines on the Shape tab, the parts you landed. So say only
+  what CHANGED: _"I've added these components: sign-in form, reset link."_
+  _"Set the must-not so nothing here asks them for anything."_ Restating the
+  whole thing back to them is the noise this replaces.
+- **Only when there is a real delta.** You captured a part, rewrote a line,
+  resolved a fork — say so. An answer that changed nothing worth naming gets no
+  line; do not narrate.
+- **Their words, not the build's.** Same bar as a question: what a thing DOES,
+  never a file, a table or a commit. Builder detail is turned back.
+
 ### What a Confirm question looks like
 
 It puts your reading up and asks the owner to agree with it or correct it:
@@ -1084,6 +1104,24 @@ reports through `report_build_notes`.
 **Older wording called this "technical direction for the builder", builder-facing
 and not for the owner. That framing is gone.** Where the two registers disagree,
 this section wins: the plan is what the owner approves.
+
+### Say you're on it, then work quietly
+
+The owner ended the shaping conversation and this pass started off the back of
+it. From where they sit, the talk just stopped — so say, in one line, what is
+happening now, through **`say_in_chat({ jobId, said })`**:
+
+> _"Your shape's agreed — I'm putting the build notes together; they'll show up
+> in the workspace."_
+
+- **Once, at the top, then quiet.** One handoff line as you begin. After it you
+  work silently — this pass still asks the owner nothing they have to answer,
+  and it does not narrate its progress to them.
+- **It is a tell, not a park.** `say_in_chat` posts the line and you carry on; it
+  is not `ask_user` and nothing waits on it.
+- **The notes themselves are not said here.** They land on the ask through
+  `report_build_notes` and the owner reads them on the Build Notes tab. The chat
+  line points there; it does not repeat them.
 
 ### Write it as "here's what I'll build"
 
